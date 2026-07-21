@@ -1,8 +1,7 @@
 #pragma once
 
 #include <core/logic/yaml_parser.h>
-#include <scene/logic/scene_serializer.h>
-#include <memory>
+#include <entt/entt.hpp>
 
 class IPhysicsWorld;
 class ResourceManager;

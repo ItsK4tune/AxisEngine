@@ -3,10 +3,23 @@
 #include <render/interface/i_shader_manager.h>
 #include <render/strategy/opengl/opengl_translator.h>
 #include <glad/glad.h>
+#include <core/logic/runtime_profiler.h>
+#include <limits>
 
 class OpenGLShaderManager : public IShaderManager
 {
 public:
+    void InvalidateCache()
+    {
+        m_CurrentProgram = InvalidProgram;
+    }
+
+    void SetCacheEnabled(bool enabled)
+    {
+        m_CacheEnabled = enabled;
+        InvalidateCache();
+    }
+
     unsigned int CreateShader(ShaderType type) override
     {
         return glCreateShader(GLTranslator::ToGL(type));
@@ -54,11 +67,18 @@ public:
     }
     void UseProgram(unsigned int program) override
     {
-        glUseProgram(program);
+        if (!m_CacheEnabled || m_CurrentProgram != program)
+        {
+            glUseProgram(program);
+            m_CurrentProgram = program;
+            RuntimeProfiler::Instance().AddStateChanges();
+        }
     }
     void DeleteProgram(unsigned int program) override
     {
         glDeleteProgram(program);
+        if (m_CurrentProgram == program)
+            m_CurrentProgram = InvalidProgram;
     }
 
     bool GetProgramLinkStatus(unsigned int program) override
@@ -154,4 +174,9 @@ public:
     {
         return "OpenGL";
     }
+
+private:
+    static constexpr unsigned int InvalidProgram = (std::numeric_limits<unsigned int>::max)();
+    unsigned int m_CurrentProgram = InvalidProgram;
+    bool m_CacheEnabled = true;
 };

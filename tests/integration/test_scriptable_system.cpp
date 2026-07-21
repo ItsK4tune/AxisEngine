@@ -6,6 +6,7 @@
 #include <ecs/unit/script_component.h>
 #include <platform/interface/key.h>
 #include <script/logic/scriptable.h>
+#include <script/logic/input_scriptable.h>
 #include <stdexcept>
 
 namespace
@@ -18,13 +19,16 @@ struct ScriptState
     int collisionEnterCount = 0;
     int keyPressCount = 0;
     int keyReleaseCount = 0;
+    int resetCount = 0;
+    int boundPressedCount = 0;
+    int boundReleasedCount = 0;
     float lastDt = 0.0f;
     entt::entity lastOther = entt::null;
     Key lastKey = Key::Unknown;
     bool throwOnUpdate = false;
 };
 
-class RecordingScript : public Scriptable
+class RecordingScript : public virtual Scriptable
 {
 public:
     explicit RecordingScript(ScriptState& state) : m_State(state)
@@ -67,8 +71,23 @@ public:
         m_State.lastKey = key;
     }
 
+    void OnReset() override
+    {
+        ++m_State.resetCount;
+    }
+
 private:
     ScriptState& m_State;
+};
+
+class RecordingInputScript : public RecordingScript, public InputScriptable
+{
+public:
+    explicit RecordingInputScript(ScriptState& state) : RecordingScript(state)
+    {
+        BindKey(static_cast<int>(Key::Space), InputEvent::Pressed, [&state]() { ++state.boundPressedCount; });
+        BindKey(static_cast<int>(Key::Space), InputEvent::Released, [&state]() { ++state.boundReleasedCount; });
+    }
 };
 
 ScriptComponent& AddScript(Scene& scene, entt::entity entity, ScriptState& state)
@@ -159,8 +178,9 @@ AXIS_TEST_CASE("ScriptableSystem collision event dispatches to both scripts")
     AddScript(scene, entityB, stateB).instance = std::make_unique<RecordingScript>(stateB);
 
     system.Update(scene, 0.0f);
-    system.OnEntityCollision(
-        EntityCollisionEvent{static_cast<uint32_t>(entityA.GetHandle()), static_cast<uint32_t>(entityB.GetHandle()), CollisionEventType::Enter});
+    system.OnEntityCollision(EntityCollisionEvent{static_cast<uint32_t>(entityA.GetHandle()),
+                                                  static_cast<uint32_t>(entityB.GetHandle()),
+                                                  CollisionEventType::Enter});
 
     AXIS_CHECK(stateA.collisionEnterCount == 1);
     AXIS_CHECK(stateB.collisionEnterCount == 1);
@@ -189,4 +209,35 @@ AXIS_TEST_CASE("ScriptableSystem key press and release skip inactive scripts")
     AXIS_CHECK(activeState.lastKey == Key::Space);
     AXIS_CHECK(inactiveState.keyPressCount == 0);
     AXIS_CHECK(inactiveState.keyReleaseCount == 0);
+}
+
+AXIS_TEST_CASE("ScriptableSystem dispatches bound key callbacks")
+{
+    Scene scene;
+    ScriptableSystem system;
+    ScriptState state;
+    auto entity = scene.CreateEntity("InputScript");
+    auto& component = AddScript(scene, entity, state);
+    component.instance = std::make_unique<RecordingInputScript>(state);
+
+    system.Update(scene, 0.0f);
+    system.OnKeyPressed(KeyPressedEvent{static_cast<int>(Key::Space), 0});
+    system.OnKeyReleased(KeyReleasedEvent{static_cast<int>(Key::Space), 0});
+
+    AXIS_CHECK(state.boundPressedCount == 1);
+    AXIS_CHECK(state.boundReleasedCount == 1);
+}
+
+AXIS_TEST_CASE("ScriptableSystem reset dispatches OnReset")
+{
+    Scene scene;
+    ScriptableSystem system;
+    ScriptState state;
+    auto entity = scene.CreateEntity("ResetScript");
+    AddScript(scene, entity, state).instance = std::make_unique<RecordingScript>(state);
+
+    system.Update(scene, 0.0f);
+    system.Reset();
+
+    AXIS_CHECK(state.resetCount == 1);
 }

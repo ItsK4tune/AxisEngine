@@ -11,5 +11,4 @@
 #include <physics/interface/i_physics_world.h>
 
 #include <core/app/engine_accessor.h>
-#include <core/logic/config_loader.h>
 #include <script/logic/default_camera_controller.h>

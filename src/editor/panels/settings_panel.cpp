@@ -1,9 +1,12 @@
 #include <editor/panels/settings_panel.h>
+#include <audio/interface/i_audio_capture_service.h>
+#include <audio/interface/i_audio_engine.h>
 
 #ifdef ENABLE_EDITOR
 #include <core/logic/config_manager.h>
 #include <core/logic/config_serializer.h>
 #include <core/logic/event_manager.h>
+#include <core/logic/filesystem.h>
 #include <core/logic/service_locator.h>
 #include <core/type/tonemapping_mode.h>
 #include <platform/interface/i_device_manager.h>
@@ -11,6 +14,8 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <imgui.h>
+#include <algorithm>
+#include <cstdio>
 
 #ifdef _WIN32
 #include <dxgi.h>
@@ -35,6 +40,31 @@ void DrawDeviceSelector(const char* label, IDeviceManager& deviceManager)
             deviceManager.SetActiveDevice(device.id);
         }
     }
+}
+
+void DrawMicrophoneMeter(const char* id, const char* label, float value, float threshold)
+{
+    value = std::clamp(value, 0.0f, 1.0f);
+    threshold = std::clamp(threshold, 0.0f, 1.0f);
+    ImGui::TextUnformatted(label);
+
+    const ImVec2 size((std::max)(ImGui::GetContentRegionAvail().x, 1.0f), 20.0f);
+    const ImVec2 min = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton(id, size);
+    const ImVec2 barMax(min.x + size.x, min.y + size.y);
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(min, barMax, IM_COL32(28, 32, 38, 255), 3.0f);
+
+    const ImU32 levelColor = value >= threshold ? IM_COL32(52, 211, 153, 255) : IM_COL32(59, 130, 246, 255);
+    draw->AddRectFilled(min, ImVec2(min.x + size.x * value, barMax.y), levelColor, 3.0f);
+    const float thresholdX = min.x + size.x * threshold;
+    draw->AddLine(ImVec2(thresholdX, min.y), ImVec2(thresholdX, barMax.y), IM_COL32(255, 196, 64, 255), 2.0f);
+
+    char valueText[48] = {};
+    std::snprintf(valueText, sizeof(valueText), "%.3f  threshold %.3f", value, threshold);
+    const ImVec2 textSize = ImGui::CalcTextSize(valueText);
+    draw->AddText(ImVec2(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f), IM_COL32_WHITE,
+                  valueText);
 }
 }  // namespace
 
@@ -149,7 +179,7 @@ void SettingsPanel::OnImGui(Scene& scene)
         ImGui::Combo("Graphics API (Restart Required)", &currentApi, apis, IM_ARRAYSIZE(apis));
         ImGui::EndDisabled();
 
-        if (ImGui::SliderInt("MSAA Samples", &conf.graphics.msaaSamples, 1, 16))
+        if (ImGui::SliderInt("MSAA Samples", &conf.graphics.msaaSamples, 0, 16))
             changed = true;
 
         static const char* aaModes[] = {"Off", "FXAA", "TAA"};
@@ -181,7 +211,7 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::SliderFloat("Exposure", &conf.render.exposure, 0.1f, 5.0f))
             changed = true;
-        static const char* tonemapModes[] = {"Linear", "ACES", "Reinhard", "Uncharted2"};
+        static const char* tonemapModes[] = {"Linear", "ACES", "Reinhard"};
         int currentTonemap = (int)conf.render.tonemappingMode;
         if (ImGui::Combo("Tonemapping", &currentTonemap, tonemapModes, IM_ARRAYSIZE(tonemapModes)))
         {
@@ -216,7 +246,7 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (ImGui::SliderFloat("Ambient Intensity", &conf.render.ambientIntensity, 0.0f, 5.0f))
             changed = true;
 
-        float uiRef[2] = { conf.render.uiReferenceWidth, conf.render.uiReferenceHeight };
+        float uiRef[2] = {conf.render.uiReferenceWidth, conf.render.uiReferenceHeight};
         if (ImGui::DragFloat2("UI Reference Size", uiRef, 1.0f, 100.0f, 8192.0f))
         {
             conf.render.uiReferenceWidth = uiRef[0];
@@ -331,13 +361,120 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (ImGui::SliderFloat("Master Volume", &conf.audio.masterVolume, 0.0f, 100.0f))
             changed = true;
 
-        char audioDevBuf[256];
-        strncpy(audioDevBuf, conf.audio.audioDevice.c_str(), sizeof(audioDevBuf));
-        audioDevBuf[sizeof(audioDevBuf) - 1] = '\0';
-        if (ImGui::InputText("Audio Device", audioDevBuf, sizeof(audioDevBuf)))
+        if (auto* audioEngine = ServiceLocator::Instance().Resolve<IAudioEngine>())
         {
-            conf.audio.audioDevice = audioDevBuf;
+            const auto devices = audioEngine->GetOutputDevices();
+            if (devices.empty())
+            {
+                ImGui::TextDisabled("Playback endpoint switching is not supported by this backend.");
+            }
+            else
+            {
+                std::string preview = "Default";
+                for (const auto& device : devices)
+                    if (device.id == conf.audio.audioDevice)
+                        preview = device.name;
+                if (ImGui::BeginCombo("Playback Device", preview.c_str()))
+                {
+                    if (ImGui::Selectable("Default", conf.audio.audioDevice.empty()))
+                    {
+                        conf.audio.audioDevice.clear();
+                        changed = true;
+                    }
+                    for (const auto& device : devices)
+                    {
+                        if (ImGui::Selectable(device.name.c_str(), device.id == conf.audio.audioDevice))
+                        {
+                            conf.audio.audioDevice = device.id;
+                            changed = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+        }
+
+        ImGui::SeparatorText("Microphone Capture");
+        if (ImGui::Checkbox("Enable Microphone", &conf.audio.captureEnabled))
             changed = true;
+        if (ImGui::SliderFloat("Mic Input Volume", &conf.audio.captureInputVolume, 0.0f, 4.0f, "%.2fx"))
+            changed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Software pre-amplifier applied before calibration and thresholding.");
+        if (ImGui::SliderFloat("Mic Input Threshold", &conf.audio.captureNoiseGate, 0.0f, 0.25f, "%.3f"))
+            changed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Noise gate. Input below this RMS level is treated as silence.");
+        if (ImGui::SliderFloat("Voice Gain", &conf.audio.captureGain, 0.0f, 20.0f, "%.2fx"))
+            changed = true;
+        if (ImGui::SliderFloat("Attack", &conf.audio.captureAttackSeconds, 0.001f, 1.0f, "%.3f s",
+                               ImGuiSliderFlags_Logarithmic))
+            changed = true;
+        if (ImGui::SliderFloat("Release", &conf.audio.captureReleaseSeconds, 0.001f, 2.0f, "%.3f s",
+                               ImGuiSliderFlags_Logarithmic))
+            changed = true;
+        if (ImGui::SliderFloat("Peak Decay", &conf.audio.capturePeakDecaySeconds, 0.01f, 3.0f, "%.3f s",
+                               ImGuiSliderFlags_Logarithmic))
+            changed = true;
+        if (ImGui::SliderFloat("Pulse Threshold", &conf.audio.capturePulseThreshold, 0.0f, 1.0f, "%.2f"))
+            changed = true;
+        if (ImGui::SliderFloat("Pulse Cooldown", &conf.audio.capturePulseCooldown, 0.0f, 1.0f, "%.2f s"))
+            changed = true;
+        if (ImGui::SliderFloat("Pulse Duration", &conf.audio.capturePulseDuration, 0.01f, 5.0f, "%.2f s"))
+            changed = true;
+        if (ImGui::SliderFloat("Calibration Seconds", &conf.audio.captureCalibrationSeconds, 0.0f, 5.0f, "%.1f s"))
+            changed = true;
+
+        if (auto* capture = ServiceLocator::Instance().Resolve<IAudioCaptureService>())
+        {
+            if (ImGui::Button("Refresh Capture Devices"))
+                capture->RefreshDevices();
+            const auto devices = capture->GetDevices();
+            if (devices.empty())
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.38f, 0.32f, 1.0f), "No microphone input device detected.");
+            }
+            else
+            {
+                std::string preview = "System Default";
+                for (const auto& device : devices)
+                {
+                    if (device.id == conf.audio.captureDevice)
+                        preview = device.name;
+                }
+                if (ImGui::BeginCombo("Capture Device", preview.c_str()))
+                {
+                    if (ImGui::Selectable("System Default", conf.audio.captureDevice.empty()))
+                    {
+                        conf.audio.captureDevice.clear();
+                        changed = true;
+                    }
+                    for (const auto& device : devices)
+                    {
+                        if (ImGui::Selectable(device.name.c_str(), device.id == conf.audio.captureDevice))
+                        {
+                            conf.audio.captureDevice = device.id;
+                            changed = true;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+
+            const auto snapshot = capture->GetSnapshot();
+            const float effectiveGate = (std::max)(conf.audio.captureNoiseGate, snapshot.level.noiseFloor * 1.5f);
+            DrawMicrophoneMeter("##MicRms", "Mic RMS", snapshot.level.rms, effectiveGate);
+            DrawMicrophoneMeter("##MicPeak", "Mic Peak", snapshot.level.peak, effectiveGate);
+            DrawMicrophoneMeter("##MicIntensity", "Voice Intensity", snapshot.level.intensity,
+                                conf.audio.capturePulseThreshold);
+            ImGui::Text("Noise floor: %.4f | Active pulses: %zu | Status: %s", snapshot.level.noiseFloor,
+                        snapshot.pulses.size(), capture->IsCapturing() ? "Capturing" : "Stopped");
+            if (ImGui::Button("Calibrate Microphone"))
+                capture->BeginCalibration(conf.audio.captureCalibrationSeconds);
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.38f, 0.32f, 1.0f), "No audio capture service is registered.");
         }
     }
 
@@ -359,6 +496,157 @@ void SettingsPanel::OnImGui(Scene& scene)
         }
     }
 
+    if (ImGui::CollapsingHeader("Runtime Optimizations"))
+    {
+        ImGui::SeparatorText("Async resource uploads");
+        if (ImGui::Checkbox("Resource hot reload (editor/dev)", &conf.optimization.resourceHotReloadEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Limit completed uploads per frame", &conf.optimization.resourceUploadBudgetEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.resourceUploadBudgetEnabled);
+        if (ImGui::DragInt("Model uploads / frame", &conf.optimization.maxModelUploadsPerFrame, 1.0f, 1, 1024))
+            changed = true;
+        if (ImGui::DragInt("Texture uploads / frame", &conf.optimization.maxTextureUploadsPerFrame, 1.0f, 1,
+                           1024))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Discard full CPU mesh data after upload",
+                            &conf.optimization.discardCpuMeshDataAfterUpload))
+            changed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Retains compact positions and indices for physics/navigation; run static batching before upload.");
+        if (ImGui::Checkbox("Load GPU-compressed DDS textures",
+                            &conf.optimization.compressedTextureLoadingEnabled))
+            changed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Loads BC1-BC5 mip chains without expanding them on the CPU.");
+
+        ImGui::SeparatorText("Streaming and captures");
+        if (ImGui::Checkbox("Throttle streaming checks", &conf.optimization.streamingUpdateThrottlingEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.streamingUpdateThrottlingEnabled);
+        if (ImGui::DragFloat("Streaming check interval", &conf.optimization.streamingCheckIntervalSeconds, 0.01f,
+                             0.0f, 10.0f, "%.2f s"))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Limit reflection captures per frame",
+                            &conf.optimization.reflectionCaptureBudgetEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.reflectionCaptureBudgetEnabled);
+        if (ImGui::DragInt("Probe faces / frame", &conf.optimization.maxReflectionProbeFacesPerFrame, 1.0f, 1,
+                           1024))
+            changed = true;
+        if (ImGui::DragInt("Planar captures / frame", &conf.optimization.maxPlanarReflectionCapturesPerFrame, 1.0f,
+                           1, 1024))
+            changed = true;
+        ImGui::EndDisabled();
+
+        ImGui::SeparatorText("Parallel work");
+        if (ImGui::Checkbox("Parallel shadow command build", &conf.optimization.shadowParallelBuildEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.shadowParallelBuildEnabled);
+        if (ImGui::DragInt("Shadow parallel threshold", &conf.optimization.shadowParallelThreshold, 1.0f, 1,
+                           1000000))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Parallel animation evaluation",
+                            &conf.optimization.animationParallelEvaluationEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.animationParallelEvaluationEnabled);
+        if (ImGui::DragInt("Animation parallel threshold", &conf.optimization.animationParallelThreshold, 1.0f, 1,
+                           1000000))
+            changed = true;
+        ImGui::EndDisabled();
+
+        ImGui::SeparatorText("Navigation, networking, and particles");
+        if (ImGui::Checkbox("Navigation spatial hash", &conf.optimization.navigationSpatialHashEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.navigationSpatialHashEnabled);
+        if (ImGui::DragFloat("Navigation agent cell size", &conf.optimization.navigationAgentCellSize, 0.05f,
+                             0.01f, 1000.0f, "%.2f m"))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Async navigation pathfinding", &conf.optimization.navigationAsyncPathfindingEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.navigationAsyncPathfindingEnabled);
+        if (ImGui::DragInt("Navigation paths / frame", &conf.optimization.navigationMaxPathRequestsPerFrame,
+                           1.0f, 1, 1000000))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Limit nav-mesh rebuilds", &conf.optimization.navMeshRebuildBudgetEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.navMeshRebuildBudgetEnabled);
+        if (ImGui::DragInt("Nav-mesh rebuilds / frame", &conf.optimization.maxNavMeshRebuildsPerFrame, 1.0f, 1,
+                           1000000))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Incremental nav-mesh dirty tiles",
+                            &conf.optimization.navigationDirtyTilesEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.navigationDirtyTilesEnabled);
+        if (ImGui::DragFloat("Nav-mesh tile size", &conf.optimization.navigationNavMeshTileSize, 0.25f, 0.25f,
+                             100000.0f, "%.2f m"))
+            changed = true;
+        if (ImGui::DragInt("Dirty nav-mesh tiles / frame",
+                           &conf.optimization.navigationMaxDirtyTilesPerFrame, 1.0f, 1, 1000000))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Batch outgoing network packets", &conf.optimization.networkBatchingEnabled))
+            changed = true;
+        if (ImGui::DragInt("Network events / update", &conf.optimization.networkMaxEventsPerUpdate, 1.0f, 1,
+                           1000000))
+            changed = true;
+        if (ImGui::DragFloat("Network processing budget", &conf.optimization.networkMaxEventProcessingMs, 0.05f,
+                             0.01f, 1000.0f, "%.2f ms"))
+            changed = true;
+        if (ImGui::DragInt("Network bytes / update", &conf.optimization.networkMaxBytesPerUpdate, 1024.0f, 1,
+                           1024 * 1024 * 1024))
+            changed = true;
+        if (ImGui::Checkbox("Replicate network transforms", &conf.optimization.networkReplicationEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.networkReplicationEnabled);
+        if (ImGui::DragFloat("Replication rate", &conf.optimization.networkReplicationRateHz, 0.5f, 0.1f, 240.0f,
+                             "%.1f Hz"))
+            changed = true;
+        if (ImGui::DragFloat("Global interest radius", &conf.optimization.networkInterestRadius, 1.0f, 0.0f,
+                             10000000.0f, "%.1f m"))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Limit particle spawns per frame", &conf.optimization.particleSpawnBudgetEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.particleSpawnBudgetEnabled);
+        if (ImGui::DragInt("Particle spawns / frame", &conf.optimization.particleMaxSpawnPerFrame, 1.0f, 1,
+                           1000000))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Batch compatible particle emitters", &conf.optimization.particleBatchingEnabled))
+            changed = true;
+
+        ImGui::SeparatorText("Renderer, physics, UI, and video");
+        if (ImGui::Checkbox("OpenGL state cache", &conf.optimization.renderStateCacheEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Persistent transient buffer rings",
+                            &conf.optimization.persistentMappedBuffersEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Tiled deferred-light culling", &conf.optimization.tiledLightCullingEnabled))
+            changed = true;
+        ImGui::BeginDisabled(!conf.optimization.tiledLightCullingEnabled);
+        if (ImGui::DragInt("Deferred-light tile size", &conf.optimization.tiledLightTileSize, 1.0f, 8, 64,
+                           "%d px"))
+            changed = true;
+        ImGui::EndDisabled();
+        if (ImGui::Checkbox("Keep entity-ID G-buffer resident", &conf.optimization.gbufferEntityIdEnabled))
+            changed = true;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Decals and explicit picking requests enable it automatically when this is off.");
+        if (ImGui::Checkbox("Physics mesh-shape cache", &conf.optimization.physicsMeshShapeCacheEnabled))
+            changed = true;
+        if (ImGui::Checkbox("UI layout cache", &conf.optimization.uiLayoutCacheEnabled))
+            changed = true;
+        if (ImGui::Checkbox("Asynchronous video decode", &conf.optimization.videoAsyncDecodeEnabled))
+            changed = true;
+    }
+
     if (ImGui::CollapsingHeader("Culling"))
     {
         if (ImGui::Checkbox("Frustum Culling", &conf.culling.frustumCullingEnabled))
@@ -375,7 +663,7 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
         if (ImGui::Checkbox("Render Order Sorting", &conf.culling.renderOrderEnabled))
             changed = true;
-        
+
         ImGui::Text("Filter Layers (0-7):");
         for (int i = 0; i < 8; ++i)
         {
@@ -393,9 +681,10 @@ void SettingsPanel::OnImGui(Scene& scene)
                 changed = true;
             }
         }
-        
+
         unsigned int hexMask = conf.culling.filterLayerMask;
-        if (ImGui::InputScalar("Filter Mask (Hex)", ImGuiDataType_U32, &hexMask, nullptr, nullptr, "%08X", ImGuiInputTextFlags_CharsHexadecimal))
+        if (ImGui::InputScalar("Filter Mask (Hex)", ImGuiDataType_U32, &hexMask, nullptr, nullptr, "%08X",
+                               ImGuiInputTextFlags_CharsHexadecimal))
         {
             conf.culling.filterLayerMask = hexMask;
             changed = true;
@@ -416,7 +705,7 @@ void SettingsPanel::OnImGui(Scene& scene)
     if (ImGui::Button("Save Config"))
     {
         ConfigSerializer serializer;
-        serializer.Serialize("include/engine/asset/config.axs", conf);
+        serializer.Serialize(FileSystem::getPath("config.axs"), conf);
     }
 
     ImGui::End();

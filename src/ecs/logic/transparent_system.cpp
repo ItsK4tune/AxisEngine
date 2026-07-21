@@ -4,8 +4,6 @@
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
-#include <ecs/logic/decal_system.h>
-#include <ecs/logic/particle_system.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/render_components.h>
@@ -18,7 +16,6 @@
 #include <render/unit/render_queue.h>
 #include <resource/logic/resource_manager.h>
 
-REGISTER_SYSTEM(TransparentSystem)
 
 void TransparentSystem::Initialize()
 {
@@ -54,7 +51,8 @@ void TransparentSystem::RenderAlphaPass(Scene& scene, int width, int height, flo
         // Forced-forward opaque runs after skybox. Depth-ignored 3D overlays are drawn after transparent objects.
         rsm.Disable(ServerCapability::Blend);
         auto* cm = sl.Resolve<ConfigManager>();
-        if (cm && !cm->GetConfig().culling.depthTestEnabled)
+        const auto config = cm ? cm->GetConfigSnapshot() : nullptr;
+        if (config && !config->culling.depthTestEnabled)
             rsm.Disable(ServerCapability::DepthTest);
         else
             rsm.Enable(ServerCapability::DepthTest);
@@ -69,11 +67,6 @@ void TransparentSystem::RenderAlphaPass(Scene& scene, int width, int height, flo
             rs->ExecuteQueue(regularForwardQueue, RenderQueuePass::ForwardOpaque, shadowRenderer,
                              &core->GetMaterialRenderer(), nullptr);
         }
-    }
-
-    if (auto* decalSystem = sl.Resolve<DecalSystem>())
-    {
-        decalSystem->RenderAlphaPass(scene, width, height, alpha);
     }
 }
 
@@ -103,7 +96,8 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     rsm.Enable(ServerCapability::Blend);
     rsm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
     auto* cm = sl.Resolve<ConfigManager>();
-    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+    const auto config = cm ? cm->GetConfigSnapshot() : nullptr;
+    if (config && !config->culling.depthTestEnabled)
         rsm.Disable(ServerCapability::DepthTest);
     else
         rsm.Enable(ServerCapability::DepthTest);
@@ -113,11 +107,6 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     {
         rs->ExecuteQueue(rs->GetRenderQueueObj().GetTransparentQueue(), RenderQueuePass::Transparent, shadowRenderer,
                          &core->GetMaterialRenderer());
-    }
-
-    if (auto* particleSystem = sl.Resolve<ParticleSystem>())
-    {
-        particleSystem->RenderParticles(scene, width, height, alpha);
     }
 
     rsm.Disable(ServerCapability::Blend);
@@ -133,7 +122,7 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
     rsm.SetViewport(0, 0, width, height);
     rsm.Disable(ServerCapability::Blend);
     context->Clear(BufferBit::Depth);
-    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+    if (config && !config->culling.depthTestEnabled)
         rsm.Disable(ServerCapability::DepthTest);
     else
         rsm.Enable(ServerCapability::DepthTest);
@@ -142,8 +131,8 @@ void TransparentSystem::RenderTransparentPass(Scene& scene, int width, int heigh
 
     if (core)
     {
-        rs->ExecuteQueue(depthOverlayQueue, RenderQueuePass::DepthOverlay, shadowRenderer,
-                         &core->GetMaterialRenderer(), nullptr);
+        rs->ExecuteQueue(depthOverlayQueue, RenderQueuePass::DepthOverlay, shadowRenderer, &core->GetMaterialRenderer(),
+                         nullptr);
     }
 }
 

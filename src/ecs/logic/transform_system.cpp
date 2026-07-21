@@ -3,15 +3,14 @@
 #include <ecs/unit/core_components.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <scene/type/scene_events.h>
 #include <deque>
+#include <queue>
 #include <glm/gtx/quaternion.hpp>
 
-REGISTER_SYSTEM(TransformSystem)
 
 void TransformSystem::Initialize()
 {
@@ -32,25 +31,28 @@ void TransformSystem::Shutdown()
     m_EventSubscriptions.Clear();
     UnbindRegistries();
     m_LinearTransforms.clear();
+    m_DirtyTransforms.clear();
+    m_LinearTransformIndices.clear();
+    m_HasParentedTransforms = false;
     m_IsLinearTransformsDirty = true;
 }
 
 void TransformSystem::BindRegistry(Scene& scene)
 {
     auto& registry = scene.GetRegistry();
-    if (m_BoundRegistries.insert(&registry).second)
-    {
-        registry.on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        registry.on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        registry.on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+    if (!m_BoundRegistries.insert(&registry).second)
+        return;
 
-        registry.on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
-        registry.on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+    registry.on_construct<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+    registry.on_destroy<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+    registry.on_update<HierarchyComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
 
-        registry.on_update<PositionComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-        registry.on_update<RotationComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-        registry.on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
-    }
+    registry.on_construct<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+    registry.on_destroy<WorldTransformComponent>().connect<&TransformSystem::OnHierarchyChanged>(this);
+
+    registry.on_update<PositionComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+    registry.on_update<RotationComponent>().connect<&TransformSystem::OnTransformChanged>(this);
+    registry.on_update<ScaleComponent>().connect<&TransformSystem::OnTransformChanged>(this);
 
     m_IsLinearTransformsDirty = true;
     RebuildLinearTransforms(scene);
@@ -82,6 +84,7 @@ void TransformSystem::OnTransformChanged(entt::registry& reg, entt::entity entit
     if (auto* world = reg.try_get<WorldTransformComponent>(entity))
     {
         world->isDirty = true;
+        m_DirtyTransforms.insert(entity);
     }
 }
 
@@ -110,10 +113,44 @@ void TransformSystem::FixedUpdate(Scene& scene, float dt)
 void TransformSystem::RebuildLinearTransforms(Scene& scene)
 {
     m_LinearTransforms.clear();
+    m_LinearTransformIndices.clear();
     std::vector<entt::entity> roots;
     auto& registry = scene.GetRegistry();
     auto transformView = registry.view<WorldTransformComponent>();
+    const size_t transformCount = transformView.size();
+    m_LinearTransforms.reserve(transformCount);
+    m_DirtyTransforms.reserve(transformCount);
 
+    m_HasParentedTransforms = false;
+    auto hierarchyView = registry.view<HierarchyComponent>();
+    for (auto entity : hierarchyView)
+    {
+        const auto& hierarchy = hierarchyView.get<HierarchyComponent>(entity);
+        if (hierarchy.parent != entt::null && registry.all_of<WorldTransformComponent>(entity))
+        {
+            m_HasParentedTransforms = true;
+            break;
+        }
+    }
+
+    // Flat procedural scenes need neither a parent-first traversal nor the
+    // entity-to-linear-index table used to propagate hierarchical updates.
+    if (!m_HasParentedTransforms)
+    {
+        for (auto entity : transformView)
+        {
+            m_LinearTransforms.push_back(entity);
+            if (transformView.get<WorldTransformComponent>(entity).isDirty)
+                m_DirtyTransforms.insert(entity);
+        }
+        m_IsLinearTransformsDirty = false;
+        LOGGER_INFO("TransformSystem") << "Rebuilt flat transform list for " << m_LinearTransforms.size()
+                                       << " entities";
+        return;
+    }
+
+    roots.reserve(transformCount);
+    m_LinearTransformIndices.reserve(transformCount);
     for (auto entity : transformView)
     {
         auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
@@ -130,6 +167,9 @@ void TransformSystem::RebuildLinearTransforms(Scene& scene)
         queue.pop_front();
 
         m_LinearTransforms.push_back(current);
+        m_LinearTransformIndices[current] = m_LinearTransforms.size() - 1;
+        if (auto* world = registry.try_get<WorldTransformComponent>(current); world && world->isDirty)
+            m_DirtyTransforms.insert(current);
 
         auto* hierarchy = registry.try_get<HierarchyComponent>(current);
         if (hierarchy)
@@ -156,8 +196,70 @@ void TransformSystem::Update(Scene& scene, float dt)
     }
 
     auto& registry = scene.GetRegistry();
-    for (auto entity : m_LinearTransforms)
+    scene.ConsumeDirtyTransforms(m_DirtyScratch);
+    for (const auto entity : m_DirtyScratch)
     {
+        if (!registry.valid(entity))
+            continue;
+        if (const auto* world = registry.try_get<WorldTransformComponent>(entity); world && world->isDirty)
+            m_DirtyTransforms.insert(entity);
+    }
+    for (auto it = m_DirtyTransforms.begin(); it != m_DirtyTransforms.end();)
+    {
+        const auto entity = *it;
+        const auto* world = registry.valid(entity) ? registry.try_get<WorldTransformComponent>(entity) : nullptr;
+        if (!world || !world->isDirty)
+            it = m_DirtyTransforms.erase(it);
+        else
+            ++it;
+    }
+    if (m_DirtyTransforms.empty())
+        return;
+
+    if (!m_HasParentedTransforms)
+    {
+        for (const auto entity : m_DirtyTransforms)
+        {
+            auto* world = registry.try_get<WorldTransformComponent>(entity);
+            auto* pos = registry.try_get<PositionComponent>(entity);
+            auto* rot = registry.try_get<RotationComponent>(entity);
+            auto* scl = registry.try_get<ScaleComponent>(entity);
+            if (!world || !pos || !rot || !scl || !world->isDirty)
+                continue;
+
+            world->worldMatrix = glm::translate(glm::mat4(1.0f), pos->value) * glm::toMat4(rot->value) *
+                                 glm::scale(glm::mat4(1.0f), scl->value);
+            world->prevWorldMatrix = glm::translate(glm::mat4(1.0f), pos->prev) * glm::toMat4(rot->prev) *
+                                     glm::scale(glm::mat4(1.0f), scl->prev);
+            world->isDirty = false;
+            world->version++;
+            scene.MarkOctreeEntityDirty(entity);
+        }
+        m_DirtyTransforms.clear();
+        return;
+    }
+
+    std::priority_queue<size_t, std::vector<size_t>, std::greater<size_t>> pending;
+    std::unordered_set<entt::entity> queued;
+    queued.reserve(m_DirtyTransforms.size() * 2);
+    for (const auto entity : m_DirtyTransforms)
+    {
+        if (const auto found = m_LinearTransformIndices.find(entity); found != m_LinearTransformIndices.end())
+        {
+            pending.push(found->second);
+            queued.insert(entity);
+        }
+    }
+    m_DirtyTransforms.clear();
+
+    bool spatialDataChanged = false;
+    while (!pending.empty())
+    {
+        const size_t linearIndex = pending.top();
+        pending.pop();
+        if (linearIndex >= m_LinearTransforms.size())
+            continue;
+        const entt::entity entity = m_LinearTransforms[linearIndex];
         auto* world = registry.try_get<WorldTransformComponent>(entity);
         if (!world)
             continue;
@@ -192,6 +294,8 @@ void TransformSystem::Update(Scene& scene, float dt)
             world->prevWorldMatrix = parentPrevTransform * prevLocalMatrix;
             world->isDirty = false;
             world->version++;
+            spatialDataChanged = true;
+            scene.MarkOctreeEntityDirty(entity);
 
             if (hierarchy)
             {
@@ -200,11 +304,18 @@ void TransformSystem::Update(Scene& scene, float dt)
                     if (auto* cWorld = registry.try_get<WorldTransformComponent>(child))
                     {
                         cWorld->isDirty = true;
+                        if (queued.insert(child).second)
+                        {
+                            if (const auto found = m_LinearTransformIndices.find(child);
+                                found != m_LinearTransformIndices.end())
+                                pending.push(found->second);
+                        }
                     }
                 }
             }
         }
     }
+    (void)spatialDataChanged;
 }
 
 std::vector<entt::id_type> TransformSystem::GetReadComponents() const

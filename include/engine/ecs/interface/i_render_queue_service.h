@@ -6,7 +6,6 @@
 #include <vector>
 
 class RenderQueue;
-class StaticBatchManager;
 class ShadowRenderer;
 class MaterialRenderer;
 class Shader;
@@ -33,8 +32,12 @@ public:
     virtual int GetLastWidth() const = 0;
     virtual int GetLastHeight() const = 0;
 
-    virtual StaticBatchManager& GetBatchManager() = 0;
     virtual RenderQueue& GetRenderQueueObj() = 0;
+
+    // Capture views use a reusable isolated queue and restore the complete
+    // main-view render state without rebuilding the main queue.
+    virtual void PushRenderViewContext() = 0;
+    virtual bool PopRenderViewContext() = 0;
 
     virtual void BuildRenderQueues(Scene& scene, float alpha, int width = 0, int height = 0) = 0;
     virtual void BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params) = 0;

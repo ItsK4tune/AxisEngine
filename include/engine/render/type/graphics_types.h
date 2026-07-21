@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <render/type/shader_abi.h>
 
 class IGraphicsContext;
 class IBufferManager;
@@ -90,6 +91,7 @@ enum class TextureType
 {
     Texture1D,
     Texture2D,
+    Texture2DMultisample,
     TextureCubeMap,
     Texture3D,
     Texture2DArray,
@@ -118,8 +120,14 @@ enum class InternalFormat
     R8,
     RGB8,
     RGBA8,
+    RGBA8Snorm,
     RGBA16F,
     R32UI,
+    BC1RGBA,
+    BC2RGBA,
+    BC3RGBA,
+    BC4R,
+    BC5RG,
     DepthComponent24,
     Depth24Stencil8
 };
@@ -232,6 +240,12 @@ enum class PixelStoreParam
 {
     UnpackAlignment,
     PackAlignment
+};
+
+enum class TextureSwizzle
+{
+    Identity,
+    RedToRGBA
 };
 
 enum class ServerCapability
@@ -407,7 +421,7 @@ struct GPUGlobalLightData
 
 struct ShaderPorts
 {
-    float data[8] = {0.0f};
+    float data[ShaderABI::CustomPortCount] = {0.0f};
 };
 
 struct GPUGlobalData

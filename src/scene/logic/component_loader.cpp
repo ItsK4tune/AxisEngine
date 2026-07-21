@@ -1,8 +1,5 @@
 #include <scene/logic/component_loader.h>
-#include <audio/logic/audio_service.h>
-#include <core/app/application.h>
-#include <core/logic/config_manager.h>
-#include <core/logic/filesystem.h>
+#include <scene/logic/scene.h>
 #include <core/logic/loader_utils.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
@@ -18,17 +15,40 @@
 #include <ecs/unit/terrain_component.h>
 #include <ecs/unit/network_components.h>
 #include <ecs/unit/ui_components.h>
+#include <ecs/logic/scriptable_system.h>
 #include <navigation/unit/pathfollower_component.h>
+#include <navigation/unit/navmesh_component.h>
 #include <physics/logic/physics_loader.h>
 #include <resource/unit/animator.h>
+#include <resource/logic/resource_manager.h>
 #include <algorithm>
-#include <iostream>
+#include <cctype>
+#include <mutex>
+#include <sstream>
+#include <stdexcept>
 #include <utility>
 
 std::unordered_map<std::string, std::shared_ptr<IComponentLoaderFactory>> ComponentLoader::s_Factories;
+std::unordered_map<std::string, std::shared_ptr<IComponentSerializerFactory>> ComponentLoader::s_Serializers;
+std::shared_mutex ComponentLoader::s_RegistryMutex;
 
 namespace
 {
+thread_local bool s_RegisteringDefaultLoaders = false;
+
+class DefaultLoaderRegistrationScope
+{
+public:
+    DefaultLoaderRegistrationScope()
+    {
+        s_RegisteringDefaultLoaders = true;
+    }
+    ~DefaultLoaderRegistrationScope()
+    {
+        s_RegisteringDefaultLoaders = false;
+    }
+};
+
 class FunctionComponentLoaderFactory final : public IComponentLoaderFactory
 {
 public:
@@ -45,143 +65,267 @@ public:
 private:
     ComponentLoaderFunc m_Func;
 };
+
+class FunctionComponentSerializerFactory final : public IComponentSerializerFactory
+{
+public:
+    explicit FunctionComponentSerializerFactory(ComponentSerializerFunc func) : m_Func(std::move(func))
+    {
+    }
+
+    bool Serialize(const entt::registry& registry, entt::entity entity, YAMLNode& component) const override
+    {
+        return m_Func(registry, entity, component);
+    }
+
+private:
+    ComponentSerializerFunc m_Func;
+};
+
+glm::vec3 ParseVec3Value(const std::string& value, const glm::vec3& fallback = glm::vec3(0.0f))
+{
+    std::stringstream stream(value);
+    glm::vec3 parsed = fallback;
+    if (!(stream >> parsed.x >> parsed.y >> parsed.z))
+        return fallback;
+    return parsed;
+}
+
+bool ParseBoolValue(const std::string& value, bool fallback = false)
+{
+    if (value == "true" || value == "1")
+        return true;
+    if (value == "false" || value == "0")
+        return false;
+    return fallback;
+}
 }  // namespace
 
 void ComponentLoader::RegisterLoader(const std::string& type, std::shared_ptr<IComponentLoaderFactory> factory)
 {
-    s_Factories[type] = std::move(factory);
+    if (type.empty())
+        throw std::invalid_argument("Component loader type cannot be empty");
+    if (!factory)
+        throw std::invalid_argument("Component loader factory cannot be null");
+    std::unique_lock lock(s_RegistryMutex);
+    if (s_RegisteringDefaultLoaders)
+        s_Factories.try_emplace(type, std::move(factory));
+    else
+        s_Factories[type] = std::move(factory);
 }
 
 void ComponentLoader::RegisterLoader(const std::string& type, ComponentLoaderFunc func)
 {
+    if (!func)
+        throw std::invalid_argument("Component loader callback cannot be empty");
     RegisterLoader(type, std::make_shared<FunctionComponentLoaderFactory>(std::move(func)));
+}
+
+bool ComponentLoader::UnregisterLoader(const std::string& type)
+{
+    std::unique_lock lock(s_RegistryMutex);
+    return s_Factories.erase(type) != 0;
+}
+
+void ComponentLoader::RegisterSerializer(const std::string& type, std::shared_ptr<IComponentSerializerFactory> factory)
+{
+    if (type.empty())
+        throw std::invalid_argument("Component serializer type cannot be empty");
+    if (!factory)
+        throw std::invalid_argument("Component serializer factory cannot be null");
+    std::unique_lock lock(s_RegistryMutex);
+    s_Serializers[type] = std::move(factory);
+}
+
+void ComponentLoader::RegisterSerializer(const std::string& type, ComponentSerializerFunc func)
+{
+    if (!func)
+        throw std::invalid_argument("Component serializer callback cannot be empty");
+    RegisterSerializer(type, std::make_shared<FunctionComponentSerializerFactory>(std::move(func)));
+}
+
+bool ComponentLoader::UnregisterSerializer(const std::string& type)
+{
+    std::unique_lock lock(s_RegistryMutex);
+    return s_Serializers.erase(type) != 0;
+}
+
+std::vector<std::pair<std::string, YAMLNode>> ComponentLoader::CollectSerializedComponents(
+    const entt::registry& registry, entt::entity entity)
+{
+    std::vector<std::pair<std::string, std::shared_ptr<IComponentSerializerFactory>>> serializers;
+    {
+        std::shared_lock lock(s_RegistryMutex);
+        serializers.reserve(s_Serializers.size());
+        for (const auto& [type, serializer] : s_Serializers) serializers.emplace_back(type, serializer);
+    }
+
+    std::vector<std::pair<std::string, YAMLNode>> serialized;
+    serialized.reserve(serializers.size());
+    for (const auto& [type, serializer] : serializers)
+    {
+        YAMLNode component;
+        component.key = "Component";
+        component.value = type;
+        if (serializer->Serialize(registry, entity, component))
+            serialized.emplace_back(type, std::move(component));
+    }
+    std::sort(serialized.begin(), serialized.end(),
+              [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+    return serialized;
 }
 
 bool ComponentLoader::Load(const std::string& type, Scene& scene, entt::entity entity, const YAMLNode& node,
                            ResourceManager& res, IPhysicsWorld* phys)
 {
-    if (auto it = s_Factories.find(type); it != s_Factories.end())
+    std::shared_ptr<IComponentLoaderFactory> factory;
     {
-        it->second->Load(scene, entity, node, res, phys);
-        return true;
+        std::shared_lock lock(s_RegistryMutex);
+        if (auto it = s_Factories.find(type); it != s_Factories.end())
+            factory = it->second;
     }
-    return false;
+    if (!factory)
+        return false;
+    factory->Load(scene, entity, node, res, phys);
+    return true;
 }
 
 void ComponentLoader::InitializeDefaultLoaders()
 {
-    static bool s_Initialized = false;
-    if (s_Initialized)
-        return;
-    s_Initialized = true;
+    static std::once_flag initialized;
+    std::call_once(initialized, []() {
+        // Defaults use insert-if-absent while user registration always replaces,
+        // so module overrides win even if registration races first scene load.
+        DefaultLoaderRegistrationScope registrationScope;
 
-    RegisterLoader("Renderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadRenderer(s, e, n, r);
-    });
-    RegisterLoader("Animator", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadAnimator(s, e, n, r);
-    });
-    RegisterLoader("Camera", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadCamera(s, e, n);
-    });
+        RegisterLoader("Renderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                      IPhysicsWorld* p) { LoadRenderer(s, e, n, r); });
+        RegisterLoader("Animator", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                      IPhysicsWorld* p) { LoadAnimator(s, e, n, r); });
+        RegisterLoader("Camera", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadCamera(s, e, n);
+        });
 
-    // Standardized Lighting Names
-    RegisterLoader("DirectionalLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                          IPhysicsWorld* p) { LoadLightDir(s, e, n); });
-    RegisterLoader("PointLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightPoint(s, e, n);
-    });
-    RegisterLoader("SpotLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightSpot(s, e, n);
-    });
+        // Standardized Lighting Names
+        RegisterLoader("DirectionalLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                              IPhysicsWorld* p) { LoadLightDir(s, e, n); });
+        RegisterLoader("PointLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { LoadLightPoint(s, e, n); });
+        RegisterLoader("SpotLight", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadLightSpot(s, e, n); });
 
-    // Legacy Lighting Names (Backup)
-    RegisterLoader("LightDir", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightDir(s, e, n);
-    });
-    RegisterLoader("LightPoint", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightPoint(s, e, n);
-    });
-    RegisterLoader("LightSpot", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightSpot(s, e, n);
-    });
+        // Legacy Lighting Names (Backup)
+        RegisterLoader("LightDir", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                      IPhysicsWorld* p) { LoadLightDir(s, e, n); });
+        RegisterLoader("LightPoint", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { LoadLightPoint(s, e, n); });
+        RegisterLoader("LightSpot", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadLightSpot(s, e, n); });
 
-    RegisterLoader("UITransform", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                     IPhysicsWorld* p) { LoadUITransform(s, e, n); });
-    RegisterLoader("UIRenderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadUIRenderer(s, e, n, r);
-    });
-    RegisterLoader("UIText", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadUIText(s, e, n, r);
-    });
-    RegisterLoader("SkyboxRenderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                        IPhysicsWorld* p) { LoadSkyboxRenderer(s, e, n, r); });
-    RegisterLoader("ReflectionProbe", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                         IPhysicsWorld* p) { LoadReflectionProbe(s, e, n, r); });
-    RegisterLoader("PostProcess", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                     IPhysicsWorld* p) { LoadPostProcess(s, e, n, r); });
-    RegisterLoader("VideoPlayer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                     IPhysicsWorld* p) { LoadVideoPlayer(s, e, n); });
-    RegisterLoader("Animation", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadAnimator(s, e, n, r);
-    });
-    RegisterLoader("ParticleEmitter", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                         IPhysicsWorld* p) { LoadParticleEmitter(s, e, n, r); });
-    RegisterLoader("Material", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadMaterial(s, e, n, r);
-    });
-    RegisterLoader("LOD", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLOD(s, e, n, r);
-    });
+        RegisterLoader("UITransform", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                         IPhysicsWorld* p) { LoadUITransform(s, e, n); });
+        RegisterLoader("UIRenderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { LoadUIRenderer(s, e, n, r); });
+        RegisterLoader("UIText", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadUIText(s, e, n, r);
+        });
+        RegisterLoader("SkyboxRenderer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                            IPhysicsWorld* p) { LoadSkyboxRenderer(s, e, n, r); });
+        RegisterLoader("ReflectionProbe", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                             IPhysicsWorld* p) { LoadReflectionProbe(s, e, n, r); });
+        RegisterLoader("PostProcess", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                         IPhysicsWorld* p) { LoadPostProcess(s, e, n, r); });
+        RegisterLoader("VideoPlayer", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                         IPhysicsWorld* p) { LoadVideoPlayer(s, e, n); });
+        RegisterLoader("Animation", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadAnimator(s, e, n, r); });
+        RegisterLoader("ParticleEmitter", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                             IPhysicsWorld* p) { LoadParticleEmitter(s, e, n, r); });
+        RegisterLoader("Material", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                      IPhysicsWorld* p) { LoadMaterial(s, e, n, r); });
+        RegisterLoader("LOD", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadLOD(s, e, n, r);
+        });
 
-    // New Modular Physics Components
-    RegisterLoader("RigidShape", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        if (p)
-            PhysicsLoader::LoadRigidShape(s, e, n, *p);
-    });
-    RegisterLoader("RigidBody", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        if (p)
-            PhysicsLoader::LoadRigidBody(s, e, n, *p);
-    });
+        // New Modular Physics Components
+        RegisterLoader("RigidShape", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { PhysicsLoader::LoadRigidShape(s, e, n, p); });
+        RegisterLoader("RigidBody", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { PhysicsLoader::LoadRigidBody(s, e, n, p); });
 
-    RegisterLoader("CharacterController",
-                   [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-                       if (p)
-                           PhysicsLoader::LoadCharacterController(s, e, n, *p);
-                   });
-    RegisterLoader("Transform", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadTransform(s, e, n);
+        RegisterLoader("CharacterController",
+                       [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+                           PhysicsLoader::LoadCharacterController(s, e, n, p);
+                       });
+        RegisterLoader("Transform", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadTransform(s, e, n); });
+        RegisterLoader("PathFollower", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                           IPhysicsWorld* p) { ComponentLoader::LoadPathFollower(s, e, n); });
+        RegisterLoader("NavMesh", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager&, IPhysicsWorld*) {
+            ComponentLoader::LoadNavMesh(s, e, n);
+        });
+        RegisterLoader("NavigationGrid",
+                       [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager&, IPhysicsWorld*) {
+                           ComponentLoader::LoadNavigationGrid(s, e, n);
+                       });
+        RegisterLoader("Decal", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadDecal(s, e, n, r);
+        });
+        RegisterLoader("UIFlex", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadUIFlex(s, e, n);
+        });
+        RegisterLoader("UIInteractive", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                           IPhysicsWorld* p) { LoadUIInteractive(s, e, n); });
+        RegisterLoader("UIAnimation", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                         IPhysicsWorld* p) { LoadUIAnimation(s, e, n); });
+        RegisterLoader("Reflective", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { LoadReflective(s, e, n, r); });
+        RegisterLoader("AudioSource", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                         IPhysicsWorld* p) { LoadAudioSource(s, e, n, r); });
+        RegisterLoader("Audio", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
+            LoadAudioSource(s, e, n, r);
+        });
+        RegisterLoader("Fragment", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                      IPhysicsWorld* p) { LoadFragment(s, e, n); });
+        RegisterLoader("PlanarReflection", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                              IPhysicsWorld* p) { LoadPlanarReflection(s, e, n); });
+        RegisterLoader("LightProbe", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                        IPhysicsWorld* p) { LoadLightProbe(s, e, n); });
+        RegisterLoader("Terrain", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                     IPhysicsWorld* p) { LoadTerrain(s, e, n, r); });
+        RegisterLoader("Network", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                     IPhysicsWorld* p) { LoadNetwork(s, e, n); });
+        RegisterLoader("Occlusion", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadOcclusion(s, e, n); });
+        RegisterLoader("Streaming", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                       IPhysicsWorld* p) { LoadStreaming(s, e, n); });
+        RegisterLoader("Script", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
+                                    IPhysicsWorld* p) { LoadScript(s, e, n); });
     });
-    RegisterLoader("PathFollower", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                      IPhysicsWorld* p) { ComponentLoader::LoadPathFollower(s, e, n); });
-    RegisterLoader("Decal", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadDecal(s, e, n, r);
-    });
-    RegisterLoader("UIFlex", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadUIFlex(s, e, n);
-    });
-    RegisterLoader("Reflective", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadReflective(s, e, n, r);
-    });
-    RegisterLoader("AudioSource", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                     IPhysicsWorld* p) { LoadAudioSource(s, e, n, r); });
-    RegisterLoader("Audio", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadAudioSource(s, e, n, r);
-    });
-    RegisterLoader("Fragment", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadFragment(s, e, n);
-    });
-    RegisterLoader("PlanarReflection", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r,
-                                          IPhysicsWorld* p) { LoadPlanarReflection(s, e, n); });
-    RegisterLoader("LightProbe", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadLightProbe(s, e, n);
-    });
-    RegisterLoader("Terrain", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadTerrain(s, e, n, r);
-    });
-    RegisterLoader("Network", [](Scene& s, entt::entity e, const YAMLNode& n, ResourceManager& r, IPhysicsWorld* p) {
-        LoadNetwork(s, e, n);
-    });
+}
+
+void ComponentLoader::LoadScript(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    ScriptableSystem::LoadScript(scene, entity, node);
+}
+
+bool ComponentLoader::HasSerializedComponents(const entt::registry& registry, entt::entity entity)
+{
+    std::vector<std::shared_ptr<IComponentSerializerFactory>> serializers;
+    {
+        std::shared_lock lock(s_RegistryMutex);
+        serializers.reserve(s_Serializers.size());
+        for (const auto& [type, serializer] : s_Serializers) serializers.push_back(serializer);
+    }
+
+    for (const auto& serializer : serializers)
+    {
+        YAMLNode component;
+        component.key = "Component";
+        if (serializer->Serialize(registry, entity, component))
+            return true;
+    }
+    return false;
 }
 
 // Helper to serialize YAMLNode back to string for overrides
@@ -198,14 +342,6 @@ static std::string SerializeYAML(const YAMLNode& node, int indent = 0)
         }
     }
     return result;
-}
-
-static void RedundantLoader(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
-{
-    auto& anim = scene.AddComponent<AnimationComponent>(entity);
-    std::stringstream ss(node.GetChildValue("Animation"));
-    std::string a;
-    while (ss >> a) anim.animations.push_back(a);
 }
 
 void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -249,6 +385,7 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
     }
 
     r.model = res.GetModelAuto(modelName, false);
+    r.modelName = modelName;
     r.shader = res.GetShader(shaderName);
     r.shaderName = shaderName;
 
@@ -367,32 +504,27 @@ void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const Y
             if (parts.size() >= 1)
                 effect.shaderName = parts[0];
             if (parts.size() >= 2)
-            {
-                try
-                {
-                    effect.priority = LoaderUtils::SafeStoi(parts[1]);
-                }
-                catch (...)
-                {
-                }
-            }
+                effect.priority = LoaderUtils::SafeStoi(parts[1]);
             if (parts.size() >= 6)
             {
-                try
-                {
-                    effect.x = LoaderUtils::SafeStoi(parts[2]);
-                    effect.y = LoaderUtils::SafeStoi(parts[3]);
-                    effect.w = LoaderUtils::SafeStoi(parts[4]);
-                    effect.h = LoaderUtils::SafeStoi(parts[5]);
-                }
-                catch (...)
-                {
-                }
+                effect.x = LoaderUtils::SafeStoi(parts[2]);
+                effect.y = LoaderUtils::SafeStoi(parts[3]);
+                effect.w = LoaderUtils::SafeStoi(parts[4]);
+                effect.h = LoaderUtils::SafeStoi(parts[5]);
             }
             if (parts.size() >= 7)
             {
                 effect.affectUI = (parts[6] == "1");
             }
+            if (parts.size() >= 8)
+            {
+                const auto knownInputs = static_cast<unsigned long>(PostProcessInput::Standard);
+                const auto serializedInputs =
+                    LoaderUtils::SafeStoul(parts[7], static_cast<unsigned long>(PostProcessInput::Color));
+                effect.inputs = static_cast<PostProcessInput>(serializedInputs & knownInputs);
+            }
+            if (parts.size() >= 9)
+                effect.enabled = parts[8] == "1" || parts[8] == "true";
             pp.effects.push_back(effect);
         }
     }
@@ -411,37 +543,47 @@ void ComponentLoader::LoadReflective(Scene& scene, entt::entity entity, const YA
 
 void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    LoaderUtils::ValidateKeys(node, {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio"}, "Camera");
+    LoaderUtils::ValidateKeys(node,
+                              {"Primary", "FOV", "Yaw", "Pitch", "Near", "Far", "AspectRatio", "ScreenWidth",
+                               "ScreenHeight", "Orthographic", "OrthoSize", "CullingMask"},
+                              "Camera");
 
     auto& c = scene.AddComponent<CameraComponent>(entity);
     c.isPrimary = node.GetChildValue("Primary", "1") == "1" || node.GetChildValue("Primary", "true") == "true";
 
     c.aspectRatio = LoaderUtils::SafeStof(node.GetChildValue("AspectRatio", "0.0"));
+    c.screenWidth = std::max(1, LoaderUtils::SafeStoi(node.GetChildValue("ScreenWidth", "800")));
+    c.screenHeight = std::max(1, LoaderUtils::SafeStoi(node.GetChildValue("ScreenHeight", "600")));
+    c.isOrthographic =
+        node.GetChildValue("Orthographic", "false") == "true" || node.GetChildValue("Orthographic", "0") == "1";
+    c.orthoSize = LoaderUtils::SafeStof(node.GetChildValue("OrthoSize", "5.0"));
+    c.cullingMask = static_cast<uint32_t>(LoaderUtils::SafeStoul(node.GetChildValue("CullingMask", "4294967295")));
 
     c.fov = LoaderUtils::SafeStof(node.GetChildValue("FOV", "45.0"));
     if (c.fov <= 0.0f || c.fov >= 180.0f)
         LOGGER_WARN("ComponentLoader") << "Camera FOV out of bounds (0-180): " << c.fov;
 
-    float yaw = LoaderUtils::SafeStof(node.GetChildValue("Yaw", "-90.0"));
-    float pitch = LoaderUtils::SafeStof(node.GetChildValue("Pitch", "0.0"));
-    if (pitch < -89.0f || pitch > 89.0f)
-        LOGGER_WARN("ComponentLoader") << "Camera Pitch out of bounds (-89 to 89): " << pitch;
+    if (node.GetChild("Yaw") || node.GetChild("Pitch"))
+    {
+        float yaw = LoaderUtils::SafeStof(node.GetChildValue("Yaw", "-90.0"));
+        float pitch = LoaderUtils::SafeStof(node.GetChildValue("Pitch", "0.0"));
+        if (pitch < -89.0f || pitch > 89.0f)
+            LOGGER_WARN("ComponentLoader") << "Camera Pitch out of bounds (-89 to 89): " << pitch;
 
-    // Convert Euler to Quaternion and update/emplace RotationComponent
-    glm::vec3 front;
-    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    front.y = sin(glm::radians(pitch));
-    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        glm::vec3 front;
+        front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        front.y = sin(glm::radians(pitch));
+        front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
 
-    glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
-    glm::vec3 right = glm::normalize(glm::cross(glm::normalize(front), worldUp));
-    glm::vec3 up = glm::normalize(glm::cross(right, glm::normalize(front)));
+        const glm::vec3 worldUp(0.0f, 1.0f, 0.0f);
+        const glm::vec3 right = glm::normalize(glm::cross(glm::normalize(front), worldUp));
+        const glm::vec3 up = glm::normalize(glm::cross(right, glm::normalize(front)));
+        const glm::quat rotation = glm::quatLookAt(glm::normalize(front), up);
 
-    glm::quat rotation = glm::quatLookAt(glm::normalize(front), up);
-
-    auto& rotComp = scene.GetOrAddComponent<RotationComponent>(entity);
-    rotComp.value = rotation;
-    rotComp.prev = rotation;
+        auto& rotComp = scene.GetOrAddComponent<RotationComponent>(entity);
+        rotComp.value = rotation;
+        rotComp.prev = rotation;
+    }
 
     c.nearPlane = LoaderUtils::SafeStof(node.GetChildValue("Near", "0.1"));
     c.farPlane = LoaderUtils::SafeStof(node.GetChildValue("Far", "1000.0"));
@@ -457,13 +599,19 @@ void ComponentLoader::LoadCamera(Scene& scene, entt::entity entity, const YAMLNo
 
 void ComponentLoader::LoadLightDir(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
-    LoaderUtils::ValidateKeys(node, {"Active", "CastShadow", "Color", "Intensity", "Ambient", "Diffuse", "Specular"},
-                              "LightDir");
+    LoaderUtils::ValidateKeys(
+        node, {"Active", "CastShadow", "Direction", "Color", "Intensity", "Ambient", "Diffuse", "Specular"},
+        "LightDir");
 
     auto& l = scene.AddComponent<DirectionalLightComponent>(entity);
 
     l.active = node.GetChildValue("Active", "1") == "1" || node.GetChildValue("Active", "true") == "true";
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
+
+    std::stringstream directionSS(node.GetChildValue("Direction", "-0.2 -1 -0.3"));
+    directionSS >> l.direction.x >> l.direction.y >> l.direction.z;
+    if (glm::length(l.direction) > 0.0001f)
+        l.direction = glm::normalize(l.direction);
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
     float r = 1, g = 1, b = 1;
@@ -516,14 +664,19 @@ void ComponentLoader::LoadLightPoint(Scene& scene, entt::entity entity, const YA
 void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
     LoaderUtils::ValidateKeys(node,
-                              {"Active", "CastShadow", "Color", "Intensity", "CutOff", "OuterCutOff", "Constant",
-                               "Linear", "Quadratic", "Radius", "Ambient", "Diffuse", "Specular"},
+                              {"Active", "CastShadow", "Direction", "Color", "Intensity", "CutOff", "OuterCutOff",
+                               "Constant", "Linear", "Quadratic", "Radius", "Ambient", "Diffuse", "Specular"},
                               "LightSpot");
 
     auto& l = scene.AddComponent<SpotLightComponent>(entity);
 
     l.active = node.GetChildValue("Active", "1") == "1" || node.GetChildValue("Active", "true") == "true";
     l.isCastShadow = node.GetChildValue("CastShadow", "0") == "1" || node.GetChildValue("CastShadow", "true") == "true";
+
+    std::stringstream directionSS(node.GetChildValue("Direction", "0 -1 0"));
+    directionSS >> l.direction.x >> l.direction.y >> l.direction.z;
+    if (glm::length(l.direction) > 0.0001f)
+        l.direction = glm::normalize(l.direction);
 
     std::stringstream colorSS(node.GetChildValue("Color", "1 1 1"));
     float r = 1, g = 1, b = 1;
@@ -561,6 +714,10 @@ void ComponentLoader::LoadLightSpot(Scene& scene, entt::entity entity, const YAM
 
 void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
+    LoaderUtils::ValidateKeys(node,
+                              {"Position", "Size", "ZOrder", "zIndex", "Rotation", "rotation", "anchorMin", "anchorMax",
+                               "offsetMin", "offsetMax", "pivot", "flipX", "FlipX", "flipY", "FlipY"},
+                              "UITransform");
     auto& ui = scene.AddComponent<UITransformComponent>(entity);
 
     auto parseVec2Percent = [](const std::string& str, glm::vec2& outVec, glm::bvec2& outPercent,
@@ -586,13 +743,7 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
             }
             else
                 p = false;
-            try
-            {
-                v = LoaderUtils::SafeStof(t);
-            }
-            catch (...)
-            {
-            }
+            v = LoaderUtils::SafeStof(t, v);
         };
 
         parseComp(xStr, outVec.x, outPercent.x);
@@ -613,6 +764,7 @@ void ComponentLoader::LoadUITransform(Scene& scene, entt::entity entity, const Y
     std::string zLabel = node.GetChildValue("zIndex");
     if (!zLabel.empty())
         ui.zIndex = LoaderUtils::SafeStoi(zLabel);
+    ui.rotation = LoaderUtils::SafeStof(node.GetChildValue("rotation", node.GetChildValue("Rotation", "0")));
 
     parseVec2Percent(node.GetChildValue("anchorMin"), ui.anchorMin, ui.anchorMinIsPercent, glm::vec2(0.5f));
     parseVec2Percent(node.GetChildValue("anchorMax"), ui.anchorMax, ui.anchorMaxIsPercent, glm::vec2(0.5f));
@@ -654,6 +806,7 @@ void ComponentLoader::LoadUIRenderer(Scene& scene, entt::entity entity, const YA
 
     if (!textureName.empty())
     {
+        ui.textureName = textureName;
         std::shared_ptr<Texture> tex = res.GetTextureAuto(textureName);
         std::string finalName = textureName;
 
@@ -701,21 +854,31 @@ void ComponentLoader::LoadTransform(Scene& scene, entt::entity entity, const YAM
     sSS >> s.value.x >> s.value.y >> s.value.z;
     s.prev = s.value;
 
-    if (scene.HasAllComponents<WorldTransformComponent>(entity))
-        scene.GetComponent<WorldTransformComponent>(entity).isDirty = true;
+    scene.MarkTransformDirty(entity);
 }
 
 void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node,
-                              {"Active", "SpawnRate", "Lifetime", "StartSize", "EndSize", "StartColor", "EndColor",
-                               "MinVelocity", "MaxVelocity"},
+                              {"Active", "SpawnRate", "Lifetime", "Duration", "StartSize", "EndSize", "StartColor",
+                               "EndColor", "MinVelocity", "MaxVelocity", "Texture", "Shader", "MaxParticles",
+                               "Shape"},
                               "ParticleEmitter");
     auto& pe = scene.AddComponent<ParticleEmitterComponent>(entity);
 
     pe.isActive = node.GetChildValue("Active", "true") == "true";
     pe.emitter.SpawnRate = LoaderUtils::SafeStof(node.GetChildValue("SpawnRate", "10.0"));
     pe.emitter.LifeTime = LoaderUtils::SafeStof(node.GetChildValue("Lifetime", "2.0"));
+    std::string shape = node.GetChildValue("Shape", "DIRECTIONAL");
+    std::transform(shape.begin(), shape.end(), shape.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::toupper(value)); });
+    if (shape == "CONE")
+        pe.emitter.Shape = ParticleEmitter::EmissionShape::CONE;
+    else if (shape == "FIGURE_EIGHT" || shape == "FIGUREEIGHT")
+        pe.emitter.Shape = ParticleEmitter::EmissionShape::FIGURE_EIGHT;
+    else
+        pe.emitter.Shape = ParticleEmitter::EmissionShape::DIRECTIONAL;
+    pe.emissionDuration = LoaderUtils::SafeStof(node.GetChildValue("Duration", "-1.0"));
     pe.emitter.StartSize = LoaderUtils::SafeStof(node.GetChildValue("StartSize", "0.1"));
     pe.emitter.EndSize = LoaderUtils::SafeStof(node.GetChildValue("EndSize", "0.1"));
 
@@ -744,14 +907,16 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
     std::stringstream xvSS(node.GetChildValue("MaxVelocity", "0.1 4.0 0.1"));
     xvSS >> pe.emitter.MaxVelocity.x >> pe.emitter.MaxVelocity.y >> pe.emitter.MaxVelocity.z;
 
-    pe.emitter.Initialize(500);
+    pe.maxParticles =
+        static_cast<unsigned int>(std::max(1, LoaderUtils::SafeStoi(node.GetChildValue("MaxParticles", "500"))));
+    pe.emitter.Initialize(pe.maxParticles);
 }
 
 void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node,
                               {"Text", "text", "Font", "font", "fontSize", "Color", "color", "Scale", "scale",
-                               "Alignment", "alignment", "wordWrap", "maxWidth", "wrapByWord"},
+                               "Alignment", "alignment", "wordWrap", "maxWidth", "wrapByWord", "Shader", "shader"},
                               "UIText");
     auto& txt = scene.AddComponent<UITextComponent>(entity);
 
@@ -771,6 +936,7 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
         fontName = StripQuotes(node.GetChildValue("Font"));
 
     int fontSize = LoaderUtils::SafeStoi(node.GetChildValue("fontSize", "60"));
+    txt.fontSize = fontSize;
     txt.fontName = fontName;
     txt.font = res.GetFontAuto(fontName, fontSize);
 
@@ -798,8 +964,8 @@ void ComponentLoader::LoadUIText(Scene& scene, entt::entity entity, const YAMLNo
     if (!res.GetUIModel("default_text_rect"))
         res.CreateUIModel("default_text_rect", ::UIType::Text);
     txt.model = res.GetUIModel("default_text_rect");
-    txt.shader = res.GetShader("textShader");
-    txt.shaderName = "textShader";
+    txt.shaderName = node.GetChildValue("shader", node.GetChildValue("Shader", "textShader"));
+    txt.shader = res.GetShader(txt.shaderName);
 }
 
 void ComponentLoader::LoadUIFlex(Scene& scene, entt::entity entity, const YAMLNode& node)
@@ -811,9 +977,48 @@ void ComponentLoader::LoadUIFlex(Scene& scene, entt::entity entity, const YAMLNo
     flex.direction = (dirStr == "Row") ? FlexDirection::Row : FlexDirection::Column;
 
     flex.spacing = LoaderUtils::SafeStof(node.GetChildValue("spacing", "5.0"));
+    flex.autoSize = node.GetChildValue("autoSize", "false") == "true" || node.GetChildValue("autoSize", "0") == "1";
 
     std::stringstream padSS(node.GetChildValue("padding", "0 0 0 0"));
     padSS >> flex.padding.x >> flex.padding.y >> flex.padding.z >> flex.padding.w;
+}
+
+void ComponentLoader::LoadUIInteractive(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node, {"Interactable"}, "UIInteractive");
+    auto& interactive = scene.AddComponent<UIInteractiveComponent>(entity);
+    const std::string value = node.GetChildValue("Interactable", "true");
+    interactive.interactable = value == "true" || value == "1";
+}
+
+void ComponentLoader::LoadUIAnimation(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node,
+                              {"Enabled", "AnimateColor", "AnimateScale", "NormalColor", "HoverColor", "PressedColor",
+                               "NormalScale", "HoverScale", "PressedScale", "TransitionSpeed"},
+                              "UIAnimation");
+    auto& animation = scene.AddComponent<UIAnimationComponent>(entity);
+    auto readBool = [&](const char* key, bool defaultValue) {
+        const std::string value = node.GetChildValue(key, defaultValue ? "true" : "false");
+        return value == "true" || value == "1";
+    };
+    animation.enabled = readBool("Enabled", true);
+    animation.animateColor = readBool("AnimateColor", true);
+    animation.animateScale = readBool("AnimateScale", false);
+    std::stringstream normalColor(node.GetChildValue("NormalColor", "1 1 1 1"));
+    normalColor >> animation.normalColor.r >> animation.normalColor.g >> animation.normalColor.b >>
+        animation.normalColor.a;
+    std::stringstream hoverColor(node.GetChildValue("HoverColor", "1 1 1 1"));
+    hoverColor >> animation.hoverColor.r >> animation.hoverColor.g >> animation.hoverColor.b >> animation.hoverColor.a;
+    std::stringstream pressedColor(node.GetChildValue("PressedColor", "0.85 0.85 0.85 1"));
+    pressedColor >> animation.pressedColor.r >> animation.pressedColor.g >> animation.pressedColor.b >>
+        animation.pressedColor.a;
+    animation.normalScale = LoaderUtils::SafeStof(node.GetChildValue("NormalScale", "1"));
+    animation.hoverScale = LoaderUtils::SafeStof(node.GetChildValue("HoverScale", "1"));
+    animation.pressedScale = LoaderUtils::SafeStof(node.GetChildValue("PressedScale", "0.98"));
+    animation.transitionSpeed = LoaderUtils::SafeStof(node.GetChildValue("TransitionSpeed", "12"));
+    animation.currentScale = animation.normalScale;
+    animation.visualScale = animation.normalScale;
 }
 
 void ComponentLoader::LoadLOD(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -842,6 +1047,7 @@ void ComponentLoader::LoadLOD(Scene& scene, entt::entity entity, const YAMLNode&
             LOGGER_WARN("ComponentLoader") << "LOD Model not found: " << modelName;
         }
         lod.lodModels.push_back(model);
+        lod.lodModelNames.push_back(modelName);
     }
 
     std::stringstream distSS(distancesStr);
@@ -865,7 +1071,7 @@ void ComponentLoader::LoadLOD(Scene& scene, entt::entity entity, const YAMLNode&
 
 void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    LoaderUtils::ValidateKeys(node, {"Skybox", "Shader"}, "SkyboxRenderer");
+    LoaderUtils::ValidateKeys(node, {"Skybox", "Shader", "Primary"}, "SkyboxRenderer");
 
     auto& comp = scene.AddComponent<SkyboxRenderComponent>(entity);
 
@@ -873,18 +1079,18 @@ void ComponentLoader::LoadSkyboxRenderer(Scene& scene, entt::entity entity, cons
     std::string shaderName = node.GetChildValue("Shader");
 
     comp.skybox = res.GetSkybox(skyboxName);
-    if (!comp.skybox && skyboxName.find('|') != std::string::npos)
-    {
-    }
+    comp.skyboxName = skyboxName;
 
     comp.shader = res.GetShader(shaderName);
     comp.shaderName = shaderName;
+    comp.isPrimary = node.GetChildValue("Primary", "true") == "true" || node.GetChildValue("Primary", "1") == "1";
 
     if (!comp.skybox)
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer skybox not found: " << skyboxName;
     if (comp.shader.expired())
         LOGGER_WARN("ComponentLoader") << "SkyboxRenderer shader not found: " << shaderName;
-    scene.SetActiveSkybox(entity);
+    if (comp.isPrimary)
+        scene.SetActiveSkybox(entity);
 }
 
 void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
@@ -918,8 +1124,8 @@ void ComponentLoader::LoadReflectionProbe(Scene& scene, entt::entity entity, con
 void ComponentLoader::LoadAudioSource(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(node,
-                              {"Audio", "Path", "Volume", "Pitch", "Pan", "Speed", "Loop", "Is3d", "MinDistance",
-                               "MaxDistance", "Velocity", "PlayOnAwake"},
+                              {"Audio", "Sound", "Path", "Volume", "Pitch", "Pan", "Speed", "Loop", "Is3d",
+                               "MinDistance", "MaxDistance", "Velocity", "PlayOnAwake"},
                               "AudioSource");
 
     AudioSourceComponent audio;
@@ -936,10 +1142,9 @@ void ComponentLoader::LoadAudioSource(Scene& scene, entt::entity entity, const Y
     }
     else
     {
-        auto audioSvc = ServiceLocator::Instance().Resolve<AudioService>();
-        IAudioEngine* engine = audioSvc ? audioSvc->GetEngine() : nullptr;
-        audio.source = res.GetSoundAuto(audioName, engine);
+        audio.source = res.GetSoundAuto(audioName);
         audio.resourceName = audioName;
+        audio.filePath = node.GetChildValue("Path");
         std::string velStr = node.GetChildValue("Velocity", "0 0 0");
         std::stringstream ss(velStr);
         ss >> audio.velocity.x >> audio.velocity.y >> audio.velocity.z;
@@ -964,28 +1169,26 @@ void ComponentLoader::LoadVideoPlayer(Scene& scene, entt::entity entity, const Y
     LoaderUtils::ValidateKeys(node, {"Path", "Loop", "Speed", "PlayOnAwake", "Volume", "MaxDecodes"}, "VideoPlayer");
 
     VideoPlayerComponent video;
-    video.filePath = FileSystem::getPath(node.GetChildValue("Path"));
+    video.filePath = node.GetChildValue("Path");
     video.isLooping = node.GetChildValue("Loop", "0") == "1" || node.GetChildValue("Loop", "true") == "true";
+    video.playOnAwake =
+        node.GetChildValue("PlayOnAwake", "true") == "true" || node.GetChildValue("PlayOnAwake", "1") == "1";
 
     video.speed = LoaderUtils::SafeStof(node.GetChildValue("Speed", "1.0"));
     if (video.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "VideoPlayer Speed must be positive: " << video.speed;
 
     video.volume = LoaderUtils::SafeStof(node.GetChildValue("Volume", "1.0"));
-    video.maxDecodes = LoaderUtils::SafeStoi(node.GetChildValue("MaxDecodes", "1"));
-
-    video.playOnAwake =
-        node.GetChildValue("PlayOnAwake", "1") == "1" || node.GetChildValue("PlayOnAwake", "true") == "true";
-
+    video.maxDecodes = std::max(1, LoaderUtils::SafeStoi(node.GetChildValue("MaxDecodes", "1")));
     scene.AddComponent<VideoPlayerComponent>(entity, video);
 }
 
 void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
     LoaderUtils::ValidateKeys(
-        node,
-        {"Opacity", "Roughness", "Metallic", "Albedo", "Normal", "MetallicMap", "RoughnessMap", "AO", "EmissiveMap",
-         "SpecularMap", "Emission", "AlphaCutoff", "UVScale", "UVOffset", "AO_Map"},
+        node, {"Opacity", "Roughness",   "Metallic",    "Albedo",   "Normal",      "MetallicMap", "RoughnessMap",
+               "AO",      "EmissiveMap", "SpecularMap", "Emission", "AlphaCutoff", "UVScale",     "UVOffset",
+               "AO_Map",  "AO_Path",     "BlendSrc",    "BlendDst", "Type",        "Ports"},
         "Material");
     auto& mat = scene.AddComponent<MaterialComponent>(entity);
     mat.desc.opacity = LoaderUtils::SafeStof(node.GetChildValue("Opacity", "1.0"));
@@ -1011,13 +1214,33 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
     mat.desc.emissivePath = node.GetChildValue("EmissiveMap");
     mat.desc.specularPath = node.GetChildValue("SpecularMap");
 
-    mat.gpu.albedoMap = res.GetTextureAuto(mat.desc.albedoPath) ? res.GetTextureAuto(mat.desc.albedoPath)->id : 0;
-    mat.gpu.normalMap = res.GetTextureAuto(mat.desc.normalPath) ? res.GetTextureAuto(mat.desc.normalPath)->id : 0;
-    mat.gpu.metallicMap = res.GetTextureAuto(mat.desc.metallicPath) ? res.GetTextureAuto(mat.desc.metallicPath)->id : 0;
-    mat.gpu.roughnessMap =
-        res.GetTextureAuto(mat.desc.roughnessPath) ? res.GetTextureAuto(mat.desc.roughnessPath)->id : 0;
-    mat.gpu.emissiveMap = res.GetTextureAuto(mat.desc.emissivePath) ? res.GetTextureAuto(mat.desc.emissivePath)->id : 0;
-    mat.gpu.aoMap = res.GetTextureAuto(mat.desc.aoPath) ? res.GetTextureAuto(mat.desc.aoPath)->id : 0;
+    constexpr int maxBlendFactor = static_cast<int>(BlendFactor::OneMinusConstantAlpha);
+    mat.desc.blendSrc = static_cast<BlendFactor>(std::clamp(
+        LoaderUtils::SafeStoi(node.GetChildValue("BlendSrc", std::to_string(static_cast<int>(BlendFactor::SrcAlpha)))),
+        0, maxBlendFactor));
+    mat.desc.blendDst = static_cast<BlendFactor>(
+        std::clamp(LoaderUtils::SafeStoi(
+                       node.GetChildValue("BlendDst", std::to_string(static_cast<int>(BlendFactor::OneMinusSrcAlpha)))),
+                   0, maxBlendFactor));
+    mat.desc.type = node.GetChildValue("Type", "PBR");
+    std::stringstream ports(node.GetChildValue("Ports"));
+    for (float& port : mat.desc.ports.data)
+    {
+        if (!(ports >> port))
+            break;
+    }
+
+    auto resolveTexture = [&](const std::string& nameOrPath) {
+        auto texture = res.GetTextureAuto(nameOrPath);
+        return texture ? texture->id : 0u;
+    };
+    mat.gpu.albedoMap = resolveTexture(mat.desc.albedoPath);
+    mat.gpu.normalMap = resolveTexture(mat.desc.normalPath);
+    mat.gpu.metallicMap = resolveTexture(mat.desc.metallicPath);
+    mat.gpu.roughnessMap = resolveTexture(mat.desc.roughnessPath);
+    mat.gpu.emissiveMap = resolveTexture(mat.desc.emissivePath);
+    mat.gpu.aoMap = resolveTexture(mat.desc.aoPath);
+    mat.gpu.specularMap = resolveTexture(mat.desc.specularPath);
     mat.gpu.dirty = false;
 }
 
@@ -1032,73 +1255,301 @@ void ComponentLoader::LoadFragment(Scene& scene, entt::entity entity, const YAML
         overrideNode = node.GetChild("Overrides");
 
     if (overrideNode)
-    {
         frag.overrides = SerializeYAML(*overrideNode);
-        LOGGER_INFO("ComponentLoader") << "[FRAG-LOAD] Entity " << (uint32_t)entity << " path='" << frag.path
-                                       << "' overrides='" << frag.overrides << "'";
-    }
-    else
-    {
-        LOGGER_INFO("ComponentLoader") << "[FRAG-LOAD] Entity " << (uint32_t)entity << " path='" << frag.path
-                                       << "' NO OVERRIDES (Override node not found). Node children:";
-        for (auto& c : node.children)
-        {
-            LOGGER_INFO("ComponentLoader") << "  child key='" << c.key << "' value='" << c.value << "'";
-        }
-    }
 }
 
 void ComponentLoader::LoadPathFollower(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
+    LoaderUtils::ValidateKeys(node,
+                              {"MoveSpeed",
+                               "RotationSpeed",
+                               "MaxRotationSpeed",
+                               "RotationAcceleration",
+                               "RotationOffset",
+                               "ArrivalDistance",
+                               "RecordDebugPath",
+                               "Provider",
+                               "Criteria",
+                               "PreferredTags",
+                               "TagWeightBonus",
+                               "AltitudePenaltyWeight",
+                               "ProviderEntity",
+                               "LockXPitch",
+                               "LockYYaw",
+                               "LockZRoll",
+                               "LockMoveX",
+                               "LockMoveY",
+                               "LockMoveZ",
+                               "LocalAvoidance",
+                               "SeparationRadius",
+                               "SeparationWeight",
+                               "ObstacleAvoidanceDistance",
+                               "ObstacleAvoidanceWeight"},
+                              "PathFollower");
     auto& pf = scene.AddComponent<PathFollowerComponent>(entity);
     pf.moveSpeed = LoaderUtils::SafeStof(node.GetChildValue("MoveSpeed", "5.0"));
+    pf.rotationSpeed = LoaderUtils::SafeStof(node.GetChildValue("RotationSpeed", "10.0"));
+    pf.maxRotationSpeed = LoaderUtils::SafeStof(node.GetChildValue("MaxRotationSpeed", "20.0"));
+    pf.rotationAcceleration = LoaderUtils::SafeStof(node.GetChildValue("RotationAcceleration", "40.0"));
+    std::stringstream offset(node.GetChildValue("RotationOffset", "0 0 0"));
+    offset >> pf.rotationOffset.x >> pf.rotationOffset.y >> pf.rotationOffset.z;
     pf.arrivalDistance = LoaderUtils::SafeStof(node.GetChildValue("ArrivalDistance", "0.5"));
+    const auto readBool = [&](const char* key, bool defaultValue) {
+        const std::string value = node.GetChildValue(key, defaultValue ? "true" : "false");
+        return value == "true" || value == "1";
+    };
+    pf.recordDebugPath = readBool("RecordDebugPath", true);
+    pf.pathfindingOptions.provider =
+        static_cast<NavigationProvider>(std::clamp(LoaderUtils::SafeStoi(node.GetChildValue("Provider", "0")), 0, 2));
+    pf.pathfindingOptions.criteria =
+        static_cast<PathfindingCriteria>(std::clamp(LoaderUtils::SafeStoi(node.GetChildValue("Criteria", "0")), 0, 5));
+    pf.pathfindingOptions.preferredTags.clear();
+    std::string preferredTags = node.GetChildValue("PreferredTags", "walkable");
+    std::replace(preferredTags.begin(), preferredTags.end(), ',', ' ');
+    std::stringstream tags(preferredTags);
+    for (std::string tag; tags >> tag;) pf.pathfindingOptions.preferredTags.push_back(std::move(tag));
+    pf.pathfindingOptions.tagWeightBonus = LoaderUtils::SafeStof(node.GetChildValue("TagWeightBonus", "5.0"));
+    pf.pathfindingOptions.altitudePenaltyWeight =
+        LoaderUtils::SafeStof(node.GetChildValue("AltitudePenaltyWeight", "10.0"));
+    pf.navigationProviderName = node.GetChildValue("ProviderEntity");
+    pf.lockXPitch = readBool("LockXPitch", false);
+    pf.lockYYaw = readBool("LockYYaw", false);
+    pf.lockZRoll = readBool("LockZRoll", false);
+    pf.lockMoveX = readBool("LockMoveX", false);
+    pf.lockMoveY = readBool("LockMoveY", false);
+    pf.lockMoveZ = readBool("LockMoveZ", false);
+    pf.localAvoidanceEnabled = readBool("LocalAvoidance", true);
+    pf.separationRadius = LoaderUtils::SafeStof(node.GetChildValue("SeparationRadius", "1.25"));
+    pf.separationWeight = LoaderUtils::SafeStof(node.GetChildValue("SeparationWeight", "0.85"));
+    pf.obstacleAvoidanceDistance = LoaderUtils::SafeStof(node.GetChildValue("ObstacleAvoidanceDistance", "1.8"));
+    pf.obstacleAvoidanceWeight = LoaderUtils::SafeStof(node.GetChildValue("ObstacleAvoidanceWeight", "1.0"));
+}
+
+void ComponentLoader::LoadNavMesh(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node,
+                              {"IsDynamic", "NeedsRebuild", "TerrainGridResolution", "WalkableNormalY",
+                               "CarveHeightPadding", "CarveAgentRadius", "Vertices", "Triangles", "Nodes"},
+                              "NavMesh");
+    auto& nav = scene.AddOrReplaceComponent<NavMeshComponent>(entity);
+    nav.isDynamic = ParseBoolValue(node.GetChildValue("IsDynamic", "false"));
+    nav.needsRebuild = ParseBoolValue(node.GetChildValue("NeedsRebuild", "true"), true);
+    nav.terrainGridResolution = std::max(1, LoaderUtils::SafeStoi(node.GetChildValue("TerrainGridResolution", "64")));
+    nav.walkableNormalY = LoaderUtils::SafeStof(node.GetChildValue("WalkableNormalY", "0.3"));
+    nav.carveHeightPadding = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("CarveHeightPadding", "0.5")));
+    nav.carveAgentRadius = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("CarveAgentRadius", "0.0")));
+
+    nav.vertices.clear();
+    if (const auto* vertices = node.GetChild("Vertices"))
+    {
+        nav.vertices.reserve(vertices->children.size());
+        for (const auto& vertex : vertices->children)
+        {
+            if (vertex.key == "Vertex")
+                nav.vertices.push_back(ParseVec3Value(vertex.value));
+        }
+    }
+
+    nav.triangles.clear();
+    if (const auto* triangles = node.GetChild("Triangles"))
+    {
+        nav.triangles.reserve(triangles->children.size());
+        for (const auto& triangleNode : triangles->children)
+        {
+            if (triangleNode.key != "Triangle")
+                continue;
+            NavMeshTriangle triangle{};
+            std::stringstream indices(triangleNode.GetChildValue("Indices"));
+            indices >> triangle.indices[0] >> triangle.indices[1] >> triangle.indices[2];
+            triangle.center = ParseVec3Value(triangleNode.GetChildValue("Center"));
+            triangle.normal = ParseVec3Value(triangleNode.GetChildValue("Normal"), glm::vec3(0.0f, 1.0f, 0.0f));
+            triangle.tag = triangleNode.GetChildValue("Tag", "walkable");
+            nav.triangles.push_back(std::move(triangle));
+        }
+    }
+
+    nav.nodes.clear();
+    if (const auto* nodes = node.GetChild("Nodes"))
+    {
+        nav.nodes.reserve(nodes->children.size());
+        for (const auto& nodeData : nodes->children)
+        {
+            if (nodeData.key != "Node")
+                continue;
+            NavMeshNode navNode{};
+            navNode.position = ParseVec3Value(nodeData.GetChildValue("Position"));
+            navNode.triangleIndex = LoaderUtils::SafeStoul(nodeData.GetChildValue("TriangleIndex", "0"));
+            navNode.tag = nodeData.GetChildValue("Tag", "walkable");
+            std::stringstream neighbors(nodeData.GetChildValue("Neighbors"));
+            uint32_t neighbor = 0;
+            while (neighbors >> neighbor) navNode.neighbors.push_back(neighbor);
+            nav.nodes.push_back(std::move(navNode));
+        }
+    }
+}
+
+void ComponentLoader::LoadNavigationGrid(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node, {"Origin", "Width", "Height", "CellSize", "AllowDiagonal", "Cells"},
+                              "NavigationGrid");
+    auto& grid = scene.AddOrReplaceComponent<NavigationGridComponent>(entity);
+    grid.origin = ParseVec3Value(node.GetChildValue("Origin"));
+    grid.width = std::max(0, LoaderUtils::SafeStoi(node.GetChildValue("Width", "0")));
+    grid.height = std::max(0, LoaderUtils::SafeStoi(node.GetChildValue("Height", "0")));
+    grid.cellSize = std::max(0.0001f, LoaderUtils::SafeStof(node.GetChildValue("CellSize", "1.0")));
+    grid.allowDiagonal = ParseBoolValue(node.GetChildValue("AllowDiagonal", "false"));
+    grid.cells.clear();
+    if (const auto* cells = node.GetChild("Cells"))
+    {
+        grid.cells.reserve(cells->children.size());
+        for (const auto& cellNode : cells->children)
+        {
+            if (cellNode.key != "Cell")
+                continue;
+            NavigationGridCell cell;
+            cell.walkable = ParseBoolValue(cellNode.GetChildValue("Walkable", "true"), true);
+            cell.cost = std::max(0.0f, LoaderUtils::SafeStof(cellNode.GetChildValue("Cost", "1.0")));
+            cell.tag = cellNode.GetChildValue("Tag", "walkable");
+            grid.cells.push_back(std::move(cell));
+        }
+    }
 }
 
 void ComponentLoader::LoadDecal(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
+    LoaderUtils::ValidateKeys(node,
+                              {"Albedo", "Opacity", "Roughness", "Metallic", "Reflectivity", "TintColor", "Lifetime",
+                               "RenderOrder", "LightingMode", "TargetTags", "Shader"},
+                              "Decal");
     auto& d = scene.AddComponent<DecalComponent>(entity);
+    d.albedoTexture = node.GetChildValue("Albedo");
+    if (auto texture = res.GetTextureAuto(d.albedoTexture))
+        d.albedoMap = texture->id;
     d.opacity = LoaderUtils::SafeStof(node.GetChildValue("Opacity", "1.0"));
     d.roughness = LoaderUtils::SafeStof(node.GetChildValue("Roughness", "1.0"));
     d.metallic = LoaderUtils::SafeStof(node.GetChildValue("Metallic", "0.0"));
     d.reflectivity = LoaderUtils::SafeStof(node.GetChildValue("Reflectivity", "0.0"));
+    d.lifetime = LoaderUtils::SafeStof(node.GetChildValue("Lifetime", "-1.0"));
+    d.renderOrder = static_cast<uint32_t>(std::max(0, LoaderUtils::SafeStoi(node.GetChildValue("RenderOrder", "0"))));
+    d.lightingMode = std::clamp(LoaderUtils::SafeStoi(node.GetChildValue("LightingMode", "0")), 0, 2);
 
     std::stringstream ss(node.GetChildValue("TintColor", "1 1 1 1"));
     ss >> d.tintColor.r >> d.tintColor.g >> d.tintColor.b >> d.tintColor.a;
+    std::string targetTags = node.GetChildValue("TargetTags");
+    std::replace(targetTags.begin(), targetTags.end(), ',', ' ');
+    std::istringstream tagStream(targetTags);
+    for (std::string tag; tagStream >> tag;) d.targetTags.push_back(std::move(tag));
     d.customShader = node.GetChildValue("Shader");
 }
 
 void ComponentLoader::LoadPlanarReflection(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
+    LoaderUtils::ValidateKeys(node, {"Resolution", "ResolutionY", "ResolutionScale", "UpdateIntervalFrames", "Normal"},
+                              "PlanarReflection");
     auto& pr = scene.AddComponent<PlanarReflectionComponent>(entity);
     pr.resolution = LoaderUtils::SafeStoi(node.GetChildValue("Resolution", "1024"));
+    pr.resolution_y = LoaderUtils::SafeStoi(node.GetChildValue("ResolutionY", std::to_string(pr.resolution)));
+    pr.resolutionScale = std::clamp(LoaderUtils::SafeStof(node.GetChildValue("ResolutionScale", "0.5")), 0.1f, 1.0f);
+    pr.updateIntervalFrames = static_cast<uint32_t>((std::max)(
+        1, LoaderUtils::SafeStoi(node.GetChildValue("UpdateIntervalFrames", "1"))));
     std::stringstream ss(node.GetChildValue("Normal", "0 1 0"));
     ss >> pr.normal.x >> pr.normal.y >> pr.normal.z;
 }
 
 void ComponentLoader::LoadLightProbe(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
+    LoaderUtils::ValidateKeys(node, {"Intensity", "Radius", "Tint", "SH"}, "LightProbe");
     auto& lp = scene.AddComponent<LightProbeComponent>(entity);
     lp.intensity = LoaderUtils::SafeStof(node.GetChildValue("Intensity", "1.0"));
     lp.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "5.0"));
+    std::stringstream tintStream(node.GetChildValue("Tint", "1 1 1"));
+    tintStream >> lp.tint.x >> lp.tint.y >> lp.tint.z;
+    std::stringstream shStream(node.GetChildValue("SH"));
+    for (glm::vec3& coefficient : lp.sh)
+    {
+        if (!(shStream >> coefficient.x >> coefficient.y >> coefficient.z))
+            break;
+    }
 }
 
 void ComponentLoader::LoadTerrain(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
+    LoaderUtils::ValidateKeys(
+        node,
+        {"HeightMap", "SplatMap", "DiffuseLayers", "NormalLayers", "Size", "MaxHeight", "Resolution", "ChunkSize",
+         "LODDistances", "TextureScale", "CastShadows", "GeneratePhysics", "Walkable", "Shader"},
+        "Terrain");
     auto& t = scene.AddComponent<TerrainComponent>(entity);
     t.heightMapName = node.GetChildValue("HeightMap");
+    t.splatMapName = node.GetChildValue("SplatMap");
+    auto parseNames = [](std::string value, std::vector<std::string>& names) {
+        std::replace(value.begin(), value.end(), ',', ' ');
+        std::stringstream stream(value);
+        names.clear();
+        for (std::string name; stream >> name;) names.push_back(std::move(name));
+    };
+    parseNames(node.GetChildValue("DiffuseLayers"), t.diffuseLayerNames);
+    parseNames(node.GetChildValue("NormalLayers"), t.normalLayerNames);
     std::stringstream ss(node.GetChildValue("Size", "512 50 512"));
     ss >> t.terrainSize.x >> t.terrainSize.y >> t.terrainSize.z;
+    t.maxHeight = LoaderUtils::SafeStof(node.GetChildValue("MaxHeight", std::to_string(t.terrainSize.y)));
     t.resolution = LoaderUtils::SafeStoi(node.GetChildValue("Resolution", "1024"));
+    t.chunkSize = LoaderUtils::SafeStoi(node.GetChildValue("ChunkSize", "64"));
+    std::stringstream lodDistances(node.GetChildValue("LODDistances", "75 150 300"));
+    lodDistances >> t.lodDistances.x >> t.lodDistances.y >> t.lodDistances.z;
+    t.lodDistances.x = std::max(0.0f, t.lodDistances.x);
+    t.lodDistances.y = std::max(t.lodDistances.x, t.lodDistances.y);
+    t.lodDistances.z = std::max(t.lodDistances.y, t.lodDistances.z);
     t.textureScale = LoaderUtils::SafeStof(node.GetChildValue("TextureScale", "1.0"));
     t.castShadows = node.GetChildValue("CastShadows", "true") == "true";
+    t.generatePhysics = node.GetChildValue("GeneratePhysics", "false") == "true";
+    t.isWalkable = node.GetChildValue("Walkable", "false") == "true";
     t.customShader = node.GetChildValue("Shader");
+
+    if (auto texture = res.GetTexture(t.heightMapName))
+        t.heightMap = texture->id;
+    if (auto texture = res.GetTexture(t.splatMapName))
+        t.splatMap = texture->id;
+    for (const std::string& name : t.diffuseLayerNames)
+    {
+        if (auto texture = res.GetTexture(name))
+            t.diffuseLayers.push_back(texture->id);
+    }
+    for (const std::string& name : t.normalLayerNames)
+    {
+        if (auto texture = res.GetTexture(name))
+            t.normalLayers.push_back(texture->id);
+    }
 }
 
 void ComponentLoader::LoadNetwork(Scene& scene, entt::entity entity, const YAMLNode& node)
 {
+    LoaderUtils::ValidateKeys(node, {"NetworkId", "OwnerId", "IsLocal", "ReplicateTransform", "InterestRadius"},
+                              "Network");
     auto& net = scene.AddComponent<NetworkComponent>(entity);
     net.networkId = LoaderUtils::SafeStoul(node.GetChildValue("NetworkId", "0"));
     net.ownerId = LoaderUtils::SafeStoul(node.GetChildValue("OwnerId", "0"));
     net.isLocal = node.GetChildValue("IsLocal", "false") == "true";
+    net.replicateTransform = node.GetChildValue("ReplicateTransform", "true") != "false";
+    net.interestRadius = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("InterestRadius", "0")));
+}
+
+void ComponentLoader::LoadOcclusion(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node, {"Visible"}, "Occlusion");
+    auto& occlusion = scene.AddComponent<OcclusionComponent>(entity);
+    const std::string value = node.GetChildValue("Visible", "true");
+    occlusion.isVisible = value == "true" || value == "1";
+}
+
+void ComponentLoader::LoadStreaming(Scene& scene, entt::entity entity, const YAMLNode& node)
+{
+    LoaderUtils::ValidateKeys(node, {"Model", "Static", "LoadDistance", "UnloadDistance"}, "Streaming");
+    auto& streaming = scene.AddComponent<StreamingComponent>(entity);
+    streaming.modelPath = node.GetChildValue("Model");
+    const std::string staticValue = node.GetChildValue("Static", "false");
+    streaming.isStatic = staticValue == "true" || staticValue == "1";
+    streaming.loadDistance = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("LoadDistance", "100")));
+    streaming.unloadDistance =
+        std::max(streaming.loadDistance, LoaderUtils::SafeStof(node.GetChildValue("UnloadDistance", "150")));
 }

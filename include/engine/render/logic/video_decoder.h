@@ -9,12 +9,14 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 #include <mutex>
-#include <queue>
+#include <condition_variable>
+#include <deque>
 #include <string>
 #include <thread>
 #include <vector>
 
 class ITextureManager;
+class IBufferManager;
 
 class VideoDecoder
 {
@@ -56,18 +58,18 @@ public:
     }
     bool IsPlaying() const
     {
-        return m_State == State::Playing;
+        return m_State.load(std::memory_order_acquire) == State::Playing;
     }
 
     void SetOutputSize(int width, int height);
 
     void SetLoop(bool loop)
     {
-        m_Loop = loop;
+        m_Loop.store(loop, std::memory_order_release);
     }
     bool IsLooping() const
     {
-        return m_Loop;
+        return m_Loop.load(std::memory_order_acquire);
     }
 
     float GetSpeed() const
@@ -87,15 +89,32 @@ public:
     {
         m_MaxDecodeSteps = steps;
     }
+    void SetAsyncDecodeEnabled(bool enabled)
+    {
+        const bool previous = m_AsyncDecodeEnabled.exchange(enabled, std::memory_order_acq_rel);
+        if (previous == enabled)
+            return;
+        if (!enabled)
+            StopDecodeWorker();
+        else if (IsPlaying())
+        {
+            StartDecodeWorker();
+            m_DecodeCondition.notify_all();
+        }
+    }
+    bool IsAsyncDecodeEnabled() const { return m_AsyncDecodeEnabled.load(std::memory_order_acquire); }
 
     static void SetTextureManager(ITextureManager& textureManager);
+    static void SetBufferManager(IBufferManager& bufferManager);
+    static void ClearTextureManager();
+    static void ClearBufferManager();
 
 private:
     AVFormatContext* m_FormatCtx = nullptr;
     AVCodecContext* m_CodecCtx = nullptr;
     SwsContext* m_SwsCtx = nullptr;
     AVFrame* m_Frame = nullptr;
-    AVFrame* m_RGBFrame = nullptr;
+    AVPacket* m_Packet = nullptr;
     int m_VideoStreamIndex = -1;
 
     unsigned int m_TextureID = 0;
@@ -110,7 +129,7 @@ private:
     double m_LastFrameTime = 0.0;
     double m_Limit = 0.0;
     double m_Speed = 1.0;
-    bool m_Loop = true;
+    std::atomic<bool> m_Loop{true};
     bool m_ProceduralFallback = false;
 
     enum class State
@@ -119,17 +138,40 @@ private:
         Playing,
         Paused
     };
-    State m_State = State::Stopped;
+    std::atomic<State> m_State{State::Stopped};
 
     std::string m_Filepath;
 
     int m_MaxDecodeSteps = 5;
 
+    struct DecodedFrame
+    {
+        std::vector<uint8_t> pixels;
+        double timestamp = 0.0;
+    };
+    std::thread m_DecodeThread;
+    std::mutex m_DecodeMutex;
+    std::condition_variable m_DecodeCondition;
+    std::deque<DecodedFrame> m_DecodedFrames;
+    std::atomic<bool> m_StopDecodeThread{false};
+    std::atomic<bool> m_AsyncDecodeEnabled{true};
+    bool m_SeekRequested = false;
+    double m_RequestedSeekTime = 0.0;
+    std::vector<uint8_t> m_UploadPixels;
+    unsigned int m_UploadPbos[2] = {0, 0};
+    size_t m_UploadPboCapacities[2] = {0, 0};
+    size_t m_UploadPboIndex = 0;
+    static constexpr size_t MaxQueuedFrames = 3;
+
     static ITextureManager* s_TextureManager;
+    static IBufferManager* s_BufferManager;
     static ITextureManager& GetTextureManager();
 
-    bool DecodeFrame();
-    void UploadFrame();
+    bool DecodeFrame(DecodedFrame& output);
+    void UploadFrame(const std::vector<uint8_t>& pixels);
+    void StartDecodeWorker();
+    void StopDecodeWorker();
+    void DecodeWorkerLoop();
     void UploadProceduralFrame();
     void InitTexture();
 };

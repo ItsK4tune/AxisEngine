@@ -96,6 +96,8 @@ struct ConfigChangedEvent
         Input = 1 << 4,
         General = 1 << 5,
         Debug = 1 << 6,
+        Optimization = 1 << 7,
+        Culling = 1 << 8,
         All = 0xFFFFFFFF
     };
     uint32_t bitmask = All;
@@ -105,6 +107,11 @@ struct ConfigChangedEvent
     {
     }
 };
+
+inline bool HasConfigChanged(const ConfigChangedEvent& event, uint32_t changeTypes)
+{
+    return event.bitmask == ConfigChangedEvent::All || (event.bitmask & changeTypes) != 0;
+}
 
 struct WindowResizedEvent
 {

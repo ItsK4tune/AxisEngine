@@ -12,4 +12,5 @@ struct LightProbeComponent
 
     float intensity = 1.0f;
     float radius = 5.0f;
+    glm::vec3 tint = glm::vec3(1.0f);
 };

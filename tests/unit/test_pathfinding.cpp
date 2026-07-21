@@ -1,6 +1,11 @@
 #include "test_framework.h"
 
 #include <navigation/logic/pathfinding.h>
+#include <navigation/logic/navmesh_generator.h>
+#include <ecs/unit/core_components.h>
+#include <ecs/unit/render_components.h>
+#include <scene/logic/scene.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace
 {
@@ -151,4 +156,35 @@ AXIS_TEST_CASE("Pathfinding high-ground criteria rewards higher nodes")
 
     AXIS_CHECK(path.size() >= 4);
     AXIS_CHECK_NEAR(path[1].y, 2.0f, 0.0001f);
+}
+
+AXIS_TEST_CASE("Navmesh dirty region removes and restores carved triangles")
+{
+    Scene scene;
+    const entt::entity obstacle = scene.GetRegistry().create();
+    scene.AddComponent<InfoComponent>(obstacle, "Obstacle", "obstacle");
+    scene.AddComponent<WorldTransformComponent>(obstacle);
+    scene.AddComponent<MeshRendererComponent>(obstacle);
+
+    NavMeshComponent navMesh;
+    navMesh.vertices = {{-0.4f, 0.0f, -0.4f}, {0.4f, 0.0f, -0.4f}, {0.0f, 0.0f, 0.4f}};
+    NavMeshTriangle source{};
+    source.indices[0] = 0;
+    source.indices[1] = 2;
+    source.indices[2] = 1;
+    source.center = {0.0f, 0.0f, -0.133333f};
+    source.normal = {0.0f, 1.0f, 0.0f};
+    navMesh.triangles = {source};
+    const std::vector<NavMeshTriangle> uncarved = {source};
+
+    NavMeshGenerator::RebuildRegion(scene, navMesh, uncarved, {-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f});
+    AXIS_CHECK(navMesh.triangles.empty());
+    AXIS_CHECK(navMesh.revision == 1);
+
+    auto& transform = scene.GetComponent<WorldTransformComponent>(obstacle);
+    transform.worldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 0.0f, 0.0f));
+    NavMeshGenerator::RebuildRegion(scene, navMesh, uncarved, {-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f});
+    AXIS_CHECK(navMesh.triangles.size() == 1);
+    AXIS_CHECK(navMesh.nodes.size() == 1);
+    AXIS_CHECK(navMesh.revision == 2);
 }

@@ -17,9 +17,6 @@ void MaterialRenderer::Initialize(IGraphicsContext* context, ResourceManager* re
     ResetTextureState();
 }
 
-MaterialRenderer::SkyboxCache MaterialRenderer::s_SkyboxCache;
-std::mutex MaterialRenderer::s_SkyboxMutex;
-
 const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* shader) const
 {
     unsigned int id = shader->getID();

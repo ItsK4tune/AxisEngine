@@ -16,6 +16,7 @@ class ScriptableSystem : public IUpdateSystem, public IECSSystem
 public:
     void Initialize() override;
     void Shutdown() override;
+    void Reset() override;
     bool IsEnabled() const override
     {
         return m_Enabled;

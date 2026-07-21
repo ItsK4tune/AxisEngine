@@ -28,8 +28,7 @@ public:
         {
             auto& pos = GetComponent<PositionComponent>();
             pos.value = center + glm::vec3(cos(angle) * radius, 0.0f, sin(angle) * radius);
-            if (HasComponent<WorldTransformComponent>())
-                GetComponent<WorldTransformComponent>().isDirty = true;
+            MarkTransformDirty();
         }
     }
 };

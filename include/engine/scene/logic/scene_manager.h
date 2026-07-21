@@ -5,6 +5,8 @@
 #include <scene/type/scene_record.h>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class IPhysicsWorld;
@@ -98,5 +100,9 @@ private:
     int m_NextLoadOrder = 0;
     std::string m_ActiveSceneName = "main";
     std::vector<SceneRecord> m_LoadedScenes;
+    // SceneRecord keeps stable iteration order for serialization and teardown. This
+    // companion lookup makes repeated membership checks O(1) while building large
+    // procedural scenes instead of scanning the growing vector for every entity.
+    std::unordered_map<std::string, std::unordered_set<entt::entity>> m_SceneEntityLookup;
     std::vector<PendingOp> m_PendingQueue;
 };

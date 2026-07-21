@@ -2,7 +2,6 @@
 
 #include <render/type/render_data.h>
 #include <glm/glm.hpp>
-#include <mutex>
 #include <shared_mutex>
 #include <unordered_map>
 
@@ -56,21 +55,7 @@ public:
         }
     }
 
-    static void InvalidateSkyboxCache()
-    {
-        std::lock_guard<std::mutex> lock(s_SkyboxMutex);
-        s_SkyboxCache.valid = false;
-    }
-
 private:
-    struct SkyboxCache
-    {
-        unsigned int irradianceMap = 0;
-        unsigned int prefilterMap = 0;
-        unsigned int brdfLUT = 0;
-        bool valid = false;
-    };
-
     const MaterialUniformLocations& GetLocations(const Shader* shader) const;
 
     IGraphicsContext* m_Context = nullptr;
@@ -81,9 +66,6 @@ private:
 
     mutable std::unordered_map<unsigned int, MaterialUniformLocations> m_LocationsCache;
     mutable std::shared_mutex m_CacheMutex;
-
-    static SkyboxCache s_SkyboxCache;
-    static std::mutex s_SkyboxMutex;
 
     static constexpr int TextureStateSlots = 32;
     unsigned int m_LastBoundTextures[TextureStateSlots] = {0};

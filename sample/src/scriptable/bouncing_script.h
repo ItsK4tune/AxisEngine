@@ -53,8 +53,7 @@ public:
                 pos.value.z = maxBound.z;
                 velocity.z *= -1.0f;
             }
-            if (HasComponent<WorldTransformComponent>())
-                GetComponent<WorldTransformComponent>().isDirty = true;
+            MarkTransformDirty();
         }
     }
 };

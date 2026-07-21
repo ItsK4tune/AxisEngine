@@ -2,6 +2,7 @@
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+#include <core/type/app_config.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
@@ -15,7 +16,12 @@ void AnimationSystem::Initialize()
     sl.Register<AnimationSystem>(this);
 }
 
-REGISTER_SYSTEM(AnimationSystem)
+void AnimationSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    SetParallelEvaluationConfig(config.animationParallelEvaluationEnabled,
+                                static_cast<size_t>(config.animationParallelThreshold));
+}
+
 
 void AnimationSystem::Update(Scene& scene, float dt)
 {
@@ -71,8 +77,7 @@ void AnimationSystem::UpdateParallel(const FrameSnapshot& snapshot, ECSCommandBu
         }
     };
 
-    constexpr size_t kParallelThreshold = 64;
-    if (animations.size() < kParallelThreshold)
+    if (!m_ParallelEvaluationEnabled || animations.size() < m_ParallelThreshold)
     {
         updateRange(0, animations.size());
         return;

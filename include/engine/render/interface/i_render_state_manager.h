@@ -11,6 +11,8 @@ public:
     virtual void Disable(ServerCapability cap) = 0;
 
     virtual void SetBlendFunc(BlendFactor sfactor, BlendFactor dfactor) = 0;
+    virtual void SetBlendFuncSeparate(BlendFactor srcRgb, BlendFactor dstRgb, BlendFactor srcAlpha,
+                                      BlendFactor dstAlpha) = 0;
     virtual void SetBlendEquation(BlendEquation mode) = 0;
 
     virtual void SetDepthFunc(CompareFunc func) = 0;

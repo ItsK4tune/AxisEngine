@@ -1,4 +1,5 @@
 #include <scene/logic/binary_scene_serializer.h>
+#include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
@@ -10,12 +11,16 @@
 #include <resource/unit/model.h>
 #include <resource/unit/shader.h>
 #include <physics/interface/i_physics_world.h>
+#include <scene/logic/scene.h>
 #include <scene/logic/scene_load_finalizer.h>
+#include <scene/logic/scene_serializer.h>
 #include <scene/type/scene_types.h>
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <filesystem>
 #include <map>
+#include <memory>
 #include <cmath>
 #include <string>
 #include <type_traits>
@@ -23,7 +28,7 @@
 
 namespace
 {
-constexpr uint32_t MAX_BINARY_STRING_BYTES = 1024 * 1024;
+constexpr uint32_t MAX_BINARY_STRING_BYTES = 256 * 1024 * 1024;
 constexpr std::streamsize LEGACY_AXIS_MATERIAL_DESCRIPTOR_V2_BYTES = 344;
 
 template <typename T>
@@ -41,25 +46,12 @@ void ReadValue(std::istream& is, T& value)
 }
 
 template <typename T>
-void WriteEnum(std::ostream& os, T value)
-{
-    using Underlying = std::underlying_type_t<T>;
-    WriteValue(os, static_cast<Underlying>(value));
-}
-
-template <typename T>
 void ReadEnum(std::istream& is, T& value)
 {
     using Underlying = std::underlying_type_t<T>;
     Underlying raw{};
     ReadValue(is, raw);
     value = static_cast<T>(raw);
-}
-
-void WriteBool(std::ostream& os, bool value)
-{
-    uint8_t raw = value ? 1 : 0;
-    WriteValue(os, raw);
 }
 
 void ReadBool(std::istream& is, bool& value)
@@ -71,7 +63,12 @@ void ReadBool(std::istream& is, bool& value)
 
 void WriteString(std::ostream& os, const std::string& value)
 {
-    uint32_t length = static_cast<uint32_t>((std::min)(value.size(), static_cast<size_t>(MAX_BINARY_STRING_BYTES)));
+    if (value.size() > MAX_BINARY_STRING_BYTES)
+    {
+        os.setstate(std::ios::failbit);
+        return;
+    }
+    uint32_t length = static_cast<uint32_t>(value.size());
     WriteValue(os, length);
     if (length > 0)
         os.write(value.data(), length);
@@ -93,23 +90,10 @@ std::string ReadString(std::istream& is)
     return value;
 }
 
-void WriteVec2(std::ostream& os, const glm::vec2& value)
-{
-    WriteValue(os, value.x);
-    WriteValue(os, value.y);
-}
-
 void ReadVec2(std::istream& is, glm::vec2& value)
 {
     ReadValue(is, value.x);
     ReadValue(is, value.y);
-}
-
-void WriteVec3(std::ostream& os, const glm::vec3& value)
-{
-    WriteValue(os, value.x);
-    WriteValue(os, value.y);
-    WriteValue(os, value.z);
 }
 
 void ReadVec3(std::istream& is, glm::vec3& value)
@@ -119,31 +103,12 @@ void ReadVec3(std::istream& is, glm::vec3& value)
     ReadValue(is, value.z);
 }
 
-void WriteQuat(std::ostream& os, const glm::quat& value)
-{
-    WriteValue(os, value.x);
-    WriteValue(os, value.y);
-    WriteValue(os, value.z);
-    WriteValue(os, value.w);
-}
-
 void ReadQuat(std::istream& is, glm::quat& value)
 {
     ReadValue(is, value.x);
     ReadValue(is, value.y);
     ReadValue(is, value.z);
     ReadValue(is, value.w);
-}
-
-void WriteMat4(std::ostream& os, const glm::mat4& value)
-{
-    for (int col = 0; col < 4; ++col)
-    {
-        for (int row = 0; row < 4; ++row)
-        {
-            WriteValue(os, value[col][row]);
-        }
-    }
 }
 
 void ReadMat4(std::istream& is, glm::mat4& value)
@@ -157,97 +122,6 @@ void ReadMat4(std::istream& is, glm::mat4& value)
     }
 }
 
-void WriteAppConfigV3(std::ostream& os, const AppConfig& config)
-{
-    WriteString(os, config.title);
-    WriteEnum(os, config.logLevel);
-    WriteValue(os, config.numJobThreads);
-    WriteValue(os, config.timeScale);
-    WriteString(os, config.iconPath);
-    WriteBool(os, config.headlessMode);
-
-    WriteValue(os, config.width);
-    WriteValue(os, config.height);
-    WriteEnum(os, config.windowMode);
-    WriteBool(os, config.vsync);
-    WriteValue(os, config.monitorIndex);
-    WriteValue(os, config.refreshRate);
-    WriteValue(os, config.frameRateLimit);
-
-    WriteEnum(os, config.graphicsBackend);
-    WriteValue(os, config.msaaSamples);
-    WriteValue(os, config.antialiasing);
-    WriteValue(os, config.maxAnisotropy);
-    WriteValue(os, config.renderScale);
-    WriteBool(os, config.asyncResourceLoading);
-    WriteBool(os, config.strictAssetLoading);
-
-    WriteEnum(os, config.tonemappingMode);
-    WriteBool(os, config.hdrEnabled);
-    WriteBool(os, config.bloomEnabled);
-    WriteValue(os, config.gamma);
-    WriteValue(os, config.exposure);
-    WriteValue(os, config.bloomIntensity);
-    WriteValue(os, config.bloomThreshold);
-    WriteValue(os, config.bloomRadius);
-    WriteValue(os, config.skyboxIntensity);
-    WriteValue(os, config.ambientIntensity);
-    WriteValue(os, config.uiReferenceWidth);
-    WriteValue(os, config.uiReferenceHeight);
-    for (float channel : config.clearColor) WriteValue(os, channel);
-
-    WriteBool(os, config.shadowsEnabled);
-    WriteValue(os, config.shadowMode);
-    WriteValue(os, config.shadowMapResolution);
-    WriteValue(os, config.shadowProjectionSize);
-    WriteBool(os, config.shadowFrustumCullingEnabled);
-    WriteValue(os, config.shadowDistanceCulling);
-    WriteValue(os, config.shadowBias);
-    WriteValue(os, config.shadowSoftness);
-
-    WriteEnum(os, config.physicsBackend);
-    WriteEnum(os, config.physicsMode);
-    for (float axis : config.gravity) WriteValue(os, axis);
-    WriteValue(os, config.maxSubSteps);
-    WriteValue(os, config.physicsTickRate);
-    WriteBool(os, config.ccdEnabled);
-    WriteValue(os, config.ccdThreshold);
-    WriteValue(os, config.solverIterations);
-
-    WriteValue(os, config.mouseSensitivityX);
-    WriteValue(os, config.mouseSensitivityY);
-    WriteBool(os, config.mouseInvertX);
-    WriteBool(os, config.mouseInvertY);
-
-    WriteEnum(os, config.audioBackend);
-    WriteValue(os, config.masterVolume);
-    WriteString(os, config.audioDevice);
-
-    WriteBool(os, config.cullFaceEnabled);
-    WriteBool(os, config.depthTestEnabled);
-    WriteBool(os, config.frustumCullingEnabled);
-    WriteBool(os, config.occlusionCullingEnabled);
-    WriteBool(os, config.instanceBatchingEnabled);
-    WriteBool(os, config.renderOrderEnabled);
-    WriteValue(os, config.filterLayerMask);
-    WriteValue(os, config.distanceCulling);
-
-    WriteBool(os, config.debug.physicsDebug);
-    WriteBool(os, config.debug.uiEnabled);
-    WriteBool(os, config.debug.gizmos);
-    WriteBool(os, config.debug.lightGizmos);
-    WriteBool(os, config.debug.entityNames);
-    WriteBool(os, config.debug.audioDebug);
-    WriteBool(os, config.debug.particleDebug);
-    WriteBool(os, config.debug.gridSnapEnabled);
-    WriteBool(os, config.debug.gridIndicatorEnabled);
-    WriteValue(os, config.debug.gridSnapTranslation);
-    WriteValue(os, config.debug.gridSnapRotation);
-    WriteValue(os, config.debug.gridSnapScale);
-
-    WriteEnum(os, config.lightingMode);
-}
-
 void ReadAppConfigV3(std::istream& is, AppConfig& config)
 {
     config.title = ReadString(is);
@@ -257,71 +131,71 @@ void ReadAppConfigV3(std::istream& is, AppConfig& config)
     config.iconPath = ReadString(is);
     ReadBool(is, config.headlessMode);
 
-    ReadValue(is, config.width);
-    ReadValue(is, config.height);
-    ReadEnum(is, config.windowMode);
-    ReadBool(is, config.vsync);
-    ReadValue(is, config.monitorIndex);
-    ReadValue(is, config.refreshRate);
-    ReadValue(is, config.frameRateLimit);
+    ReadValue(is, config.window.width);
+    ReadValue(is, config.window.height);
+    ReadEnum(is, config.window.windowMode);
+    ReadBool(is, config.window.vsync);
+    ReadValue(is, config.window.monitorIndex);
+    ReadValue(is, config.window.refreshRate);
+    ReadValue(is, config.window.frameRateLimit);
 
-    ReadEnum(is, config.graphicsBackend);
-    ReadValue(is, config.msaaSamples);
-    ReadValue(is, config.antialiasing);
-    ReadValue(is, config.maxAnisotropy);
-    ReadValue(is, config.renderScale);
-    ReadBool(is, config.asyncResourceLoading);
-    ReadBool(is, config.strictAssetLoading);
+    ReadEnum(is, config.graphics.graphicsBackend);
+    ReadValue(is, config.graphics.msaaSamples);
+    ReadValue(is, config.graphics.antialiasing);
+    ReadValue(is, config.graphics.maxAnisotropy);
+    ReadValue(is, config.graphics.renderScale);
+    ReadBool(is, config.graphics.asyncResourceLoading);
+    ReadBool(is, config.graphics.strictAssetLoading);
 
-    ReadEnum(is, config.tonemappingMode);
-    ReadBool(is, config.hdrEnabled);
-    ReadBool(is, config.bloomEnabled);
-    ReadValue(is, config.gamma);
-    ReadValue(is, config.exposure);
-    ReadValue(is, config.bloomIntensity);
-    ReadValue(is, config.bloomThreshold);
-    ReadValue(is, config.bloomRadius);
-    ReadValue(is, config.skyboxIntensity);
-    ReadValue(is, config.ambientIntensity);
-    ReadValue(is, config.uiReferenceWidth);
-    ReadValue(is, config.uiReferenceHeight);
-    for (float& channel : config.clearColor) ReadValue(is, channel);
+    ReadEnum(is, config.render.tonemappingMode);
+    ReadBool(is, config.render.hdrEnabled);
+    ReadBool(is, config.render.bloomEnabled);
+    ReadValue(is, config.render.gamma);
+    ReadValue(is, config.render.exposure);
+    ReadValue(is, config.render.bloomIntensity);
+    ReadValue(is, config.render.bloomThreshold);
+    ReadValue(is, config.render.bloomRadius);
+    ReadValue(is, config.render.skyboxIntensity);
+    ReadValue(is, config.render.ambientIntensity);
+    ReadValue(is, config.render.uiReferenceWidth);
+    ReadValue(is, config.render.uiReferenceHeight);
+    for (float& channel : config.render.clearColor) ReadValue(is, channel);
 
-    ReadBool(is, config.shadowsEnabled);
-    ReadValue(is, config.shadowMode);
-    ReadValue(is, config.shadowMapResolution);
-    ReadValue(is, config.shadowProjectionSize);
-    ReadBool(is, config.shadowFrustumCullingEnabled);
-    ReadValue(is, config.shadowDistanceCulling);
-    ReadValue(is, config.shadowBias);
-    ReadValue(is, config.shadowSoftness);
+    ReadBool(is, config.shadow.shadowsEnabled);
+    ReadValue(is, config.shadow.shadowMode);
+    ReadValue(is, config.shadow.shadowMapResolution);
+    ReadValue(is, config.shadow.shadowProjectionSize);
+    ReadBool(is, config.shadow.shadowFrustumCullingEnabled);
+    ReadValue(is, config.shadow.shadowDistanceCulling);
+    ReadValue(is, config.shadow.shadowBias);
+    ReadValue(is, config.shadow.shadowSoftness);
 
-    ReadEnum(is, config.physicsBackend);
-    ReadEnum(is, config.physicsMode);
-    for (float& axis : config.gravity) ReadValue(is, axis);
-    ReadValue(is, config.maxSubSteps);
-    ReadValue(is, config.physicsTickRate);
-    ReadBool(is, config.ccdEnabled);
-    ReadValue(is, config.ccdThreshold);
-    ReadValue(is, config.solverIterations);
+    ReadEnum(is, config.physics.physicsBackend);
+    ReadEnum(is, config.physics.physicsMode);
+    for (float& axis : config.physics.gravity) ReadValue(is, axis);
+    ReadValue(is, config.physics.maxSubSteps);
+    ReadValue(is, config.physics.physicsTickRate);
+    ReadBool(is, config.physics.ccdEnabled);
+    ReadValue(is, config.physics.ccdThreshold);
+    ReadValue(is, config.physics.solverIterations);
 
-    ReadValue(is, config.mouseSensitivityX);
-    ReadValue(is, config.mouseSensitivityY);
-    ReadBool(is, config.mouseInvertX);
-    ReadBool(is, config.mouseInvertY);
+    ReadValue(is, config.input.mouseSensitivityX);
+    ReadValue(is, config.input.mouseSensitivityY);
+    ReadBool(is, config.input.mouseInvertX);
+    ReadBool(is, config.input.mouseInvertY);
 
-    ReadEnum(is, config.audioBackend);
-    ReadValue(is, config.masterVolume);
-    config.audioDevice = ReadString(is);
+    ReadEnum(is, config.audio.audioBackend);
+    ReadValue(is, config.audio.masterVolume);
+    config.audio.audioDevice = ReadString(is);
 
-    ReadBool(is, config.cullFaceEnabled);
-    ReadBool(is, config.depthTestEnabled);
-    ReadBool(is, config.frustumCullingEnabled);
-    ReadBool(is, config.occlusionCullingEnabled);
-    ReadBool(is, config.instanceBatchingEnabled);
-    ReadBool(is, config.renderOrderEnabled);
-    ReadValue(is, config.filterLayerMask);
-    ReadValue(is, config.distanceCulling);
+    ReadBool(is, config.culling.cullFaceEnabled);
+    ReadBool(is, config.culling.depthTestEnabled);
+    ReadBool(is, config.culling.frustumCullingEnabled);
+    ReadBool(is, config.culling.occlusionCullingEnabled);
+    ReadBool(is, config.culling.instanceBatchingEnabled);
+    ReadBool(is, config.culling.renderOrderEnabled);
+    ReadValue(is, config.culling.filterLayerMask);
+    ReadValue(is, config.culling.distanceCulling);
 
     ReadBool(is, config.debug.physicsDebug);
     ReadBool(is, config.debug.uiEnabled);
@@ -348,68 +222,68 @@ void ReadLegacyAppConfigV2(std::istream& is, AppConfig& config)
     ReadValue(is, config.numJobThreads);
     ReadValue(is, config.timeScale);
     config.iconPath = ReadString(is);
-    config.audioDevice = ReadString(is);
+    config.audio.audioDevice = ReadString(is);
 
-    ReadValue(is, config.width);
-    ReadValue(is, config.height);
-    ReadEnum(is, config.windowMode);
-    ReadLegacyBool(is, config.vsync);
+    ReadValue(is, config.window.width);
+    ReadValue(is, config.window.height);
+    ReadEnum(is, config.window.windowMode);
+    ReadLegacyBool(is, config.window.vsync);
     SkipLegacyBytes(is, 3);
-    ReadValue(is, config.monitorIndex);
-    ReadValue(is, config.refreshRate);
-    ReadValue(is, config.frameRateLimit);
+    ReadValue(is, config.window.monitorIndex);
+    ReadValue(is, config.window.refreshRate);
+    ReadValue(is, config.window.frameRateLimit);
 
-    ReadEnum(is, config.graphicsBackend);
-    ReadValue(is, config.msaaSamples);
-    ReadValue(is, config.antialiasing);
-    ReadValue(is, config.maxAnisotropy);
-    ReadValue(is, config.renderScale);
-    ReadLegacyBool(is, config.asyncResourceLoading);
-    ReadEnum(is, config.tonemappingMode);
-    ReadLegacyBool(is, config.hdrEnabled);
-    ReadLegacyBool(is, config.bloomEnabled);
-    ReadValue(is, config.gamma);
-    ReadValue(is, config.exposure);
-    ReadValue(is, config.bloomIntensity);
-    ReadValue(is, config.bloomThreshold);
-    ReadValue(is, config.bloomRadius);
-    ReadValue(is, config.skyboxIntensity);
-    for (float& channel : config.clearColor) ReadValue(is, channel);
+    ReadEnum(is, config.graphics.graphicsBackend);
+    ReadValue(is, config.graphics.msaaSamples);
+    ReadValue(is, config.graphics.antialiasing);
+    ReadValue(is, config.graphics.maxAnisotropy);
+    ReadValue(is, config.graphics.renderScale);
+    ReadLegacyBool(is, config.graphics.asyncResourceLoading);
+    ReadEnum(is, config.render.tonemappingMode);
+    ReadLegacyBool(is, config.render.hdrEnabled);
+    ReadLegacyBool(is, config.render.bloomEnabled);
+    ReadValue(is, config.render.gamma);
+    ReadValue(is, config.render.exposure);
+    ReadValue(is, config.render.bloomIntensity);
+    ReadValue(is, config.render.bloomThreshold);
+    ReadValue(is, config.render.bloomRadius);
+    ReadValue(is, config.render.skyboxIntensity);
+    for (float& channel : config.render.clearColor) ReadValue(is, channel);
 
-    ReadLegacyBool(is, config.shadowsEnabled);
-    ReadValue(is, config.shadowMode);
-    ReadValue(is, config.shadowMapResolution);
-    ReadValue(is, config.shadowProjectionSize);
-    ReadLegacyBool(is, config.shadowFrustumCullingEnabled);
-    ReadValue(is, config.shadowDistanceCulling);
-    ReadValue(is, config.shadowBias);
-    ReadValue(is, config.shadowSoftness);
+    ReadLegacyBool(is, config.shadow.shadowsEnabled);
+    ReadValue(is, config.shadow.shadowMode);
+    ReadValue(is, config.shadow.shadowMapResolution);
+    ReadValue(is, config.shadow.shadowProjectionSize);
+    ReadLegacyBool(is, config.shadow.shadowFrustumCullingEnabled);
+    ReadValue(is, config.shadow.shadowDistanceCulling);
+    ReadValue(is, config.shadow.shadowBias);
+    ReadValue(is, config.shadow.shadowSoftness);
 
-    ReadEnum(is, config.physicsBackend);
-    ReadEnum(is, config.physicsMode);
-    for (float& axis : config.gravity) ReadValue(is, axis);
-    ReadValue(is, config.maxSubSteps);
-    ReadValue(is, config.physicsTickRate);
-    ReadLegacyBool(is, config.ccdEnabled);
-    ReadValue(is, config.ccdThreshold);
-    ReadValue(is, config.solverIterations);
+    ReadEnum(is, config.physics.physicsBackend);
+    ReadEnum(is, config.physics.physicsMode);
+    for (float& axis : config.physics.gravity) ReadValue(is, axis);
+    ReadValue(is, config.physics.maxSubSteps);
+    ReadValue(is, config.physics.physicsTickRate);
+    ReadLegacyBool(is, config.physics.ccdEnabled);
+    ReadValue(is, config.physics.ccdThreshold);
+    ReadValue(is, config.physics.solverIterations);
 
-    ReadValue(is, config.mouseSensitivityX);
-    ReadValue(is, config.mouseSensitivityY);
-    ReadLegacyBool(is, config.mouseInvertX);
-    ReadLegacyBool(is, config.mouseInvertY);
+    ReadValue(is, config.input.mouseSensitivityX);
+    ReadValue(is, config.input.mouseSensitivityY);
+    ReadLegacyBool(is, config.input.mouseInvertX);
+    ReadLegacyBool(is, config.input.mouseInvertY);
 
-    ReadEnum(is, config.audioBackend);
-    ReadValue(is, config.masterVolume);
+    ReadEnum(is, config.audio.audioBackend);
+    ReadValue(is, config.audio.masterVolume);
 
-    ReadLegacyBool(is, config.cullFaceEnabled);
-    ReadLegacyBool(is, config.depthTestEnabled);
-    ReadLegacyBool(is, config.stencilTestEnabled);
-    ReadLegacyBool(is, config.frustumCullingEnabled);
-    ReadLegacyBool(is, config.occlusionCullingEnabled);
-    ReadLegacyBool(is, config.renderOrderEnabled);
-    ReadValue(is, config.filterLayerMask);
-    ReadValue(is, config.distanceCulling);
+    ReadLegacyBool(is, config.culling.cullFaceEnabled);
+    ReadLegacyBool(is, config.culling.depthTestEnabled);
+    ReadLegacyBool(is, config.culling.stencilTestEnabled);
+    ReadLegacyBool(is, config.culling.frustumCullingEnabled);
+    ReadLegacyBool(is, config.culling.occlusionCullingEnabled);
+    ReadLegacyBool(is, config.culling.renderOrderEnabled);
+    ReadValue(is, config.culling.filterLayerMask);
+    ReadValue(is, config.culling.distanceCulling);
 }
 
 template <typename T>
@@ -421,16 +295,17 @@ bool EnumInRange(T value, int minValue, int maxValue)
 
 bool IsSaneAppConfig(const AppConfig& config)
 {
-    return EnumInRange(config.logLevel, 0, 4) && EnumInRange(config.windowMode, 0, 3) &&
-           EnumInRange(config.graphicsBackend, 0, 2) && EnumInRange(config.tonemappingMode, 0, 2) &&
-           EnumInRange(config.physicsBackend, 0, 1) && EnumInRange(config.physicsMode, 0, 2) &&
-           EnumInRange(config.audioBackend, 0, 3) && EnumInRange(config.lightingMode, 0, 3) &&
-           config.width > 0 && config.width <= 32768 && config.height > 0 && config.height <= 32768 &&
-           config.msaaSamples >= 0 && config.msaaSamples <= 64 && config.maxSubSteps >= 0 &&
-           config.maxSubSteps <= 1024 && config.physicsTickRate > 0.0f &&
-           config.physicsTickRate <= 10000.0f && config.uiReferenceWidth > 0.0f &&
-           config.uiReferenceHeight > 0.0f && std::isfinite(config.timeScale) &&
-           std::isfinite(config.renderScale) && std::isfinite(config.physicsTickRate);
+    return EnumInRange(config.logLevel, 0, 4) && EnumInRange(config.window.windowMode, 0, 3) &&
+           EnumInRange(config.graphics.graphicsBackend, 0, 2) && EnumInRange(config.render.tonemappingMode, 0, 2) &&
+           EnumInRange(config.physics.physicsBackend, 0, 1) && EnumInRange(config.physics.physicsMode, 0, 2) &&
+           EnumInRange(config.audio.audioBackend, 0, 3) && EnumInRange(config.lightingMode, 0, 3) &&
+           config.window.width > 0 && config.window.width <= 32768 && config.window.height > 0 &&
+           config.window.height <= 32768 && config.graphics.msaaSamples >= 0 && config.graphics.msaaSamples <= 64 &&
+           config.physics.maxSubSteps >= 0 && config.physics.maxSubSteps <= 1024 &&
+           config.physics.physicsTickRate > 0.0f && config.physics.physicsTickRate <= 10000.0f &&
+           config.render.uiReferenceWidth > 0.0f && config.render.uiReferenceHeight > 0.0f &&
+           std::isfinite(config.timeScale) && std::isfinite(config.graphics.renderScale) &&
+           std::isfinite(config.physics.physicsTickRate);
 }
 
 bool TryReadLegacyEmbeddedConfig(std::istream& is, uint32_t version, AppConfig& config)
@@ -453,29 +328,6 @@ bool TryReadLegacyEmbeddedConfig(std::istream& is, uint32_t version, AppConfig& 
     config = candidate;
     return true;
 }
-void WriteMaterialDescriptor(std::ostream& os, const MaterialDescriptor& desc)
-{
-    WriteValue(os, desc.pbr.roughness);
-    WriteValue(os, desc.pbr.metallic);
-    WriteValue(os, desc.pbr.ao);
-    WriteValue(os, desc.opacity);
-    WriteValue(os, desc.alphaCutoff);
-    WriteVec3(os, desc.emission);
-    WriteVec2(os, desc.uvScale);
-    WriteVec2(os, desc.uvOffset);
-    WriteString(os, desc.albedoPath);
-    WriteString(os, desc.normalPath);
-    WriteString(os, desc.metallicPath);
-    WriteString(os, desc.roughnessPath);
-    WriteString(os, desc.aoPath);
-    WriteString(os, desc.emissivePath);
-    WriteString(os, desc.specularPath);
-    WriteEnum(os, desc.blendSrc);
-    WriteEnum(os, desc.blendDst);
-    WriteString(os, desc.type);
-    for (float port : desc.ports.data) WriteValue(os, port);
-}
-
 void ReadMaterialDescriptor(std::istream& is, MaterialDescriptor& desc)
 {
     ReadValue(is, desc.pbr.roughness);
@@ -499,22 +351,6 @@ void ReadMaterialDescriptor(std::istream& is, MaterialDescriptor& desc)
     for (float& port : desc.ports.data) ReadValue(is, port);
 }
 
-void WriteCamera(std::ostream& os, const CameraComponent& camera)
-{
-    WriteMat4(os, camera.projectionMatrix);
-    WriteMat4(os, camera.viewMatrix);
-    WriteValue(os, camera.fov);
-    WriteValue(os, camera.nearPlane);
-    WriteValue(os, camera.farPlane);
-    WriteValue(os, camera.aspectRatio);
-    WriteValue(os, camera.screenWidth);
-    WriteValue(os, camera.screenHeight);
-    WriteBool(os, camera.isPrimary);
-    WriteBool(os, camera.isOrthographic);
-    WriteValue(os, camera.orthoSize);
-    WriteValue(os, camera.cullingMask);
-}
-
 void ReadCamera(std::istream& is, CameraComponent& camera)
 {
     ReadMat4(is, camera.projectionMatrix);
@@ -531,18 +367,6 @@ void ReadCamera(std::istream& is, CameraComponent& camera)
     ReadValue(is, camera.cullingMask);
 }
 
-void WriteDirectionalLight(std::ostream& os, const DirectionalLightComponent& light)
-{
-    WriteVec3(os, light.direction);
-    WriteVec3(os, light.color);
-    WriteValue(os, light.intensity);
-    WriteValue(os, light.ambient);
-    WriteValue(os, light.diffuse);
-    WriteValue(os, light.specular);
-    WriteBool(os, light.active);
-    WriteBool(os, light.isCastShadow);
-}
-
 void ReadDirectionalLight(std::istream& is, DirectionalLightComponent& light)
 {
     ReadVec3(is, light.direction);
@@ -553,21 +377,6 @@ void ReadDirectionalLight(std::istream& is, DirectionalLightComponent& light)
     ReadValue(is, light.specular);
     ReadBool(is, light.active);
     ReadBool(is, light.isCastShadow);
-}
-
-void WritePointLight(std::ostream& os, const PointLightComponent& light)
-{
-    WriteVec3(os, light.color);
-    WriteValue(os, light.radius);
-    WriteValue(os, light.intensity);
-    WriteValue(os, light.constant);
-    WriteValue(os, light.linear);
-    WriteValue(os, light.quadratic);
-    WriteValue(os, light.ambient);
-    WriteValue(os, light.diffuse);
-    WriteValue(os, light.specular);
-    WriteBool(os, light.active);
-    WriteBool(os, light.isCastShadow);
 }
 
 void ReadPointLight(std::istream& is, PointLightComponent& light)
@@ -583,24 +392,6 @@ void ReadPointLight(std::istream& is, PointLightComponent& light)
     ReadValue(is, light.specular);
     ReadBool(is, light.active);
     ReadBool(is, light.isCastShadow);
-}
-
-void WriteSpotLight(std::ostream& os, const SpotLightComponent& light)
-{
-    WriteVec3(os, light.direction);
-    WriteVec3(os, light.color);
-    WriteValue(os, light.radius);
-    WriteValue(os, light.intensity);
-    WriteValue(os, light.constant);
-    WriteValue(os, light.linear);
-    WriteValue(os, light.quadratic);
-    WriteValue(os, light.ambient);
-    WriteValue(os, light.diffuse);
-    WriteValue(os, light.specular);
-    WriteValue(os, light.cutOff);
-    WriteValue(os, light.outerCutOff);
-    WriteBool(os, light.active);
-    WriteBool(os, light.isCastShadow);
 }
 
 void ReadSpotLight(std::istream& is, SpotLightComponent& light)
@@ -702,105 +493,28 @@ void ReadLegacySpotLightV2(std::istream& is, SpotLightComponent& light)
 
 bool BinarySceneSerializer::Serialize(const std::string& filepath, const Scene& scene)
 {
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+    std::unique_ptr<ResourceManager> fallbackResources;
+    if (!resources)
+    {
+        fallbackResources = std::make_unique<ResourceManager>();
+        fallbackResources->InitializeHeadless();
+        resources = fallbackResources.get();
+    }
+
+    SceneSerializer sceneSerializer(*resources, ServiceLocator::Instance().Resolve<IPhysicsWorld>(),
+                                    ServiceLocator::Instance().Resolve<AudioService>());
+    const std::string payload = sceneSerializer.SerializeToString(scene);
+    if (payload.empty())
+        return false;
+
     std::ofstream os(filepath, std::ios::binary);
     if (!os.is_open())
         return false;
 
     WriteValue(os, scene::BINARY_MAGIC);
     WriteValue(os, VERSION);
-
-    auto& mutableScene = const_cast<Scene&>(scene);
-    auto view = mutableScene.View<InfoComponent>();
-    std::vector<entt::entity> entities;
-    for (auto entity : view) entities.push_back(entity);
-
-    uint32_t entityCount = static_cast<uint32_t>(entities.size());
-    WriteValue(os, entityCount);
-
-    std::map<entt::entity, uint32_t> entityToIndex;
-    uint32_t idx = 0;
-    for (auto entity : entities) entityToIndex[entity] = idx++;
-
-    for (auto entity : entities)
-    {
-        auto& info = mutableScene.GetComponent<InfoComponent>(entity);
-
-        WriteString(os, info.name);
-        WriteString(os, info.tag);
-        WriteValue(os, info.layer);
-
-        auto* pos = mutableScene.TryGetComponent<PositionComponent>(entity);
-        WriteBool(os, pos != nullptr);
-        if (pos)
-            WriteVec3(os, pos->value);
-
-        auto* rot = mutableScene.TryGetComponent<RotationComponent>(entity);
-        WriteBool(os, rot != nullptr);
-        if (rot)
-            WriteQuat(os, rot->value);
-
-        auto* scl = mutableScene.TryGetComponent<ScaleComponent>(entity);
-        WriteBool(os, scl != nullptr);
-        if (scl)
-            WriteVec3(os, scl->value);
-
-        auto* hier = mutableScene.TryGetComponent<HierarchyComponent>(entity);
-        int32_t parentIdx = -1;
-        if (hier && hier->parent != entt::null && entityToIndex.count(hier->parent))
-            parentIdx = static_cast<int32_t>(entityToIndex[hier->parent]);
-        WriteValue(os, parentIdx);
-
-        auto* mesh = mutableScene.TryGetComponent<MeshRendererComponent>(entity);
-        WriteBool(os, mesh != nullptr);
-        if (mesh)
-        {
-            std::string modelName = mesh->model ? mesh->model->GetName() : "";
-            WriteString(os, modelName);
-
-            auto shaderPtr = mesh->shader.lock();
-            std::string shaderName = shaderPtr ? shaderPtr->GetName() : mesh->shaderName;
-            WriteString(os, shaderName);
-            WriteBool(os, mesh->castShadow);
-        }
-
-        auto* mat = mutableScene.TryGetComponent<MaterialComponent>(entity);
-        WriteBool(os, mat != nullptr);
-        if (mat)
-            WriteMaterialDescriptor(os, mat->desc);
-
-        auto* cam = mutableScene.TryGetComponent<CameraComponent>(entity);
-        WriteBool(os, cam != nullptr);
-        if (cam)
-            WriteCamera(os, *cam);
-
-        auto* dl = mutableScene.TryGetComponent<DirectionalLightComponent>(entity);
-        WriteBool(os, dl != nullptr);
-        if (dl)
-            WriteDirectionalLight(os, *dl);
-
-        auto* pl = mutableScene.TryGetComponent<PointLightComponent>(entity);
-        WriteBool(os, pl != nullptr);
-        if (pl)
-            WritePointLight(os, *pl);
-
-        auto* spot = mutableScene.TryGetComponent<SpotLightComponent>(entity);
-        WriteBool(os, spot != nullptr);
-        if (spot)
-            WriteSpotLight(os, *spot);
-
-        auto* sky = mutableScene.TryGetComponent<SkyboxRenderComponent>(entity);
-        WriteBool(os, sky != nullptr);
-        if (sky)
-        {
-            WriteBool(os, sky->isPrimary);
-            std::string skyboxName = sky->skybox ? sky->skybox->GetName() : "";
-            WriteString(os, skyboxName);
-
-            auto shaderPtr = sky->shader.lock();
-            std::string shaderName = shaderPtr ? shaderPtr->GetName() : sky->shaderName;
-            WriteString(os, shaderName);
-        }
-    }
+    WriteString(os, payload);
 
     if (!os.good())
         return false;
@@ -828,6 +542,36 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
 
     if (magic != scene::BINARY_MAGIC)
         return false;
+
+    if (version == 0 || version > VERSION)
+    {
+        LOGGER_ERROR("BinarySceneSerializer") << "Unsupported binary scene version: " << version;
+        return false;
+    }
+
+    if (version == VERSION)
+    {
+        const std::string payload = ReadString(is);
+        if (!is.good() || payload.empty())
+            return false;
+
+        auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+        std::unique_ptr<ResourceManager> fallbackResources;
+        if (!resources)
+        {
+            fallbackResources = std::make_unique<ResourceManager>();
+            fallbackResources->InitializeHeadless();
+            resources = fallbackResources.get();
+        }
+
+        SceneSerializer sceneSerializer(*resources, ServiceLocator::Instance().Resolve<IPhysicsWorld>(),
+                                        ServiceLocator::Instance().Resolve<AudioService>());
+        const std::string sourceName = std::filesystem::path(path).stem().string();
+        const bool loaded = sceneSerializer.DeserializeFromString(payload, sourceName, scene, outResult);
+        if (loaded)
+            LOGGER_INFO("BinarySceneSerializer") << "Deserialized v5 scene: " << path;
+        return loaded;
+    }
 
     uint32_t entityCount = 0;
     ReadValue(is, entityCount);
@@ -917,6 +661,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             ReadBool(is, castShadow);
 
             auto& mesh = scene.AddComponent<MeshRendererComponent>(entity);
+            mesh.modelName = modelName;
             if (resources)
             {
                 mesh.model = resources->GetModel(modelName);
@@ -939,13 +684,20 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             if (version >= 3)
             {
                 ReadMaterialDescriptor(is, material.desc);
-                if (!material.desc.albedoPath.empty()) outResult.loadedTextures.push_back(material.desc.albedoPath);
-                if (!material.desc.normalPath.empty()) outResult.loadedTextures.push_back(material.desc.normalPath);
-                if (!material.desc.metallicPath.empty()) outResult.loadedTextures.push_back(material.desc.metallicPath);
-                if (!material.desc.roughnessPath.empty()) outResult.loadedTextures.push_back(material.desc.roughnessPath);
-                if (!material.desc.aoPath.empty()) outResult.loadedTextures.push_back(material.desc.aoPath);
-                if (!material.desc.emissivePath.empty()) outResult.loadedTextures.push_back(material.desc.emissivePath);
-                if (!material.desc.specularPath.empty()) outResult.loadedTextures.push_back(material.desc.specularPath);
+                if (!material.desc.albedoPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.albedoPath);
+                if (!material.desc.normalPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.normalPath);
+                if (!material.desc.metallicPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.metallicPath);
+                if (!material.desc.roughnessPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.roughnessPath);
+                if (!material.desc.aoPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.aoPath);
+                if (!material.desc.emissivePath.empty())
+                    outResult.loadedTextures.push_back(material.desc.emissivePath);
+                if (!material.desc.specularPath.empty())
+                    outResult.loadedTextures.push_back(material.desc.specularPath);
             }
             else
             {
@@ -1006,6 +758,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             auto& sky = scene.AddComponent<SkyboxRenderComponent>(entity);
             ReadBool(is, sky.isPrimary);
             std::string skyboxName = ReadString(is);
+            sky.skyboxName = skyboxName;
             std::string shaderName = ReadString(is);
             if (resources)
             {

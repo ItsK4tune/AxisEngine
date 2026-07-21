@@ -38,6 +38,8 @@
 
 Designed for scalability and technical precision, AXIS keeps rendering, physics, and audio behind interface boundaries while the current build ships OpenGL, Bullet, Null audio, and optional FMOD/irrKlang providers.
 
+Public headers are split by intent: use `axis_sdk.h` for games/tools, `axis_plugin.h` for replaceable module contracts, and `axis_advanced.h` only for concrete-system integration. Backend `strategy/` headers are not part of the installed SDK. See the [API surface contract](docs/core/api_surface.md).
+
 ---
 
 ---
@@ -139,7 +141,7 @@ AXIS is designed for a data-driven development cycle:
 For a standalone application, initialize the `Application` pillar and push your first `State`:
 
 ```cpp
-#include <engine/core/Application.h>
+#include <axis_app.h>
 #include <game/states/GameState.h>
 
 int main() {
@@ -147,9 +149,9 @@ int main() {
 
     AppConfig config;
     config.title = "Axis Engine - Game";
-    config.width = 1280;
-    config.height = 720;
-    config.logLevel = LogLevel::Verbose;
+    config.window.width = 1280;
+    config.window.height = 720;
+    config.logLevel = LogLevel::Debug;
 
     if (app->Initialize(config)) {
         app->PushState<GameState>(); // Your game entry point
@@ -168,11 +170,6 @@ Define a basic interactive world in `scenes/my_scene.axs`:
 
 ```yaml
 axis_scene:
-  Config:
-    RENDER_PATH: DEFERRED
-    SHADOW_RESOLUTION: 2048
-    PHYSICS_MODE: BALANCED
-
   Entities:
     Player:
       Component: Transform
@@ -194,7 +191,7 @@ axis_scene:
 Load it from your game state:
 ```cpp
 void MyState::OnEnter() {
-    m_App->GetSceneManager().LoadScene("scenes/my_scene.axs");
+    LoadScene("scenes/my_scene.axs");
 }
 ```
 
@@ -219,7 +216,7 @@ For deep technical details, please refer to the following specialized guides:
 - **[Components Reference](docs/guides/components_reference.md)**: **(Essential)** List of all YAML keys and properties.
 - **[Configuration Guide](docs/guides/configuration.md)**: Exhaustive list of all Global and Per-Scene settings.
 - **[Scene Format (.axs)](docs/guides/scene_format.md)**: Detailed syntax for the serialization system.
-- **[Scripting API](docs/scripting/scripting_api.md)**: C++ API patterns for gameplay.
+- **[Scripting API](docs/scripting/scriptable_api.md)**: C++ API patterns for gameplay.
 
 ---
 
@@ -235,7 +232,7 @@ graph TD
     subgraph "Hardware Providers"
         Backend -- OpenGL --> GPU
         Backend -- Bullet --> Physics
-        Backend -- IrrKlang --> Audio
+        Backend -- "Null / FMOD / irrKlang" --> Audio
     end
 ```
 
@@ -257,7 +254,7 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+No project license file is currently included. Add an explicit license before redistributing the engine.
 
 ---
 

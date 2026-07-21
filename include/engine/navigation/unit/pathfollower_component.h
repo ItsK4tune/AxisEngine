@@ -4,6 +4,7 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 #include <vector>
+#include <cstdint>
 
 struct PathFollowerComponent
 {
@@ -24,10 +25,12 @@ struct PathFollowerComponent
 
     bool isMoving = false;
     bool pathPending = false;
+    uint64_t pathRequestGeneration = 0;
     bool recordDebugPath = true;
 
     PathfindingOptions pathfindingOptions;
     entt::entity navigationProviderEntity = entt::null;
+    std::string navigationProviderName;
 
     bool lockXPitch = false;
     bool lockYYaw = false;

@@ -14,7 +14,7 @@ public:
             return;
 
         auto& cc = GetComponent<CharacterControllerComponent>();
-        auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+        auto* io = Resolve<IOHandler>();
         const auto keyHeld = [io](Key key) { return io && io->GetKeyboard().GetKey(key); };
         const auto keyDown = [io](Key key) { return io && io->GetKeyboard().IsKeyDown(key); };
 

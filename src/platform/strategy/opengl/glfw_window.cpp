@@ -155,7 +155,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     if (!ApplyEmbeddedWindowIcon(m_Window))
     {
         int w, h, ch;
-        std::string iconPath = FileSystem::getPath("include/engine/asset/project/icon.png");
+        std::string iconPath = FileSystem::getEngineAssetPath("project/icon.png");
         unsigned char* pixels = StbImageLoader::Load(iconPath.c_str(), &w, &h, &ch, 4, false);
         if (pixels)
         {
@@ -182,6 +182,7 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
     glfwSetMouseButtonCallback(m_Window, mouse_button_callback);
     glfwSetCursorPosCallback(m_Window, cursor_position_callback);
     glfwSetScrollCallback(m_Window, scroll_callback);
+    glfwSetWindowFocusCallback(m_Window, focus_callback);
 
     m_Width = width;
     m_Height = height;
@@ -268,7 +269,8 @@ void GLFWWindow::SetCursorMode(CursorMode mode)
 
     auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
     bool enableRaw = false;
-    if (cm && cm->GetConfig().input.rawMouseInput && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
+    if (cm && cm->GetConfigSnapshot()->input.rawMouseInput &&
+        (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
     {
         enableRaw = true;
     }
@@ -537,4 +539,10 @@ void GLFWWindow::scroll_callback(GLFWwindow* window, double xoffset, double yoff
     {
         self->m_ScrollCallback(xoffset, yoffset);
     }
+}
+
+void GLFWWindow::focus_callback(GLFWwindow* window, int focused)
+{
+    if (auto* self = static_cast<GLFWWindow*>(glfwGetWindowUserPointer(window)); self && self->m_FocusCallback)
+        self->m_FocusCallback(focused == GLFW_TRUE);
 }

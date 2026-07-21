@@ -41,9 +41,12 @@ public:
     }
 
 private:
+    bool IsBindingTypeActive(InputType type) const;
+
     const KeyboardManager& m_Keyboard;
     const MouseManager& m_Mouse;
     const IWindow& m_Window;
     std::unordered_map<std::string, InputActionBinding> m_ActionMap;
     std::unordered_map<std::string, bool> m_PreviousState;
+    std::string m_ActiveDeviceId = "merged_input";
 };

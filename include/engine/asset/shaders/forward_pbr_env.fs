@@ -97,6 +97,7 @@ vec3 BoxProjection(vec3 dir, vec3 pos, vec3 probePos, vec3 boxMin, vec3 boxMax) 
 uniform vec3 u_SH[9];
 uniform bool u_HasLightProbe = false;
 uniform float u_LightProbeIntensity = 1.0;
+uniform vec3 u_LightProbeTint = vec3(1.0);
 
 vec3 EvaluateSH(vec3 n) {
     const float C1 = 0.429043;
@@ -175,7 +176,7 @@ void main()
     
     vec3 irradiance;
     if (u_HasLightProbe) {
-        irradiance = EvaluateSH(N) * u_LightProbeIntensity;
+        irradiance = EvaluateSH(N) * u_LightProbeIntensity * u_LightProbeTint;
     } else {
         irradiance = texture(u_IrradianceMap, N).rgb;
     }

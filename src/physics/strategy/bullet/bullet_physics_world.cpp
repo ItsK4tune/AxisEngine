@@ -236,6 +236,15 @@ void BulletPhysicsWorld::DebugDraw()
         m_CurrentDebugDrawer->Flush();
 }
 
+void BulletPhysicsWorld::SetDebugRenderContext(IBufferManager* bufferManager, IDrawContext* drawContext)
+{
+    if (!m_OwnedDebugDrawer)
+        return;
+    m_OwnedDebugDrawer->SetManagers(bufferManager, drawContext);
+    if (bufferManager && drawContext)
+        m_OwnedDebugDrawer->Initialize();
+}
+
 RayHit BulletPhysicsWorld::Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist, entt::entity ignore)
 {
     RayHit hit;

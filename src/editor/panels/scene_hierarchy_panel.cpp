@@ -6,6 +6,7 @@
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
 #include <ecs/interface/i_ecs_system.h>
+#include <ecs/interface/i_script_registry.h>
 #include <ecs/logic/transform_system.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/decal_component.h>
@@ -22,6 +23,7 @@
 #include <ecs/unit/ui_components.h>
 #include <engine/ecs/unit/fragment_component.h>
 #include <platform/logic/input_manager.h>
+#include <navigation/unit/pathfollower_component.h>
 #include <platform/logic/io_handler.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
@@ -30,17 +32,18 @@
 #include <scene/logic/binary_scene_serializer.h>
 #include <audio/logic/audio_service.h>
 #include <physics/interface/i_physics_world.h>
-#include <script/logic/script_registry.h>
 #include <script/logic/scriptable.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <cstring>
+#include <sstream>
 #include <utility>
 #include <unordered_map>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
@@ -129,7 +132,8 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##EntitySearch", "Search entities...", m_SearchFilter, IM_ARRAYSIZE(m_SearchFilter));
     std::string filterLower = m_SearchFilter;
-    std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
+    std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
 
     // Ctrl+D duplicate shortcut
     if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
@@ -147,11 +151,10 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
             m_CtrlDPressed = false;
 
         // Delete (Delete)
-        static bool deletePressed = false;
-        if (kb.GetKey(Key::Delete) && !deletePressed && s_SelectedEntity != entt::null &&
+        if (kb.GetKey(Key::Delete) && !m_DeletePressed && s_SelectedEntity != entt::null &&
             registry.valid(s_SelectedEntity))
         {
-            deletePressed = true;
+            m_DeletePressed = true;
             EditorSystem::PushUndoState(scene);
             auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
             scene.DestroyEntityWithChildren(s_SelectedEntity, sceneMgr);
@@ -159,7 +162,7 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
             MarkTransformGraphDirty();
         }
         if (!kb.GetKey(Key::Delete))
-            deletePressed = false;
+            m_DeletePressed = false;
     }
 
     ImGui::Columns(2, "HierarchyInspector", true);
@@ -229,7 +232,8 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
                         ename = registry.get<InfoComponent>(entity).name;
                     }
                     std::string enameLower = ename;
-                    std::transform(enameLower.begin(), enameLower.end(), enameLower.begin(), ::tolower);
+                    std::transform(enameLower.begin(), enameLower.end(), enameLower.begin(),
+                                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
                     if (enameLower.find(filterLower) == std::string::npos)
                         continue;
                 }
@@ -430,7 +434,8 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
             }
 
             std::string searchStr = searchBuf;
-            std::transform(searchStr.begin(), searchStr.end(), searchStr.begin(), ::tolower);
+            std::transform(searchStr.begin(), searchStr.end(), searchStr.begin(),
+                           [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
 
             if (searchStr.empty() || std::string("none").find(searchStr) != std::string::npos)
             {
@@ -448,7 +453,8 @@ static bool DrawResourceDropdownStr(const char* label, std::string& currentName,
             for (const auto& resName : sortedResources)
             {
                 std::string lowerName = resName;
-                std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+                std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
+                               [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
                 if (!searchStr.empty() && lowerName.find(searchStr) == std::string::npos)
                     continue;
 
@@ -492,6 +498,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         {
             char buffer[256];
             strncpy(buffer, info->name.c_str(), sizeof(buffer) - 1);
+            buffer[sizeof(buffer) - 1] = '\0';
             if (ImGui::InputText("Name", buffer, sizeof(buffer)))
                 info->name = buffer;
             ImGui::Text("Scene: %s", info->sceneName.c_str());
@@ -533,6 +540,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                 if (auto* wt = reg.try_get<WorldTransformComponent>(entity))
                 {
                     wt->isDirty = true;
+                    if (auto* transformSystem = ServiceLocator::Instance().Resolve<TransformSystem>())
+                        transformSystem->MarkTransformDirty(entity);
                 }
             }
         }
@@ -883,11 +892,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     });
 
     DrawComponent<ScriptComponent>("Script", reg, entity, [&reg, entity](auto& script) {
-        std::vector<std::string> scriptNames;
-        for (const auto& pair : ScriptRegistry::GetStaticFactoryMap())
-        {
-            scriptNames.push_back(pair.first);
-        }
+        auto& scriptRegistry = ServiceLocator::Instance().Require<IScriptRegistry>();
+        const auto scriptNames = scriptRegistry.GetRegisteredNames();
 
         std::string currentScript = script.className;
         if (DrawResourceDropdownStr("Script Class", currentScript, scriptNames))
@@ -908,18 +914,19 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             }
             else
             {
-                auto& factoryMap = ScriptRegistry::GetStaticFactoryMap();
-                if (factoryMap.count(currentScript))
-                {
-                    auto factory = factoryMap.at(currentScript);
-                    script.InstantiateScript = factory;
-                    script.DestroyScript = [](ScriptComponent* sc) {
-                        sc->instance.reset();
-                        sc->scriptableInstance = nullptr;
-                        sc->inputScriptableInstance = nullptr;
-                    };
-                    script.instance = script.InstantiateScript();
+                script.InstantiateScript = [className = currentScript]() {
+                    auto registry = ServiceLocator::Instance().Resolve<IScriptRegistry>();
+                    return registry ? registry->Create(className) : nullptr;
+                };
+                script.DestroyScript = [](ScriptComponent* sc) {
+                    sc->instance.reset();
+                    sc->scriptableInstance = nullptr;
+                    sc->inputScriptableInstance = nullptr;
+                };
+                script.instance = script.InstantiateScript();
 
+                if (script.instance)
+                {
                     auto& globalScene = ServiceLocator::Instance().Require<Scene>();
                     script.instance->Initialize(entity, &globalScene);
                     script.instance->OnCreate();
@@ -1055,6 +1062,27 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                 ImGui::Checkbox("Enabled", &eff.enabled);
                 ImGui::Checkbox("Affect UI", &eff.affectUI);
 
+                uint32_t inputMask = static_cast<uint32_t>(eff.inputs);
+                auto inputCheckbox = [&](const char* label, PostProcessInput input) {
+                    const uint32_t bit = static_cast<uint32_t>(input);
+                    bool enabled = (inputMask & bit) != 0;
+                    if (ImGui::Checkbox(label, &enabled))
+                    {
+                        inputMask = enabled ? (inputMask | bit) : (inputMask & ~bit);
+                        eff.inputs = static_cast<PostProcessInput>(inputMask);
+                    }
+                };
+                inputCheckbox("Color", PostProcessInput::Color);
+                ImGui::SameLine();
+                inputCheckbox("Depth", PostProcessInput::Depth);
+                ImGui::SameLine();
+                inputCheckbox("Normal", PostProcessInput::Normal);
+                inputCheckbox("World Position", PostProcessInput::WorldPosition);
+                ImGui::SameLine();
+                inputCheckbox("Camera Matrices", PostProcessInput::CameraMatrices);
+                ImGui::SameLine();
+                inputCheckbox("Audio Pulses", PostProcessInput::AudioPulses);
+
                 ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.2f);
                 ImGui::DragInt("##X", &eff.x);
                 if (ImGui::IsItemHovered())
@@ -1104,6 +1132,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         {
             char buf[128];
             strncpy(buf, anim.animations[i].c_str(), sizeof(buf));
+            buf[sizeof(buf) - 1] = '\0';
             ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 30);
             if (ImGui::InputText(("##Clip" + std::to_string(i)).c_str(), buf, sizeof(buf)))
             {
@@ -1148,9 +1177,18 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     });
 
     DrawComponent<DecalComponent>("Decal", reg, entity, [](auto& decal) {
+        char albedo[512];
+        strncpy(albedo, decal.albedoTexture.c_str(), sizeof(albedo) - 1);
+        albedo[sizeof(albedo) - 1] = '\0';
+        if (ImGui::InputText("Albedo asset##Decal", albedo, sizeof(albedo)))
+        {
+            decal.albedoTexture = albedo;
+            decal.albedoMap = 0;
+        }
         ImGui::DragFloat("Opacity##Decal", &decal.opacity, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("Roughness##Decal", &decal.roughness, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("Metallic##Decal", &decal.metallic, 0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat("Reflectivity##Decal", &decal.reflectivity, 0.01f, 0.0f, 1.0f);
         ImGui::ColorEdit4("Tint##Decal", &decal.tintColor.r);
         ImGui::DragFloat("Lifetime##Decal", &decal.lifetime, 0.1f);
         int ro = (int)decal.renderOrder;
@@ -1160,6 +1198,31 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         int lm = (int)decal.lightingMode;
         if (ImGui::Combo("Lighting##Decal", &lm, lightModes, 3))
             decal.lightingMode = lm;
+
+        std::ostringstream joinedTags;
+        for (size_t i = 0; i < decal.targetTags.size(); ++i)
+        {
+            if (i != 0)
+                joinedTags << ' ';
+            joinedTags << decal.targetTags[i];
+        }
+        char targetTags[512];
+        strncpy(targetTags, joinedTags.str().c_str(), sizeof(targetTags) - 1);
+        targetTags[sizeof(targetTags) - 1] = '\0';
+        if (ImGui::InputText("Target tags##Decal", targetTags, sizeof(targetTags)))
+        {
+            decal.targetTags.clear();
+            std::string input = targetTags;
+            std::replace(input.begin(), input.end(), ',', ' ');
+            std::istringstream stream(input);
+            for (std::string tag; stream >> tag;) decal.targetTags.push_back(std::move(tag));
+        }
+
+        char customShader[256];
+        strncpy(customShader, decal.customShader.c_str(), sizeof(customShader) - 1);
+        customShader[sizeof(customShader) - 1] = '\0';
+        if (ImGui::InputText("Custom shader##Decal", customShader, sizeof(customShader)))
+            decal.customShader = customShader;
     });
 
     DrawComponent<TerrainComponent>("Terrain", reg, entity, [](auto& terrain) {
@@ -1250,6 +1313,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     DrawComponent<LightProbeComponent>("Light Probe", reg, entity, [](auto& lp) {
         ImGui::DragFloat("Intensity##LP", &lp.intensity, 0.01f, 0.0f, 10.0f);
         ImGui::DragFloat("Radius##LP", &lp.radius, 0.5f, 0.0f, 500.0f);
+        ImGui::ColorEdit3("Tint##LP", &lp.tint.x);
         ImGui::Text("SH Coefficients: 9 bands");
     });
 
@@ -1289,6 +1353,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     DrawComponent<FragmentComponent>("Fragment", reg, entity, [](auto& frag) {
         char buffer[512];
         strncpy(buffer, frag.path.c_str(), sizeof(buffer) - 1);
+        buffer[sizeof(buffer) - 1] = '\0';
         if (ImGui::InputText("Scene Path", buffer, sizeof(buffer)))
         {
             frag.path = buffer;
@@ -1570,6 +1635,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                                         }
                                         char compBuf[1024];
                                         strncpy(compBuf, compStr.c_str(), sizeof(compBuf) - 1);
+                                        compBuf[sizeof(compBuf) - 1] = '\0';
                                         if (ImGui::InputTextMultiline("##props", compBuf, sizeof(compBuf),
                                                                       ImVec2(-1, 80)))
                                         {
@@ -1618,6 +1684,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             net.ownerId = (uint32_t)oid;
 
         ImGui::Checkbox("Is Local", &net.isLocal);
+        ImGui::Checkbox("Replicate Transform", &net.replicateTransform);
+        ImGui::DragFloat("Interest Radius", &net.interestRadius, 0.5f, 0.0f, 1000000.0f, "%.1f m");
     });
 
     // ====== PHASE 3: Add Component ======
@@ -1726,8 +1794,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     COPY_COMP(RotationComponent);
     COPY_COMP(ScaleComponent);
     COPY_COMP(WorldTransformComponent);
-    if (auto* world = reg.try_get<WorldTransformComponent>(newEntity))
-        world->isDirty = true;
+    scene.MarkTransformDirty(newEntity);
     COPY_COMP(MeshRendererComponent);
     COPY_COMP(MaterialComponent);
     COPY_COMP(DirectionalLightComponent);
@@ -1742,35 +1809,162 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         newSc.InstantiateScript = srcSc.InstantiateScript;
         newSc.DestroyScript = srcSc.DestroyScript;
     }
+    COPY_COMP(UITransformComponent);
+    COPY_COMP(UIRendererComponent);
     COPY_COMP(UITextComponent);
-    COPY_COMP(AudioSourceComponent);
+    COPY_COMP(UIFlexLayoutComponent);
+    COPY_COMP(UIInteractiveComponent);
+    COPY_COMP(UIAnimationComponent);
+    if (reg.all_of<AudioSourceComponent>(srcEntity))
+    {
+        auto audio = reg.get<AudioSourceComponent>(srcEntity);
+        audio.sound.reset();
+        audio.shouldPlay = false;
+        reg.emplace<AudioSourceComponent>(newEntity, std::move(audio));
+    }
+    if (reg.all_of<VideoPlayerComponent>(srcEntity))
+    {
+        auto video = reg.get<VideoPlayerComponent>(srcEntity);
+        video.decoder.reset();
+        video.isLoaded = false;
+        video.isPlaying = false;
+        reg.emplace<VideoPlayerComponent>(newEntity, std::move(video));
+    }
     COPY_COMP(RigidShapeComponent);
-    COPY_COMP(RigidBodyComponent);
+    if (reg.all_of<RigidBodyComponent>(srcEntity))
+    {
+        auto body = reg.get<RigidBodyComponent>(srcEntity);
+        body.body.reset();
+        body.constraints.clear();
+        reg.emplace<RigidBodyComponent>(newEntity, std::move(body));
+    }
+    if (reg.all_of<CharacterControllerComponent>(srcEntity))
+    {
+        auto controller = reg.get<CharacterControllerComponent>(srcEntity);
+        controller.controller.reset();
+        controller.walkDirection = glm::vec3(0.0f);
+        controller.velocity = glm::vec3(0.0f);
+        controller.useVelocity = false;
+        controller.jumpRequested = false;
+        controller.isOnGround = false;
+        auto& duplicatedController = reg.emplace<CharacterControllerComponent>(newEntity, std::move(controller));
+        if (auto* physics = ServiceLocator::Instance().Resolve<IPhysicsWorld>())
+        {
+            auto shape = physics->CreateCapsuleShape(duplicatedController.radius, duplicatedController.height);
+            duplicatedController.controller =
+                physics->CreateCharacterController(shape, duplicatedController.stepHeight);
+            if (duplicatedController.controller)
+            {
+                duplicatedController.controller->SetMaxSlope(glm::radians(duplicatedController.maxSlope));
+                const auto* position = reg.try_get<PositionComponent>(newEntity);
+                const auto* rotation = reg.try_get<RotationComponent>(newEntity);
+                duplicatedController.controller->SetWorldTransform(
+                    position ? position->value : glm::vec3(0.0f),
+                    rotation ? rotation->value : glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+                duplicatedController.controller->SetUserPointer(
+                    reinterpret_cast<void*>(static_cast<uintptr_t>(newEntity) + 1));
+                physics->AddCharacterController(duplicatedController.controller.get());
+            }
+        }
+    }
     COPY_COMP(SkyboxRenderComponent);
     COPY_COMP(FragmentComponent);
     COPY_COMP(NetworkComponent);
-    COPY_COMP(AnimationComponent);
+    if (reg.all_of<AnimationComponent>(srcEntity))
+    {
+        const auto& sourceAnimation = reg.get<AnimationComponent>(srcEntity);
+        auto& animation = reg.emplace<AnimationComponent>(newEntity);
+        animation.animations = sourceAnimation.animations;
+        animation.speed = sourceAnimation.speed;
+        animation.startTime = sourceAnimation.startTime;
+        animation.rate = sourceAnimation.rate;
+        animation.blendFactor = sourceAnimation.blendFactor;
+        if (!animation.animations.empty())
+        {
+            if (auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>())
+            {
+                if (auto first = resources->GetAnimation(animation.animations.front()))
+                {
+                    animation.animator = std::make_shared<Animator>(first);
+                    animation.animator->AddAnimation(animation.animations.front(), first);
+                    for (size_t i = 1; i < animation.animations.size(); ++i)
+                    {
+                        if (auto clip = resources->GetAnimation(animation.animations[i]))
+                            animation.animator->AddAnimation(animation.animations[i], clip);
+                    }
+                    animation.animator->SetSpeed(animation.speed);
+                    animation.animator->SetTime(animation.startTime);
+                    animation.animator->SetUpdateRate(animation.rate);
+                    animation.animator->SetBlendFactor(animation.blendFactor);
+                }
+            }
+        }
+    }
     if (reg.all_of<ParticleEmitterComponent>(srcEntity))
     {
         auto& srcPe = reg.get<ParticleEmitterComponent>(srcEntity);
         auto& dstPe = reg.emplace<ParticleEmitterComponent>(newEntity);
         dstPe.isActive = srcPe.isActive;
-        dstPe.emissionRate = srcPe.emissionRate;
-        dstPe.lifetime = srcPe.lifetime;
-        dstPe.speed = srcPe.speed;
-        dstPe.size = srcPe.size;
-        dstPe.direction = srcPe.direction;
-        dstPe.spread = srcPe.spread;
-        dstPe.startColor = srcPe.startColor;
-        dstPe.endColor = srcPe.endColor;
+        dstPe.maxParticles = srcPe.maxParticles;
         dstPe.textureName = srcPe.textureName;
         dstPe.customShader = srcPe.customShader;
+        dstPe.emitter.MinVelocity = srcPe.emitter.MinVelocity;
+        dstPe.emitter.MaxVelocity = srcPe.emitter.MaxVelocity;
+        dstPe.emitter.StartColor = srcPe.emitter.StartColor;
+        dstPe.emitter.EndColor = srcPe.emitter.EndColor;
+        dstPe.emitter.StartSize = srcPe.emitter.StartSize;
+        dstPe.emitter.EndSize = srcPe.emitter.EndSize;
+        dstPe.emitter.LifeTime = srcPe.emitter.LifeTime;
+        dstPe.emitter.SpawnRate = srcPe.emitter.SpawnRate;
+        dstPe.emitter.Shape = srcPe.emitter.Shape;
+        dstPe.emitter.texture = srcPe.emitter.texture;
+        dstPe.emitter.Initialize(dstPe.maxParticles);
     }
     COPY_COMP(PostProcessComponent);
     COPY_COMP(DecalComponent);
-    COPY_COMP(TerrainComponent);
+    COPY_COMP(LODComponent);
+    COPY_COMP(PathFollowerComponent);
+    if (auto* follower = reg.try_get<PathFollowerComponent>(newEntity))
+    {
+        follower->currentPath.clear();
+        follower->debugPlannedPath.clear();
+        follower->debugTraveledPath.clear();
+        follower->currentPathIndex = 0;
+        follower->isMoving = false;
+        follower->pathPending = false;
+    }
+    if (reg.all_of<TerrainComponent>(srcEntity))
+    {
+        auto terrain = reg.get<TerrainComponent>(srcEntity);
+        terrain.collisionShape.reset();
+        terrain.physicsBody.reset();
+        terrain.needsRebuild = true;
+        reg.emplace<TerrainComponent>(newEntity, std::move(terrain));
+    }
     COPY_COMP(LightProbeComponent);
-    COPY_COMP(ReflectionProbeComponent);
+    if (reg.all_of<ReflectionProbeComponent>(srcEntity))
+    {
+        auto probe = reg.get<ReflectionProbeComponent>(srcEntity);
+        probe.cubemapID = 0;
+        probe.currentFace = 0;
+        probe.lastGpuIndex = -1;
+        probe.lastResolution = 0;
+        probe.isDirty = true;
+        reg.emplace<ReflectionProbeComponent>(newEntity, std::move(probe));
+    }
+    COPY_COMP(ReflectiveComponent);
+    if (reg.all_of<PlanarReflectionComponent>(srcEntity))
+    {
+        auto reflection = reg.get<PlanarReflectionComponent>(srcEntity);
+        reflection.reflectionTextureID = 0;
+        reflection.reflectionFBO = 0;
+        reflection.reflectionDepthRBO = 0;
+        reflection.isDirty = true;
+        reflection.isRendered = false;
+        reg.emplace<PlanarReflectionComponent>(newEntity, std::move(reflection));
+    }
+    COPY_COMP(OcclusionComponent);
+    COPY_COMP(StreamingComponent);
     // Setup hierarchy properly (don't copy children directly, just attach to same parent)
     reg.emplace<HierarchyComponent>(newEntity);
     if (reg.all_of<HierarchyComponent>(srcEntity))

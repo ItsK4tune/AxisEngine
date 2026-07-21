@@ -2,24 +2,28 @@
 
 #include <core/logic/event_manager.h>
 #include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_render_runtime_control.h>
 #include <render/logic/frustum_culler.h>
 #include <render/logic/occlusion_culler.h>
-#include <render/logic/static_batch_manager.h>
 #include <render/type/graphics_types.h>
 #include <render/type/render_service_state.h>
 #include <render/unit/command_queue.h>
 #include <render/unit/render_command.h>
 #include <render/unit/render_queue.h>
 #include <resource/unit/shader.h>
+#include <resource/unit/mesh.h>
 #include <memory>
+#include <array>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class RenderCore;
 class IGraphicsContext;
 class ConfigManager;
 
-class RenderServiceImpl : public IRenderService
+class RenderServiceImpl : public IRenderService, public IRenderRuntimeControl
 {
 public:
     RenderServiceImpl();
@@ -135,14 +139,12 @@ public:
     {
         return m_LastHeight;
     }
-    StaticBatchManager& GetBatchManager() override
-    {
-        return m_BatchManager;
-    }
     RenderQueue& GetRenderQueueObj() override
     {
         return m_RenderQueueObj;
     }
+    void PushRenderViewContext() override;
+    bool PopRenderViewContext() override;
     void BuildRenderQueues(Scene& scene, float alpha, int width = 0, int height = 0) override;
     void BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params) override;
     void RenderOcclusionQueries(Scene& scene, float alpha) override;
@@ -166,21 +168,21 @@ public:
     }
 
     // Service-specific methods not in interface
-    void SetFaceCulling(bool enabled, CullMode mode = CullMode::Back);
-    void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less);
-    void SetInstanceBatching(bool enable)
+    void SetFaceCulling(bool enabled, CullMode mode = CullMode::Back) override;
+    void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less) override;
+    void SetInstanceBatching(bool enable) override
     {
         m_Flags.instanceBatchingEnabled = enable;
     }
-    void SetFrustumCulling(bool enable)
+    void SetFrustumCulling(bool enable) override
     {
         m_Flags.frustumCullingEnabled = enable;
     }
-    void SetRenderOrderEnabled(bool enable)
+    void SetRenderOrderEnabled(bool enable) override
     {
         m_Flags.renderOrderEnabled = enable;
     }
-    void SetFilterLayerMask(uint32_t mask)
+    void SetFilterLayerMask(uint32_t mask) override
     {
         m_Flags.filterLayerMask = mask;
     }
@@ -194,19 +196,19 @@ public:
     }
 
     // For syncing with Update
-    void IncrementFrame()
+    void IncrementFrame() override
     {
         m_GlobalState.frameIndex++;
     }
-    void ResetRenderedCount()
+    void ResetRenderedCount() override
     {
         m_RenderedCount = 0;
     }
-    void ResetQueuesBuilt()
+    void ResetQueuesBuilt() override
     {
         m_QueuesBuilt = false;
     }
-    void AddTime(float dt)
+    void AddTime(float dt) override
     {
         m_GlobalData.time += dt;
         m_GlobalData.deltaTime = dt;
@@ -214,8 +216,26 @@ public:
     void BeginFrame(const RenderViewParams& params);
 
 private:
-    StaticBatchManager m_BatchManager;
+    struct RenderViewContext
+    {
+        RenderQueue queue;
+        RenderCameraState cameraState;
+        RenderGlobalState globalState;
+        GPUGlobalData globalData{};
+        int renderedCount = 0;
+        int lastWidth = -1;
+        int lastHeight = -1;
+        float lastAlpha = -1.0f;
+        bool queuesBuilt = false;
+        bool isCapturingProbe = false;
+        std::array<unsigned int, 4> planarTextureIDs{};
+        std::array<glm::vec3, 4> planarNormals{};
+        int planarReflectionCount = 0;
+    };
+
     RenderQueue m_RenderQueueObj;
+    std::vector<std::unique_ptr<RenderViewContext>> m_RenderViewContexts;
+    size_t m_RenderViewContextDepth = 0;
 
     int m_RenderedCount = 0;
 
@@ -260,13 +280,36 @@ private:
         entt::entity entity;
     };
 
-    void BuildRenderQueuesWithOctreeHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget, uint32_t cameraGen);
-    void BuildRenderQueuesLinearHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget);
+    std::vector<ProbeData> m_ProbeCache;
+    std::unordered_map<std::string, const ProbeData*> m_ProbeTargetsCache;
+
+    struct CachedPlanarReflection
+    {
+        unsigned int textureID = 0;
+        glm::vec3 normal{0.0f, 1.0f, 0.0f};
+    };
+    std::array<CachedPlanarReflection, 4> m_PlanarReflectionCache{};
+    int m_PlanarReflectionCount = 0;
+
+    void BuildRenderQueuesFromCandidates(Scene& scene, const RenderViewParams& params, float lodFactor,
+                                         const std::vector<ProbeData>& probes,
+                                         const std::unordered_map<std::string, const ProbeData*>& probesByTarget,
+                                         bool candidatesFromOctree, uint32_t cameraGen);
 
     std::vector<entt::entity> m_CandidatesCache;
 
+    struct OctreeEntryState
+    {
+        uint32_t worldVersion = 0;
+        const Model* model = nullptr;
+        AABB worldAABB;
+    };
+    std::unordered_map<entt::entity, OctreeEntryState> m_OctreeEntryStates;
+    std::unordered_set<entt::entity> m_OctreeSeenEntities;
+    std::vector<entt::entity> m_DirtyOctreeEntities;
+    std::vector<MeshInstanceData> m_InstanceDataScratch;
+
     std::unique_ptr<RenderCore> m_RenderCore;
-    CommandQueue m_CommandQueue;
     RenderCommandBuffer m_RenderCommandBuffer;
     uint32_t m_MainFBO = 0;
 
@@ -274,4 +317,6 @@ private:
     ConfigManager* m_ConfigManager = nullptr;
     EventSubscriptionList m_EventSubscriptions;
     bool m_IsShutdown = true;
+
+    void UploadCurrentViewState();
 };

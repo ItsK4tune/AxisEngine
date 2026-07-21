@@ -1,10 +1,6 @@
 #include <core/logic/logger.h>
 #include <core/logic/log_manager.h>
 
-void Logger::Initialize()
-{
-}
-
 void Logger::SetLogLevel(LogLevel level)
 {
     LogManager::Instance().SetLogLevel(level);

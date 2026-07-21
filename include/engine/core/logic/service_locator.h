@@ -2,33 +2,80 @@
 
 #include <atomic>
 #include <mutex>
+#include <memory>
 #include <typeindex>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 
+class EngineAccessor;
+
 class ServiceLocator
 {
 public:
+    class Activation
+    {
+    public:
+        explicit Activation(ServiceLocator& locator) : m_Previous(s_Active)
+        {
+            s_Active = &locator;
+        }
+        ~Activation()
+        {
+            s_Active = m_Previous;
+        }
+        Activation(const Activation&) = delete;
+        Activation& operator=(const Activation&) = delete;
+
+    private:
+        ServiceLocator* m_Previous = nullptr;
+    };
+
     static ServiceLocator& Instance()
     {
-        static ServiceLocator instance;
-        return instance;
+        if (s_Active)
+            return *s_Active;
+        if (auto* processDefault = s_ProcessDefault.load(std::memory_order_acquire))
+            return *processDefault;
+        static ServiceLocator fallback;
+        return fallback;
     }
 
+    // Application installs its scoped registry as the process default so jobs
+    // spawned on worker threads resolve the same services. Activation remains
+    // a thread-local override for nested tests and tools.
+    static bool SetProcessDefault(ServiceLocator* locator)
+    {
+        if (!locator)
+            return false;
+        ServiceLocator* expected = nullptr;
+        return s_ProcessDefault.compare_exchange_strong(expected, locator, std::memory_order_acq_rel) ||
+               expected == locator;
+    }
+
+    static void ClearProcessDefault(ServiceLocator* locator)
+    {
+        ServiceLocator* expected = locator;
+        s_ProcessDefault.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);
+    }
+
+    ServiceLocator() = default;
+    ~ServiceLocator() = default;
     ServiceLocator(const ServiceLocator&) = delete;
     ServiceLocator& operator=(const ServiceLocator&) = delete;
+
+    Activation Activate()
+    {
+        return Activation(*this);
+    }
 
     template <typename T>
     void Register(T* service)
     {
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Services[std::type_index(typeid(T))] = static_cast<void*>(service);
-        uint64_t globalVer = m_Version.load(std::memory_order_acquire);
-        TypeCache<T>::ptr.store(service, std::memory_order_release);
-        TypeCache<T>::valid.store(true, std::memory_order_release);
-        TypeCache<T>::version.store(globalVer, std::memory_order_release);
+        m_ServiceSnapshot.store(std::make_shared<const ServiceMap>(m_Services), std::memory_order_release);
     }
 
     template <typename T>
@@ -36,31 +83,16 @@ public:
     {
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Services.erase(std::type_index(typeid(T)));
-        TypeCache<T>::ptr.store(nullptr, std::memory_order_release);
-        TypeCache<T>::valid.store(false, std::memory_order_release);
+        m_ServiceSnapshot.store(std::make_shared<const ServiceMap>(m_Services), std::memory_order_release);
     }
 
     template <typename T>
     T* Resolve() const
     {
-        uint64_t globalVer = m_Version.load(std::memory_order_acquire);
-        if (TypeCache<T>::version.load(std::memory_order_acquire) == globalVer &&
-            TypeCache<T>::valid.load(std::memory_order_acquire))
-            return TypeCache<T>::ptr.load(std::memory_order_acquire);
-
-        std::shared_lock<std::shared_mutex> lock(m_Mutex);
-        auto it = m_Services.find(std::type_index(typeid(T)));
-        if (it != m_Services.end())
-        {
-            T* result = static_cast<T*>(it->second);
-            TypeCache<T>::ptr.store(result, std::memory_order_release);
-            TypeCache<T>::valid.store(true, std::memory_order_release);
-            TypeCache<T>::version.store(globalVer, std::memory_order_release);
-            return result;
-        }
-        TypeCache<T>::ptr.store(nullptr, std::memory_order_release);
-        TypeCache<T>::valid.store(false, std::memory_order_release);
-        TypeCache<T>::version.store(globalVer, std::memory_order_release);
+        const auto services = m_ServiceSnapshot.load(std::memory_order_acquire);
+        auto it = services->find(std::type_index(typeid(T)));
+        if (it != services->end())
+            return static_cast<T*>(it->second);
         return nullptr;
     }
 
@@ -76,8 +108,8 @@ public:
     template <typename T>
     bool Has() const
     {
-        std::shared_lock<std::shared_mutex> lock(m_Mutex);
-        return m_Services.find(std::type_index(typeid(T))) != m_Services.end();
+        const auto services = m_ServiceSnapshot.load(std::memory_order_acquire);
+        return services->find(std::type_index(typeid(T))) != services->end();
     }
 
     template <typename T>
@@ -85,14 +117,16 @@ public:
     {
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_NamedServices[name] = static_cast<void*>(service);
+        m_NamedServiceSnapshot.store(std::make_shared<const NamedServiceMap>(m_NamedServices),
+                                     std::memory_order_release);
     }
 
     template <typename T>
     T* Resolve(const std::string& name) const
     {
-        std::shared_lock<std::shared_mutex> lock(m_Mutex);
-        auto it = m_NamedServices.find(name);
-        if (it != m_NamedServices.end())
+        const auto services = m_NamedServiceSnapshot.load(std::memory_order_acquire);
+        auto it = services->find(name);
+        if (it != services->end())
             return static_cast<T*>(it->second);
         return nullptr;
     }
@@ -108,8 +142,8 @@ public:
 
     bool Has(const std::string& name) const
     {
-        std::shared_lock<std::shared_mutex> lock(m_Mutex);
-        return m_NamedServices.find(name) != m_NamedServices.end();
+        const auto services = m_NamedServiceSnapshot.load(std::memory_order_acquire);
+        return services->find(name) != services->end();
     }
 
     void ClearAll()
@@ -117,23 +151,29 @@ public:
         std::unique_lock<std::shared_mutex> lock(m_Mutex);
         m_Services.clear();
         m_NamedServices.clear();
-        m_Version.fetch_add(1, std::memory_order_release);
+        m_ServiceSnapshot.store(std::make_shared<const ServiceMap>(), std::memory_order_release);
+        m_NamedServiceSnapshot.store(std::make_shared<const NamedServiceMap>(), std::memory_order_release);
     }
 
 private:
-    ServiceLocator() = default;
-    ~ServiceLocator() = default;
+    friend class EngineAccessor;
 
-    std::unordered_map<std::type_index, void*> m_Services;
-    std::unordered_map<std::string, void*> m_NamedServices;
-    mutable std::shared_mutex m_Mutex;
-    std::atomic<uint64_t> m_Version{0};
-
-    template <typename T>
-    struct TypeCache
+    void* ResolveByType(std::type_index type) const
     {
-        static inline std::atomic<T*> ptr{nullptr};
-        static inline std::atomic<bool> valid{false};
-        static inline std::atomic<uint64_t> version{0};
-    };
+        const auto services = m_ServiceSnapshot.load(std::memory_order_acquire);
+        const auto it = services->find(type);
+        return it != services->end() ? it->second : nullptr;
+    }
+
+    using ServiceMap = std::unordered_map<std::type_index, void*>;
+    using NamedServiceMap = std::unordered_map<std::string, void*>;
+
+    ServiceMap m_Services;
+    NamedServiceMap m_NamedServices;
+    std::atomic<std::shared_ptr<const ServiceMap>> m_ServiceSnapshot{std::make_shared<const ServiceMap>()};
+    std::atomic<std::shared_ptr<const NamedServiceMap>> m_NamedServiceSnapshot{
+        std::make_shared<const NamedServiceMap>()};
+    mutable std::shared_mutex m_Mutex;
+    static inline thread_local ServiceLocator* s_Active = nullptr;
+    static inline std::atomic<ServiceLocator*> s_ProcessDefault = nullptr;
 };

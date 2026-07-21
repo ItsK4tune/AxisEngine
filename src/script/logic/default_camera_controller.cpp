@@ -2,18 +2,12 @@
 #include <core/type/event_types.h>
 #include <ecs/unit/core_components.h>
 #include <platform/logic/io_handler.h>
+#include <platform/interface/i_ui_input_capture.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <script/logic/default_camera_controller.h>
 #include <script/logic/script_registry.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
-
-#ifdef ENABLE_EDITOR
-#include <imgui.h>
-#endif
-
-REGISTER_SCRIPT(DefaultCameraController)
 
 void DefaultCameraController::OnCreate()
 {
@@ -60,15 +54,9 @@ void DefaultCameraController::OnUpdate(float)
     float delta = GetRealDeltaTime();
 
     // UI state
-    bool hoveringPanel = false;
-    bool typing = false;
-#ifdef ENABLE_EDITOR
-    if (ImGui::GetCurrentContext())
-    {
-        hoveringPanel = ImGui::GetIO().WantCaptureMouse;
-        typing = ImGui::GetIO().WantTextInput;
-    }
-#endif
+    const auto* uiCapture = Resolve<IUIInputCapture>();
+    const bool hoveringPanel = uiCapture && uiCapture->WantsPointerInput();
+    const bool typing = uiCapture && uiCapture->WantsTextInput();
 
     bool isRMB = mouse.IsRightButtonPressed();
     bool isMMB = mouse.IsMiddleButtonPressed();
@@ -176,11 +164,11 @@ void DefaultCameraController::OnUpdate(float)
     glm::vec3 right = glm::normalize(glm::cross(frontNormalized, worldUp));
     glm::vec3 up = glm::normalize(glm::cross(right, frontNormalized));
 
-    float xOffset = mouse.GetXOffset() * m_MouseSensitivity;
-    float yOffset = mouse.GetYOffset() * m_MouseSensitivity;
-    if (config.mouseInvertX)
+    float xOffset = mouse.GetXOffset() * config.input.mouseSensitivityX;
+    float yOffset = mouse.GetYOffset() * config.input.mouseSensitivityY;
+    if (config.input.mouseInvertX)
         xOffset = -xOffset;
-    if (config.mouseInvertY)
+    if (config.input.mouseInvertY)
         yOffset = -yOffset;
 
     glm::vec3 targetVelocity(0.0f);

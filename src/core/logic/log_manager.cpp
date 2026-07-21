@@ -2,7 +2,6 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
-#include <core/logic/service_locator.h>
 #include <platform/interface/i_platform_runtime.h>
 #include <platform/logic/platform_services.h>
 #include <chrono>
@@ -11,7 +10,6 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
-#include <stdexcept>
 
 void LogManager::Initialize(LogLevel level)
 {
@@ -19,15 +17,9 @@ void LogManager::Initialize(LogLevel level)
 
     if (level == LogLevel::None)
     {
-#ifndef ENABLE_EDITOR
-        GetNativePlatformRuntime().DetachConsole();
-#endif
     }
     else
     {
-#ifndef ENABLE_EDITOR
-        GetNativePlatformRuntime().DetachConsole();
-#endif
         std::string logsDirStr = FileSystem::getPath("logs");
         namespace fs = std::filesystem;
         fs::path logsDir = fs::path(logsDirStr);
@@ -39,7 +31,7 @@ void LogManager::Initialize(LogLevel level)
 
         auto now = std::chrono::system_clock::now();
         auto timeT = std::chrono::system_clock::to_time_t(now);
-        std::tm bt = GetNativePlatformRuntime().LocalTime(timeT);
+        std::tm bt = AcquirePlatformRuntime()->LocalTime(timeT);
 
         std::stringstream ss;
         ss << "log_" << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S") << ".log";
@@ -48,53 +40,50 @@ void LogManager::Initialize(LogLevel level)
         m_LogFile.open(logPath);
         if (m_LogFile.is_open())
         {
-#ifdef ENABLE_EDITOR
             m_TeeOut = std::make_unique<TeeBuf>(std::cout.rdbuf(), m_LogFile.rdbuf());
             m_TeeErr = std::make_unique<TeeBuf>(std::cerr.rdbuf(), m_LogFile.rdbuf());
 
             m_OldOut = std::cout.rdbuf(m_TeeOut.get());
             m_OldErr = std::cerr.rdbuf(m_TeeErr.get());
-#else
-            m_OldOut = std::cout.rdbuf(m_LogFile.rdbuf());
-            m_OldErr = std::cerr.rdbuf(m_LogFile.rdbuf());
-#endif
 
             LOGGER_INFO("Application") << "Logging started at " << std::put_time(&bt, "%Y-%m-%d %H:%M:%S");
             LOGGER_INFO("Application") << "Log file: " << logPath.string();
         }
     }
 
-    GetNativePlatformRuntime().InstallCrashHandler(
+    AcquirePlatformRuntime()->InstallCrashHandler(
         [this](const std::string& report) { this->WriteCrashReport(report); });
 
-    if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())
-    {
-        m_ConfigListenerId =
-            es->Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& ev) { this->OnConfigChanged(ev); });
-    }
+    m_ConfigListenerId = EventManager::Instance().Subscribe<ConfigChangedEvent>(
+        [this](const ConfigChangedEvent& ev) { this->OnConfigChanged(ev); });
 }
 
 void LogManager::Shutdown()
 {
     if (m_ConfigListenerId != -1)
     {
-        if (auto* es = ServiceLocator::Instance().Resolve<EventManager>())
-        {
-            es->Unsubscribe<ConfigChangedEvent>(m_ConfigListenerId);
-        }
+        EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigListenerId);
         m_ConfigListenerId = -1;
     }
     if (m_OldOut)
+    {
         std::cout.rdbuf(m_OldOut);
+        m_OldOut = nullptr;
+    }
     if (m_OldErr)
+    {
         std::cerr.rdbuf(m_OldErr);
+        m_OldErr = nullptr;
+    }
     if (m_LogFile.is_open())
         m_LogFile.close();
+    m_TeeOut.reset();
+    m_TeeErr.reset();
 }
 
 void LogManager::OnConfigChanged(const ConfigChangedEvent& event)
 {
-    if (event.bitmask & (ConfigChangedEvent::General | ConfigChangedEvent::All))
+    if (HasConfigChanged(event, ConfigChangedEvent::General))
     {
         SetLogLevel(event.config.logLevel);
     }
@@ -102,53 +91,47 @@ void LogManager::OnConfigChanged(const ConfigChangedEvent& event)
 
 void LogManager::Log(LogType type, const std::string& tag, const std::string& message)
 {
-    if (m_LogLevel == LogLevel::None)
+    const LogLevel level = m_LogLevel.load(std::memory_order_relaxed);
+    if (level == LogLevel::None)
+        return;
+
+    if (level == LogLevel::Minimal && type != LogType::Error)
+        return;
+    if (level == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug))
+        return;
+    if (level == LogLevel::Verbose && type == LogType::Debug)
+        return;
+
+    LogCallback callback;
     {
-        if (type == LogType::Error)
+        std::lock_guard<std::mutex> lock(m_LogMutex);
+
+        std::string levelStr;
+        std::ostream* outStream = &std::cout;
+
+        switch (type)
         {
-            throw std::runtime_error("[" + tag + "] " + message);
+            case LogType::Info:
+                levelStr = "INFO";
+                break;
+            case LogType::Warning:
+                levelStr = "WARNING";
+                break;
+            case LogType::Error:
+                levelStr = "ERROR";
+                outStream = &std::cerr;
+                break;
+            case LogType::Debug:
+                levelStr = "DEBUG";
+                break;
         }
-        return;
+
+        (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
+
+        callback = m_LogCallback;
     }
-
-    if (m_LogLevel == LogLevel::Minimal && type != LogType::Error)
-        return;
-    if (m_LogLevel == LogLevel::Flex && (type == LogType::Info || type == LogType::Debug))
-        return;
-    if (m_LogLevel == LogLevel::Verbose && type == LogType::Debug)
-        return;
-
-    std::lock_guard<std::mutex> lock(m_LogMutex);
-
-    std::string levelStr;
-    std::ostream* outStream = &std::cout;
-
-    switch (type)
-    {
-        case LogType::Info:
-            levelStr = "INFO";
-            break;
-        case LogType::Warning:
-            levelStr = "WARNING";
-            break;
-        case LogType::Error:
-            levelStr = "ERROR";
-            outStream = &std::cerr;
-            break;
-        case LogType::Debug:
-            levelStr = "DEBUG";
-            break;
-    }
-
-    (*outStream) << "[" << levelStr << "] [" << tag << "] " << message << std::endl;
-
-#ifdef ENABLE_EDITOR
-    // Feed editor console panel
-    if (m_EditorLogCallback)
-    {
-        m_EditorLogCallback(type, tag, message);
-    }
-#endif
+    if (callback)
+        callback(type, tag, message);
 }
 
 void LogManager::WriteCrashReport(const std::string& report)

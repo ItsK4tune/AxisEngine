@@ -4,6 +4,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <fstream>
+#include <algorithm>
 
 std::unordered_map<std::string, DataNode> DataNodeSerializer::Parse(const std::vector<YAMLNode>& roots)
 {
@@ -56,17 +57,25 @@ std::unordered_map<std::string, DataNode> DataNodeSerializer::Parse(const std::v
 
 void DataNodeSerializer::Serialize(std::ostream& stream, const std::unordered_map<std::string, DataNode>& data)
 {
-    if (data.empty())
-        return;
-
     // Build a YAMLNode tree and delegate to YAMLWriter
     std::vector<YAMLNode> nodes;
     nodes.reserve(data.size());
+    std::vector<std::string> keys;
+    keys.reserve(data.size());
     for (const auto& [key, val] : data)
+        keys.push_back(key);
+    std::sort(keys.begin(), keys.end());
+    for (const auto& key : keys)
     {
+        const auto& val = data.at(key);
         YAMLNode node{key, val.value, {}};
+        std::vector<std::string> attributeKeys;
+        attributeKeys.reserve(val.attributes.size());
         for (const auto& [attrKey, attrVal] : val.attributes)
-            node.children.push_back({attrKey, attrVal, {}});
+            attributeKeys.push_back(attrKey);
+        std::sort(attributeKeys.begin(), attributeKeys.end());
+        for (const auto& attrKey : attributeKeys)
+            node.children.push_back({attrKey, val.attributes.at(attrKey), {}});
         nodes.push_back(std::move(node));
     }
 
@@ -116,7 +125,7 @@ bool DataNodeSerializer::Deserialize(const std::string& filepath, std::unordered
         }
     }
 
-    return !data.empty();
+    return hasAxisDataRoot || !data.empty();
 }
 
 bool DataNodeSerializer::Serialize(const std::string& filepath, const std::unordered_map<std::string, DataNode>& data)

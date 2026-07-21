@@ -1,9 +1,11 @@
 #include <render/logic/video_decoder.h>
 #include <core/logic/logger.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/interface/i_buffer_manager.h>
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iterator>
 #include <vector>
 
 #ifndef AXIS_ENABLE_MOCK_VIDEO_DATA
@@ -11,10 +13,26 @@
 #endif
 
 ITextureManager* VideoDecoder::s_TextureManager = nullptr;
+IBufferManager* VideoDecoder::s_BufferManager = nullptr;
 
 void VideoDecoder::SetTextureManager(ITextureManager& textureManager)
 {
     s_TextureManager = &textureManager;
+}
+
+void VideoDecoder::ClearTextureManager()
+{
+    s_TextureManager = nullptr;
+}
+
+void VideoDecoder::SetBufferManager(IBufferManager& bufferManager)
+{
+    s_BufferManager = &bufferManager;
+}
+
+void VideoDecoder::ClearBufferManager()
+{
+    s_BufferManager = nullptr;
 }
 
 ITextureManager& VideoDecoder::GetTextureManager()
@@ -30,14 +48,14 @@ ITextureManager& VideoDecoder::GetTextureManager()
 VideoDecoder::VideoDecoder()
 {
     m_Frame = av_frame_alloc();
-    m_RGBFrame = av_frame_alloc();
+    m_Packet = av_packet_alloc();
 }
 
 VideoDecoder::~VideoDecoder()
 {
     Unload();
+    av_packet_free(&m_Packet);
     av_frame_free(&m_Frame);
-    av_frame_free(&m_RGBFrame);
 }
 
 bool VideoDecoder::Load(const std::string& filepath)
@@ -142,6 +160,9 @@ bool VideoDecoder::Load(const std::string& filepath)
 
 void VideoDecoder::SetOutputSize(int width, int height)
 {
+    const bool restartWorker = m_DecodeThread.joinable() && IsPlaying();
+    if (m_DecodeThread.joinable())
+        StopDecodeWorker();
     if (width <= 0 || height <= 0)
     {
         if (m_Width > 0 && m_Height > 0)
@@ -174,19 +195,14 @@ void VideoDecoder::SetOutputSize(int width, int height)
     m_SwsCtx = sws_getContext(m_Width, m_Height, m_CodecCtx->pix_fmt, m_OutputWidth, m_OutputHeight, AV_PIX_FMT_RGBA,
                               SWS_BILINEAR, nullptr, nullptr, nullptr);
 
-    if (m_RGBFrame->data[0])
-        av_freep(&m_RGBFrame->data[0]);
-
-    int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight, 1);
-    uint8_t* buffer = (uint8_t*)av_malloc(numBytes * sizeof(uint8_t));
-    av_image_fill_arrays(m_RGBFrame->data, m_RGBFrame->linesize, buffer, AV_PIX_FMT_RGBA, m_OutputWidth, m_OutputHeight,
-                         1);
-
     InitTexture();
+    if (restartWorker)
+        StartDecodeWorker();
 }
 
 void VideoDecoder::Unload()
 {
+    StopDecodeWorker();
     if (m_CodecCtx)
         avcodec_free_context(&m_CodecCtx);
     if (m_FormatCtx)
@@ -200,17 +216,25 @@ void VideoDecoder::Unload()
         m_TextureID = 0;
     }
 
-    if (m_RGBFrame && m_RGBFrame->data[0])
+    if (s_BufferManager)
     {
-        av_freep(&m_RGBFrame->data[0]);
-        m_RGBFrame->data[0] = nullptr;
+        for (size_t index = 0; index < std::size(m_UploadPbos); ++index)
+        {
+            if (m_UploadPbos[index] != 0)
+                s_BufferManager->DeleteBuffer(m_UploadPbos[index]);
+            m_UploadPbos[index] = 0;
+            m_UploadPboCapacities[index] = 0;
+        }
     }
+    m_UploadPboIndex = 0;
 
     m_FormatCtx = nullptr;
     m_CodecCtx = nullptr;
     m_SwsCtx = nullptr;
     m_ProceduralFallback = false;
-    m_State = State::Stopped;
+    m_State.store(State::Stopped, std::memory_order_release);
+    m_CurrentTime = 0.0;
+    m_LastFrameTime = 0.0;
 }
 
 void VideoDecoder::InitTexture()
@@ -232,77 +256,102 @@ void VideoDecoder::InitTexture()
 
 void VideoDecoder::Play()
 {
-    if (m_State != State::Playing)
+    if (m_State.load(std::memory_order_acquire) != State::Playing)
     {
-        m_State = State::Playing;
+        m_State.store(State::Playing, std::memory_order_release);
+        StartDecodeWorker();
+        m_DecodeCondition.notify_all();
     }
 }
 
 void VideoDecoder::Pause()
 {
-    m_State = State::Paused;
+    m_State.store(State::Paused, std::memory_order_release);
 }
 
 void VideoDecoder::Stop()
 {
-    m_State = State::Stopped;
+    m_State.store(State::Stopped, std::memory_order_release);
     Seek(0);
 }
 
 void VideoDecoder::Update(float dt)
 {
-    if (m_State != State::Playing)
+    if (m_State.load(std::memory_order_acquire) != State::Playing)
         return;
 
-    m_CurrentTime += dt * m_Speed;
+    // The playback clock, not the render/decode rate, owns presentation timing.
+    // Ignore invalid/negative deltas so a bad caller cannot run the media clock
+    // backwards or poison it with NaN.
+    if (std::isfinite(dt) && dt > 0.0f)
+        m_CurrentTime += static_cast<double>(dt) * m_Speed;
 
     if (m_ProceduralFallback)
     {
-        if (m_Loop && m_CurrentTime > 8.0)
+        if (m_Loop.load(std::memory_order_acquire) && m_CurrentTime > 8.0)
             m_CurrentTime = 0.0;
         UploadProceduralFrame();
         return;
     }
 
-    bool needsUpload = false;
-    int decodedCount = 0;
+    const double duration = GetDuration();
+    if (m_Loop.load(std::memory_order_acquire) && duration > 0.0 && m_CurrentTime >= duration)
+        Seek(std::fmod(m_CurrentTime, duration));
 
-    while (m_LastFrameTime < m_CurrentTime && decodedCount < m_MaxDecodeSteps)
+    if (!m_AsyncDecodeEnabled.load(std::memory_order_acquire))
     {
-        if (!DecodeFrame())
+        DecodedFrame decoded;
+        int decodedCount = 0;
+        bool hasFrame = false;
+        while (m_LastFrameTime <= m_CurrentTime && decodedCount < m_MaxDecodeSteps && DecodeFrame(decoded))
         {
-            if (m_Loop)
-            {
-                Seek(0);
-                m_CurrentTime = 0;
-                m_LastFrameTime = 0;
-            }
-            else
-            {
-                Stop();
-            }
-            break;
+            m_UploadPixels = std::move(decoded.pixels);
+            decoded = {};
+            hasFrame = true;
+            ++decodedCount;
         }
-        decodedCount++;
-        needsUpload = true;
+        if (hasFrame)
+            UploadFrame(m_UploadPixels);
+        return;
     }
-
-    if (needsUpload)
+    bool hasFrame = false;
+    bool consumedFrame = false;
     {
-        UploadFrame();
+        std::lock_guard lock(m_DecodeMutex);
+        int consumed = 0;
+        while (!m_DecodedFrames.empty() && consumed < m_MaxDecodeSteps)
+        {
+            // Previously the first queued frame was consumed unconditionally.
+            // With a fast render loop that presented one future video frame per
+            // engine frame, effectively tying playback speed to FPS. Keep future
+            // frames queued until their media timestamp is due.
+            if (m_DecodedFrames.front().timestamp > m_CurrentTime)
+                break;
+            m_UploadPixels = std::move(m_DecodedFrames.front().pixels);
+            m_DecodedFrames.pop_front();
+            hasFrame = true;
+            consumedFrame = true;
+            ++consumed;
+        }
     }
+    if (hasFrame)
+        UploadFrame(m_UploadPixels);
+
+    if (consumedFrame)
+        m_DecodeCondition.notify_all();
 }
 
-bool VideoDecoder::DecodeFrame()
+bool VideoDecoder::DecodeFrame(DecodedFrame& output)
 {
-    AVPacket* packet = av_packet_alloc();
+    if (!m_Packet || !m_FormatCtx || !m_CodecCtx || !m_SwsCtx)
+        return false;
     bool frameRead = false;
 
-    while (av_read_frame(m_FormatCtx, packet) >= 0)
+    while (av_read_frame(m_FormatCtx, m_Packet) >= 0)
     {
-        if (packet->stream_index == m_VideoStreamIndex)
+        if (m_Packet->stream_index == m_VideoStreamIndex)
         {
-            if (avcodec_send_packet(m_CodecCtx, packet) == 0)
+            if (avcodec_send_packet(m_CodecCtx, m_Packet) == 0)
             {
                 while (avcodec_receive_frame(m_CodecCtx, m_Frame) == 0)
                 {
@@ -311,32 +360,128 @@ bool VideoDecoder::DecodeFrame()
                     else
                         m_LastFrameTime += 1.0 / m_FrameRate;
 
+                    output.timestamp = m_LastFrameTime;
+                    output.pixels.resize(static_cast<size_t>(m_OutputWidth) * m_OutputHeight * 4);
+                    uint8_t* destination[] = {output.pixels.data(), nullptr, nullptr, nullptr};
+                    int destinationLines[] = {m_OutputWidth * 4, 0, 0, 0};
+                    sws_scale(m_SwsCtx, (const uint8_t* const*)m_Frame->data, m_Frame->linesize, 0, m_Height,
+                              destination, destinationLines);
                     frameRead = true;
                     goto end_decode;
                 }
             }
         }
-        av_packet_unref(packet);
+        av_packet_unref(m_Packet);
     }
 
 end_decode:
-    av_packet_unref(packet);
-    av_packet_free(&packet);
+    av_packet_unref(m_Packet);
     return frameRead;
 }
 
-void VideoDecoder::UploadFrame()
+void VideoDecoder::UploadFrame(const std::vector<uint8_t>& pixels)
 {
-    if (!m_SwsCtx || !m_Frame || !m_RGBFrame || !s_TextureManager)
+    if (pixels.empty() || !s_TextureManager)
         return;
-
-    sws_scale(m_SwsCtx, (const uint8_t* const*)m_Frame->data, m_Frame->linesize, 0, m_Height, m_RGBFrame->data,
-              m_RGBFrame->linesize);
 
     auto& tm = GetTextureManager();
     tm.BindTexture(TextureType::Texture2D, m_TextureID);
-    tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA,
-                     DataType::UnsignedByte, m_RGBFrame->data[0]);
+    if (s_BufferManager)
+    {
+        const size_t pboIndex = m_UploadPboIndex++ % std::size(m_UploadPbos);
+        unsigned int& pbo = m_UploadPbos[pboIndex];
+        if (pbo == 0)
+            pbo = s_BufferManager->GenBuffer();
+        s_BufferManager->BindBuffer(BufferType::PixelUnpackBuffer, pbo);
+        if (m_UploadPboCapacities[pboIndex] < pixels.size())
+        {
+            s_BufferManager->BufferData(BufferType::PixelUnpackBuffer, pixels.size(), nullptr,
+                                        BufferUsage::StreamDraw);
+            m_UploadPboCapacities[pboIndex] = pixels.size();
+        }
+        s_BufferManager->BufferSubData(BufferType::PixelUnpackBuffer, 0, pixels.size(), pixels.data());
+        tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA,
+                         DataType::UnsignedByte, nullptr);
+        s_BufferManager->BindBuffer(BufferType::PixelUnpackBuffer, 0);
+    }
+    else
+    {
+        tm.TexSubImage2D(TextureType::Texture2D, 0, 0, 0, m_OutputWidth, m_OutputHeight, TextureFormat::RGBA,
+                         DataType::UnsignedByte, pixels.data());
+    }
+}
+
+void VideoDecoder::StartDecodeWorker()
+{
+    if (!m_AsyncDecodeEnabled.load(std::memory_order_acquire) || m_ProceduralFallback || !m_FormatCtx ||
+        m_DecodeThread.joinable())
+        return;
+    m_StopDecodeThread.store(false, std::memory_order_release);
+    m_DecodeThread = std::thread(&VideoDecoder::DecodeWorkerLoop, this);
+}
+
+void VideoDecoder::StopDecodeWorker()
+{
+    if (!m_DecodeThread.joinable())
+        return;
+    m_StopDecodeThread.store(true, std::memory_order_release);
+    m_DecodeCondition.notify_all();
+    m_DecodeThread.join();
+    {
+        std::lock_guard lock(m_DecodeMutex);
+        m_DecodedFrames.clear();
+        m_SeekRequested = false;
+    }
+    m_StopDecodeThread.store(false, std::memory_order_release);
+}
+
+void VideoDecoder::DecodeWorkerLoop()
+{
+    while (!m_StopDecodeThread.load(std::memory_order_acquire))
+    {
+        std::unique_lock lock(m_DecodeMutex);
+        m_DecodeCondition.wait(lock, [this]() {
+            return m_StopDecodeThread.load(std::memory_order_acquire) || m_SeekRequested ||
+                   (m_State.load(std::memory_order_acquire) == State::Playing &&
+                    m_DecodedFrames.size() < MaxQueuedFrames);
+        });
+        if (m_StopDecodeThread.load(std::memory_order_acquire))
+            break;
+
+        if (m_SeekRequested)
+        {
+            const double target = m_RequestedSeekTime;
+            m_SeekRequested = false;
+            m_DecodedFrames.clear();
+            lock.unlock();
+            const int64_t targetPts = static_cast<int64_t>(target / m_TimeBase);
+            av_seek_frame(m_FormatCtx, m_VideoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
+            avcodec_flush_buffers(m_CodecCtx);
+            m_LastFrameTime = target;
+            continue;
+        }
+
+        lock.unlock();
+        DecodedFrame decoded;
+        if (DecodeFrame(decoded))
+        {
+            std::lock_guard queueLock(m_DecodeMutex);
+            if (m_DecodedFrames.size() < MaxQueuedFrames)
+                m_DecodedFrames.push_back(std::move(decoded));
+            continue;
+        }
+
+        if (m_Loop.load(std::memory_order_acquire))
+        {
+            av_seek_frame(m_FormatCtx, m_VideoStreamIndex, 0, AVSEEK_FLAG_BACKWARD);
+            avcodec_flush_buffers(m_CodecCtx);
+            m_LastFrameTime = 0.0;
+        }
+        else
+        {
+            m_State.store(State::Stopped, std::memory_order_release);
+        }
+    }
 }
 
 void VideoDecoder::UploadProceduralFrame()
@@ -344,7 +489,8 @@ void VideoDecoder::UploadProceduralFrame()
     if (!s_TextureManager || m_OutputWidth <= 0 || m_OutputHeight <= 0)
         return;
 
-    std::vector<uint8_t> pixels(static_cast<size_t>(m_OutputWidth) * static_cast<size_t>(m_OutputHeight) * 4);
+    m_UploadPixels.resize(static_cast<size_t>(m_OutputWidth) * static_cast<size_t>(m_OutputHeight) * 4);
+    auto& pixels = m_UploadPixels;
     float t = static_cast<float>(m_CurrentTime);
     for (int y = 0; y < m_OutputHeight; ++y)
     {
@@ -379,7 +525,22 @@ void VideoDecoder::Seek(double timestamp)
     }
     if (!m_FormatCtx)
         return;
-    int64_t targetPts = (int64_t)(timestamp / m_TimeBase);
-    av_seek_frame(m_FormatCtx, m_VideoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
-    avcodec_flush_buffers(m_CodecCtx);
+    m_CurrentTime = (std::max)(0.0, timestamp);
+    if (!m_AsyncDecodeEnabled.load(std::memory_order_acquire))
+    {
+        const int64_t targetPts = static_cast<int64_t>(m_CurrentTime / m_TimeBase);
+        av_seek_frame(m_FormatCtx, m_VideoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
+        avcodec_flush_buffers(m_CodecCtx);
+        m_LastFrameTime = m_CurrentTime;
+        return;
+    }
+    {
+        std::lock_guard lock(m_DecodeMutex);
+        m_RequestedSeekTime = m_CurrentTime;
+        m_SeekRequested = true;
+        m_DecodedFrames.clear();
+    }
+    if (m_State.load(std::memory_order_acquire) != State::Stopped)
+        StartDecodeWorker();
+    m_DecodeCondition.notify_all();
 }

@@ -3,11 +3,31 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/strategy/opengl/opengl_translator.h>
 #include <glad/glad.h>
-#include <vector>
+#include <core/logic/runtime_profiler.h>
+#include <array>
+#include <limits>
 
 class OpenGLRenderTargetManager : public IRenderTargetManager
 {
 public:
+    OpenGLRenderTargetManager()
+    {
+        InvalidateCache();
+    }
+
+    void InvalidateCache()
+    {
+        m_ReadFramebuffer = InvalidBinding;
+        m_DrawFramebuffer = InvalidBinding;
+        m_DrawBufferCount = -1;
+    }
+
+    void SetCacheEnabled(bool enabled)
+    {
+        m_CacheEnabled = enabled;
+        InvalidateCache();
+    }
+
     unsigned int CreateFramebuffer() override
     {
         unsigned int fbo;
@@ -22,15 +42,33 @@ public:
 
     void BindFramebuffer(FramebufferTarget target, unsigned int fbo) override
     {
+        unsigned int* cached = target == FramebufferTarget::ReadFramebuffer ? &m_ReadFramebuffer : &m_DrawFramebuffer;
+        const bool alreadyBound = target == FramebufferTarget::Framebuffer
+                                      ? m_ReadFramebuffer == fbo && m_DrawFramebuffer == fbo
+                                      : *cached == fbo;
+        if (m_CacheEnabled && alreadyBound)
+            return;
         glBindFramebuffer(GLTranslator::ToGL(target), fbo);
+        if (target == FramebufferTarget::Framebuffer)
+            m_ReadFramebuffer = m_DrawFramebuffer = fbo;
+        else
+            *cached = fbo;
+        if (target != FramebufferTarget::ReadFramebuffer)
+            m_DrawBufferCount = -1;
+        RuntimeProfiler::Instance().AddStateChanges();
     }
     void DeleteFramebuffer(unsigned int fbo) override
     {
         glDeleteFramebuffers(1, &fbo);
+        if (m_ReadFramebuffer == fbo)
+            m_ReadFramebuffer = InvalidBinding;
+        if (m_DrawFramebuffer == fbo)
+            m_DrawFramebuffer = InvalidBinding;
     }
     void DeleteFramebuffers(int n, const unsigned int* framebuffers) override
     {
         glDeleteFramebuffers(n, framebuffers);
+        InvalidateCache();
     }
     FramebufferStatus CheckFramebufferStatus(FramebufferTarget target) override
     {
@@ -118,6 +156,9 @@ public:
     void DrawBuffer(FramebufferAttachment buf) override
     {
         glDrawBuffer(GLTranslator::ToGL(buf));
+        m_DrawBuffers[0] = buf;
+        m_DrawBufferCount = 1;
+        RuntimeProfiler::Instance().AddStateChanges();
     }
     void ReadBuffer(FramebufferAttachment buf) override
     {
@@ -128,16 +169,44 @@ public:
     {
         if (n <= 0)
             return;
-        std::vector<GLenum> glBufs(n);
+        if (m_CacheEnabled && n <= static_cast<int>(m_DrawBuffers.size()) && n == m_DrawBufferCount)
+        {
+            bool unchanged = true;
+            for (int i = 0; i < n; ++i)
+                unchanged = unchanged && m_DrawBuffers[static_cast<size_t>(i)] == bufs[i];
+            if (unchanged)
+                return;
+        }
+        if (n > static_cast<int>(m_DrawBuffers.size()))
+            n = static_cast<int>(m_DrawBuffers.size());
+        std::array<GLenum, 32> glBufs{};
         for (int i = 0; i < n; ++i)
         {
-            glBufs[i] = GLTranslator::ToGL(bufs[i]);
+            glBufs[static_cast<size_t>(i)] = GLTranslator::ToGL(bufs[i]);
+            m_DrawBuffers[static_cast<size_t>(i)] = bufs[i];
         }
         glDrawBuffers(n, glBufs.data());
+        m_DrawBufferCount = n;
+        RuntimeProfiler::Instance().AddStateChanges();
+    }
+
+    void ClearColorAttachmentUInt(int drawBuffer, const unsigned int value[4]) override
+    {
+        if (drawBuffer < 0 || !value)
+            return;
+        glClearBufferuiv(GL_COLOR, drawBuffer, value);
     }
 
     const char* GetBackendName() const override
     {
         return "OpenGL";
     }
+
+private:
+    static constexpr unsigned int InvalidBinding = (std::numeric_limits<unsigned int>::max)();
+    unsigned int m_ReadFramebuffer = InvalidBinding;
+    unsigned int m_DrawFramebuffer = InvalidBinding;
+    std::array<FramebufferAttachment, 32> m_DrawBuffers = {};
+    int m_DrawBufferCount = -1;
+    bool m_CacheEnabled = true;
 };

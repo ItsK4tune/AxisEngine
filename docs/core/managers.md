@@ -5,8 +5,8 @@ Managers are centralized services instantiated by the `Application`. They handle
 ---
 
 ## 1. ResourceManager
-**Include:** `<engine/core/resource_manager.h>`  
-**Access:** `m_App->GetResourceManager()`
+**Include:** `<resource/logic/resource_manager.h>`
+**Access from `State`/`Scriptable`:** `Get<ResourceManager>()`
 
 Handles loading, caching, and retrieval of all engine assets.
 
@@ -23,8 +23,7 @@ Handles loading, caching, and retrieval of all engine assets.
 ---
 
 ## 2. SceneManager
-**Include:** `<engine/core/scene_manager.h>`  
-**Access:** `m_App->GetSceneManager()`
+Use the `EngineAccessor` scene methods (`LoadScene`, `QueueLoadScene`, `ChangeScene`, `UnloadScene`, `PopScene`) rather than depending on the concrete manager.
 
 Manages the active entity registries and scene transitions.
 
@@ -36,14 +35,14 @@ Manages the active entity registries and scene transitions.
 ---
 
 ## 3. InputManager & Handlers
-**Include:** `<engine/core/app_handler.h>`  
-**Access:** `m_App->GetAppHandler()`
+
+Use `GetAction`, `GetActionDown`, and `GetActionUp` for gameplay. Advanced raw-device code can explicitly resolve `IOHandler`.
 
 Distributes OS-level keyboard and mouse events.
 
 ### Keyboard & Mouse
-- **Keyboard**: `GetKeyboard().GetKey(GLFW_KEY_W)` for state polling.
-- **Mouse**: `GetMouse().GetPosition()` for screen-space coordinates.
+- **Keyboard**: `Resolve<IOHandler>()->GetKeyboard()` for raw state polling.
+- **Mouse**: `Resolve<IOHandler>()->GetMouse()` for raw pointer state.
 - **Cursor Modes**: Supports `Normal`, `Hidden`, `Locked`, and `LockedHidden`.
 
 ### Input Actions
@@ -51,11 +50,11 @@ Recommended for gameplay: Use `GetAction("Jump")` to poll mapped keys defined in
 
 ---
 
-## 4. SoundManager
-**Include:** `<engine/core/sound_manager.h>`  
-**Access:** `m_App->GetSoundManager()`
+## 4. AudioService
+**Include:** `<audio/logic/audio_service.h>`
+**Access from `State`/`Scriptable`:** `Resolve<AudioService>()`
 
-Wraps the irrKlang engine for spatial audio.
+Wraps whichever `IAudioEngine` backend was selected or injected. Playback is independent from `IAudioCaptureService` microphone input.
 
 ### Methods
 - `Play2D(source, loop)`: Global background music or UI sounds.

@@ -7,7 +7,6 @@
 #include <resource/logic/audio_asset_manager.h>
 #include <resource/logic/font_manager.h>
 #include <resource/logic/fragment_asset_manager.h>
-#include <resource/logic/model_instance_manager.h>
 #include <resource/logic/model_manager.h>
 #include <resource/logic/resource_watcher.h>
 #include <resource/logic/shader_manager.h>
@@ -19,6 +18,7 @@
 #include <future>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -33,7 +33,11 @@ public:
     ResourceManager();
     ~ResourceManager();
 
-    void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine);
+    void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine* audioEngine);
+    void Initialize(IShaderManager* shaderManager, ITextureManager* textureManager, IAudioEngine& audioEngine)
+    {
+        Initialize(shaderManager, textureManager, &audioEngine);
+    }
     void InitializeHeadless();  // No GPU managers, no audio engine
     void InitializePostLoad();
 
@@ -46,6 +50,8 @@ public:
     void SetTextureAsyncEnabled(bool enabled);
     void SetTextureMaxAnisotropy(float max);
     void SetStrictAssetLoading(bool strict);
+    void SetAsyncUploadBudget(bool enabled, size_t maxModelUploadsPerFrame, size_t maxTextureUploadsPerFrame);
+    void ApplyOptimizationConfig(const struct OptimizationConfig& config);
     bool IsStrictAssetLoading() const
     {
         return m_StrictAssetLoading;
@@ -65,7 +71,7 @@ public:
 
     void LoadAnimation(const std::string& name, const std::string& path, const std::string& modelName);
     void LoadFont(const std::string& name, const std::string& path, unsigned int fontSize) override;
-    void LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine) override;
+    void LoadSound(const std::string& name, const std::string& path) override;
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces) override;
     void LoadFragment(const std::string& name, const std::string& path);
     void CreateUIModel(const std::string& name, UIType type) override;
@@ -102,7 +108,7 @@ public:
     std::shared_ptr<Texture> GetTextureAuto(const std::string& nameOrPath);
     std::shared_ptr<Model> GetModelAuto(const std::string& nameOrPath, bool isStatic = false);
     std::shared_ptr<Font> GetFontAuto(const std::string& nameOrPath, unsigned int fontSize = 16);
-    std::shared_ptr<IAudioSource> GetSoundAuto(const std::string& nameOrPath, IAudioEngine* engine = nullptr);
+    std::shared_ptr<IAudioSource> GetSoundAuto(const std::string& nameOrPath);
 
     void ClearResource();
 
@@ -112,10 +118,7 @@ public:
         std::string name;
         std::unordered_map<std::string, std::string> properties;
     };
-    const std::vector<ResourceDefinition>& GetResourceDefinitions() const
-    {
-        return m_ResourceDefinitions;
-    }
+    std::vector<ResourceDefinition> GetResourceDefinitions() const;
     void AddResourceDefinition(const std::string& type, const std::string& name,
                                const std::unordered_map<std::string, std::string>& props);
 
@@ -124,6 +127,8 @@ public:
     std::vector<std::string> GetRegisteredLoaderTypes() const;
 
 private:
+    friend void RegisterDefaultLoaderStrategies(ResourceManager& resourceManager);
+    bool RegisterLoaderInternal(std::unique_ptr<ILoaderStrategy> strategy, bool replaceExisting);
     void SubscribeReloadEvents();
     void ReloadShader(const std::string& name);
     void ReloadTexture(const std::string& name);
@@ -139,12 +144,12 @@ private:
     std::unique_ptr<FragmentAssetManager> m_FragmentManager;
     std::unique_ptr<UIModelManager> m_UIModelManager;
 
-    ModelInstanceManager m_ModelInstanceManager;
     ResourceWatcher m_ResourceWatcher;
 
-    std::mutex m_ResourceMutex;
+    mutable std::mutex m_ResourceMutex;
 
-    std::unordered_map<std::string, std::unique_ptr<ILoaderStrategy>> m_Strategies;
+    std::unordered_map<std::string, std::shared_ptr<ILoaderStrategy>> m_Strategies;
+    mutable std::shared_mutex m_StrategyMutex;
 
     std::vector<ResourceDefinition> m_ResourceDefinitions;
 

@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 #include <irrKlang.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class IrrKlangGLMHelpers
 {

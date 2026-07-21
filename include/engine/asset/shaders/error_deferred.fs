@@ -1,6 +1,5 @@
 #version 460 core
 
-layout (location = 0) out vec3 gPosition;
 
 layout (location = 1) out vec3 gNormal;
 
@@ -17,10 +16,10 @@ in vec3 FragPos;
 in vec3 Normal;
 
 uniform uint u_EntityID;
+flat in uint EntityID;
 
 void main() {
 
-    gPosition = FragPos;
 
     gNormal = normalize(Normal);
 
@@ -32,7 +31,7 @@ void main() {
 
     gEmissive = mix(vec3(1.0, 0.0, 1.0), vec3(0.0, 0.0, 0.0), m);
 
-    gEntityID = u_EntityID;
+    gEntityID = EntityID;
 
 }
 

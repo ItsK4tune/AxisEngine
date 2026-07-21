@@ -15,9 +15,6 @@ public:
     static void SetSelectedEntity(entt::entity entity);
     static void RequestFocus(entt::entity entity);
 
-    void Initialize() override
-    {
-    }
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
@@ -36,4 +33,5 @@ private:
 
     char m_SearchFilter[256] = "";
     bool m_CtrlDPressed = false;
+    bool m_DeletePressed = false;
 };

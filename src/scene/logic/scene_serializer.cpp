@@ -22,16 +22,21 @@
 #include <ecs/unit/terrain_component.h>
 #include <ecs/unit/network_components.h>
 #include <engine/platform/logic/io_handler.h>
+#include <navigation/unit/pathfollower_component.h>
+#include <navigation/unit/navmesh_component.h>
 #include <physics/logic/physics_collision_dispatcher.h>
 #include <physics/logic/physics_loader.h>
 #include <platform/logic/monitor_manager.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/interface/i_component_loader_factory.h>
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_load_finalizer.h>
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <set>
+#include <unordered_set>
 
 SceneSerializer::SceneSerializer(ResourceManager& res, IPhysicsWorld* phys, AudioService* audio)
     : m_Res(res), m_Phys(phys), m_Audio(audio)
@@ -51,10 +56,6 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene)
 
 bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, SceneLoadResult& outResult)
 {
-    ResourceManager& res = m_Res;
-    IPhysicsWorld* phys = m_Phys;
-    AudioService* sound = m_Audio;
-    SceneLoadResult result;
     std::string fullPath = FileSystem::getPath(filepath);
     auto roots = YAMLParser::Parse(fullPath);
     if (roots.empty())
@@ -67,11 +68,35 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
         {
             LOGGER_ERROR("SceneSerializer") << "Failed to parse AXS file (empty or malformed): " << fullPath;
         }
-        outResult = std::move(result);
+        outResult = {};
         return false;
     }
 
-    std::string sceneName = filepath;
+    return DeserializeNodes(std::move(roots), filepath, fullPath, scene, outResult);
+}
+
+bool SceneSerializer::DeserializeFromString(const std::string& content, const std::string& sourceName, Scene& scene,
+                                            SceneLoadResult& outResult)
+{
+    auto roots = YAMLParser::ParseString(content);
+    if (roots.empty())
+    {
+        LOGGER_ERROR("SceneSerializer") << "Failed to parse in-memory AXS scene: " << sourceName;
+        outResult = {};
+        return false;
+    }
+    return DeserializeNodes(std::move(roots), sourceName, sourceName, scene, outResult);
+}
+
+bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::string& sourceName,
+                                       const std::string& sourceDisplay, Scene& scene, SceneLoadResult& outResult)
+{
+    ResourceManager& res = m_Res;
+    IPhysicsWorld* phys = m_Phys;
+    AudioService* sound = m_Audio;
+    SceneLoadResult result;
+
+    std::string sceneName = sourceName;
     size_t slash = sceneName.find_last_of("/\\");
     if (slash != std::string::npos)
         sceneName = sceneName.substr(slash + 1);
@@ -83,7 +108,8 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
     {
         if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_scene")
         {
-            LOGGER_WARN("SceneSerializer") << "Potential typo in root key: '" << root.key << "', expected 'axis_scene' in " << filepath;
+            LOGGER_WARN("SceneSerializer")
+                << "Potential typo in root key: '" << root.key << "', expected 'axis_scene' in " << sourceDisplay;
         }
     }
 
@@ -157,13 +183,14 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
                     {
                         std::string name = resNode.GetChildValue("Name");
                         std::string path = resNode.GetChildValue("Path");
-                        res.LoadSound(name, path, sound->GetEngine());
+                        res.LoadSound(name, path);
                         result.loadedSounds.push_back(name);
                     }
                 }
                 else
                 {
-                    LOGGER_WARN("SceneSerializer") << "Unknown resource type '" << resNode.key << "' in Resources block";
+                    LOGGER_WARN("SceneSerializer")
+                        << "Unknown resource type '" << resNode.key << "' in Resources block";
                 }
             }
         }
@@ -178,15 +205,17 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
                 scene.AddComponent<ScaleComponent>(currentEntity);
                 scene.AddComponent<HierarchyComponent>(currentEntity);
                 scene.AddComponent<WorldTransformComponent>(currentEntity);
-                scene.AddComponent<InfoComponent>(currentEntity, entityName,
-                                                      entNode.GetChildValue("Tag", "default"));
+                scene.AddComponent<InfoComponent>(currentEntity, entityName, entNode.GetChildValue("Tag", "default"));
 
                 auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = entNode.GetChildValue("Scene", entNode.GetChildValue("SceneName", sceneName));
                 if (auto* layerNode = entNode.GetChild("Layer"))
                 {
-                    info.layer = std::stoul(layerNode->value);
+                    info.layer = static_cast<uint32_t>(LoaderUtils::SafeStoul(layerNode->value, info.layer));
                 }
+                const std::string activeValue = entNode.GetChildValue("Active", "true");
+                info.isActive = activeValue == "true" || activeValue == "1";
+                info.renderOrder = LoaderUtils::SafeStoi(entNode.GetChildValue("RenderOrder", "0"));
                 result.entities.push_back(currentEntity);
 
                 if (parent != entt::null)
@@ -204,10 +233,13 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
                 {
                     if (child.key == "Component")
                     {
-                        ComponentLoader::Load(child.value, scene, currentEntity, child, res, phys);
+                        if (!ComponentLoader::Load(child.value, scene, currentEntity, child, res, phys))
+                            LOGGER_WARN("SceneSerializer")
+                                << "Unknown component type '" << child.value << "' on entity '" << entityName << "'";
                     }
-                    else if (child.key != "Tag" && child.key != "Layer" && child.key != "Parent" &&
-                             child.key != "Scene" && child.key != "SceneName")
+                    else if (child.key != "Tag" && child.key != "Layer" && child.key != "Active" &&
+                             child.key != "RenderOrder" && child.key != "Parent" && child.key != "Scene" &&
+                             child.key != "SceneName")
                     {
                         ParseEntity(child, currentEntity);
                     }
@@ -222,13 +254,21 @@ bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, Sce
         }
     }
 
+    auto followerView = scene.View<PathFollowerComponent>();
+    for (auto entity : followerView)
+    {
+        auto& follower = followerView.get<PathFollowerComponent>(entity);
+        if (!follower.navigationProviderName.empty())
+            follower.navigationProviderEntity = scene.FindByName(follower.navigationProviderName);
+    }
+
     if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, result, phys, deferredChildren))
     {
         outResult = std::move(result);
         return false;
     }
 
-    LOGGER_INFO("SceneSerializer") << "Finished parsing AXS file: " << fullPath;
+    LOGGER_INFO("SceneSerializer") << "Finished parsing AXS scene: " << sourceDisplay;
     outResult = std::move(result);
     return !outResult.entities.empty();
 }
@@ -256,7 +296,8 @@ std::string SceneSerializer::NormalizeSceneName(const std::string& name)
     size_t dot = n.rfind('.');
     if (dot != std::string::npos)
         n = n.substr(0, dot);
-    std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+    std::transform(n.begin(), n.end(), n.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
     return n;
 }
 
@@ -314,10 +355,26 @@ static std::string Vec2PercentStr(const glm::vec2& v, const glm::bvec2& p)
     return ss.str();
 }
 
-static void WriteComponentHeader(std::ofstream& f, int indent, const std::string& type)
+static void WriteComponentHeader(std::ostream& f, int indent, const std::string& type)
 {
     for (int i = 0; i < indent; ++i) f << "  ";
     f << "Component: " << type << "\n";
+}
+
+static bool IsBuiltInComponentType(const std::string& type)
+{
+    static const std::unordered_set<std::string> types = {
+        "Animator",       "AudioSource",       "Camera",           "CharacterController",
+        "Decal",         "DirectionalLight",  "Fragment",         "LightProbe",
+        "LOD",           "Material",          "NavMesh",          "NavigationGrid",
+        "Network",       "Occlusion",         "ParticleEmitter",  "PathFollower",
+        "PlanarReflection", "PointLight",      "PostProcess",      "ReflectionProbe",
+        "Reflective",    "Renderer",          "RigidBody",        "RigidShape",
+        "Script",        "SkyboxRenderer",    "SpotLight",        "Streaming",
+        "Terrain",       "Transform",         "UIAnimation",      "UIFlex",
+        "UIInteractive", "UIRenderer",        "UIText",           "UITransform",
+        "VideoPlayer"};
+    return types.contains(type);
 }
 
 struct UsedResources
@@ -344,8 +401,13 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
     {
         if (!mr->shaderName.empty())
             ur.shaders.insert(mr->shaderName);
-        if (mr->model)
-            ur.models.insert(mr->model->GetName());
+        if (!reg.all_of<StreamingComponent>(entity))
+        {
+            if (mr->model)
+                ur.models.insert(mr->model->GetName());
+            else if (!mr->modelName.empty())
+                ur.models.insert(mr->modelName);
+        }
     }
     if (auto* mat = reg.try_get<MaterialComponent>(entity))
     {
@@ -379,6 +441,8 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
     {
         if (sky->skybox)
             ur.skyboxes.insert(sky->skybox->GetName());
+        else if (!sky->skyboxName.empty())
+            ur.skyboxes.insert(sky->skyboxName);
         if (!sky->shaderName.empty())
             ur.shaders.insert(sky->shaderName);
     }
@@ -386,6 +450,8 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
     {
         if (uir->texture)
             ur.textures.insert(SceneSerializer::NormalizePath(uir->texture->path));
+        else if (!uir->textureName.empty())
+            ur.textures.insert(SceneSerializer::NormalizePath(uir->textureName));
         if (!uir->shaderName.empty())
             ur.shaders.insert(uir->shaderName);
     }
@@ -405,7 +471,34 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
         if (!audio->resourceName.empty())
             ur.sounds.insert(audio->resourceName);
     }
-
+    if (auto* decal = reg.try_get<DecalComponent>(entity))
+    {
+        if (!decal->albedoTexture.empty())
+            ur.textures.insert(SceneSerializer::NormalizePath(decal->albedoTexture));
+        if (!decal->customShader.empty())
+            ur.shaders.insert(decal->customShader);
+    }
+    if (auto* terrain = reg.try_get<TerrainComponent>(entity))
+    {
+        if (!terrain->heightMapName.empty())
+            ur.textures.insert(terrain->heightMapName);
+        if (!terrain->splatMapName.empty())
+            ur.textures.insert(terrain->splatMapName);
+        ur.textures.insert(terrain->diffuseLayerNames.begin(), terrain->diffuseLayerNames.end());
+        ur.textures.insert(terrain->normalLayerNames.begin(), terrain->normalLayerNames.end());
+        if (!terrain->customShader.empty())
+            ur.shaders.insert(terrain->customShader);
+    }
+    if (auto* lod = reg.try_get<LODComponent>(entity))
+    {
+        for (size_t i = 0; i < std::max(lod->lodModels.size(), lod->lodModelNames.size()); ++i)
+        {
+            if (i < lod->lodModels.size() && lod->lodModels[i])
+                ur.models.insert(lod->lodModels[i]->GetName());
+            else if (i < lod->lodModelNames.size() && !lod->lodModelNames[i].empty())
+                ur.models.insert(lod->lodModelNames[i]);
+        }
+    }
     // Recursively visit children
     if (auto* h = reg.try_get<HierarchyComponent>(entity))
     {
@@ -416,7 +509,7 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
     }
 }
 
-static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity entity, int indent,
+static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity entity, int indent,
                             const std::string& sceneName)
 {
     auto* info = reg.try_get<InfoComponent>(entity);
@@ -437,6 +530,10 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ci, "Tag", info->tag);
     if (info && !info->isActive)
         SerialWriteKV(f, ci, "Active", "false");
+    if (info && info->layer != 0)
+        SerialWriteKV(f, ci, "Layer", std::to_string(info->layer));
+    if (info && info->renderOrder != 0)
+        SerialWriteKV(f, ci, "RenderOrder", std::to_string(info->renderOrder));
     if (info && targetScene.empty() && !info->sceneName.empty())
         SerialWriteKV(f, ci, "Scene", info->sceneName);
 
@@ -470,10 +567,26 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             SerialWriteKV(f, ti, "Scale", Vec3Str(scale->value));
     }
 
+    if (auto* camera = reg.try_get<CameraComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "Camera");
+        SerialWriteKV(f, ti, "Primary", camera->isPrimary ? "true" : "false");
+        SerialWriteKV(f, ti, "FOV", FloatStr(camera->fov));
+        SerialWriteKV(f, ti, "Near", FloatStr(camera->nearPlane));
+        SerialWriteKV(f, ti, "Far", FloatStr(camera->farPlane));
+        SerialWriteKV(f, ti, "AspectRatio", FloatStr(camera->aspectRatio));
+        SerialWriteKV(f, ti, "ScreenWidth", std::to_string(camera->screenWidth));
+        SerialWriteKV(f, ti, "ScreenHeight", std::to_string(camera->screenHeight));
+        SerialWriteKV(f, ti, "Orthographic", camera->isOrthographic ? "true" : "false");
+        SerialWriteKV(f, ti, "OrthoSize", FloatStr(camera->orthoSize));
+        SerialWriteKV(f, ti, "CullingMask", std::to_string(camera->cullingMask));
+    }
+
     if (auto* mr = reg.try_get<MeshRendererComponent>(entity))
     {
         WriteComponentHeader(f, ci, "Renderer");
-        SerialWriteKV(f, ti, "Model", mr->model ? mr->model->GetName() : "");
+        if (!reg.all_of<StreamingComponent>(entity))
+            SerialWriteKV(f, ti, "Model", mr->model ? mr->model->GetName() : mr->modelName);
         if (!mr->shaderName.empty())
             SerialWriteKV(f, ti, "Shader", mr->shaderName);
         SerialWriteKV(f, ti, "Order", std::to_string(mr->order));
@@ -496,6 +609,18 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "Emission", Vec3Str(mat->desc.emission));
         SerialWriteKV(f, ti, "UVScale", Vec2Str(mat->desc.uvScale));
         SerialWriteKV(f, ti, "UVOffset", Vec2Str(mat->desc.uvOffset));
+
+        SerialWriteKV(f, ti, "BlendSrc", std::to_string(static_cast<int>(mat->desc.blendSrc)));
+        SerialWriteKV(f, ti, "BlendDst", std::to_string(static_cast<int>(mat->desc.blendDst)));
+        SerialWriteKV(f, ti, "Type", mat->desc.type);
+        std::ostringstream ports;
+        for (size_t i = 0; i < std::size(mat->desc.ports.data); ++i)
+        {
+            if (i != 0)
+                ports << ' ';
+            ports << FloatStr(mat->desc.ports.data[i]);
+        }
+        SerialWriteKV(f, ti, "Ports", ports.str());
 
         if (!mat->desc.albedoPath.empty())
             SerialWriteKV(f, ti, "Albedo", SceneSerializer::NormalizePath(mat->desc.albedoPath));
@@ -532,6 +657,8 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "DirectionalLight");
         SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
+        SerialWriteKV(f, ti, "CastShadow", l->isCastShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "Direction", Vec3Str(l->direction));
         SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
         SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
         SerialWriteKV(f, ti, "Ambient", FloatStr(l->ambient));
@@ -542,15 +669,23 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "PointLight");
         SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
+        SerialWriteKV(f, ti, "CastShadow", l->isCastShadow ? "true" : "false");
         SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
         SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
         SerialWriteKV(f, ti, "Radius", FloatStr(l->radius));
+        SerialWriteKV(f, ti, "Constant", FloatStr(l->constant));
+        SerialWriteKV(f, ti, "Linear", FloatStr(l->linear));
+        SerialWriteKV(f, ti, "Quadratic", FloatStr(l->quadratic));
+        SerialWriteKV(f, ti, "Ambient", FloatStr(l->ambient));
+        SerialWriteKV(f, ti, "Diffuse", FloatStr(l->diffuse));
+        SerialWriteKV(f, ti, "Specular", FloatStr(l->specular));
     }
     if (auto* l = reg.try_get<SpotLightComponent>(entity))
     {
         WriteComponentHeader(f, ci, "SpotLight");
         SerialWriteKV(f, ti, "Active", l->active ? "true" : "false");
         SerialWriteKV(f, ti, "CastShadow", l->isCastShadow ? "true" : "false");
+        SerialWriteKV(f, ti, "Direction", Vec3Str(l->direction));
         SerialWriteKV(f, ti, "Color", Vec3Str(l->color));
         SerialWriteKV(f, ti, "Intensity", FloatStr(l->intensity));
         SerialWriteKV(f, ti, "Radius", FloatStr(l->radius));
@@ -579,6 +714,20 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         glm::vec3 euler = glm::degrees(glm::eulerAngles(rs->rotation));
         if (glm::length(euler) > 0.0001f)
             SerialWriteKV(f, ti, "Rotation", Vec3Str(euler));
+        if (!rs->children.empty())
+        {
+            f << std::string(ti * 2, ' ') << "Shapes:\n";
+            for (const auto& child : rs->children)
+            {
+                f << std::string((ti + 1) * 2, ' ') << "Shape:\n";
+                SerialWriteKV(f, ti + 2, "Type", ShapeTypeToString(child.type));
+                SerialWriteKV(f, ti + 2, "Position", Vec3Str(child.position));
+                SerialWriteKV(f, ti + 2, "Rotation", Vec3Str(glm::degrees(glm::eulerAngles(child.rotation))));
+                SerialWriteKV(f, ti + 2, "Size", Vec3Str(child.size));
+                SerialWriteKV(f, ti + 2, "Radius", FloatStr(child.radius));
+                SerialWriteKV(f, ti + 2, "Height", FloatStr(child.height));
+            }
+        }
     }
     if (auto* rb = reg.try_get<RigidBodyComponent>(entity))
     {
@@ -587,6 +736,12 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "BodyType", rb->isStatic ? "STATIC" : (rb->isKinematic ? "KINEMATIC" : "DYNAMIC"));
         SerialWriteKV(f, ti, "LinearDamping", FloatStr(rb->linearDamping));
         SerialWriteKV(f, ti, "AngularDamping", FloatStr(rb->angularDamping));
+        SerialWriteKV(f, ti, "LinearFactor", Vec3Str(rb->linearFactor));
+        SerialWriteKV(f, ti, "AngularFactor", Vec3Str(rb->angularFactor));
+        SerialWriteKV(f, ti, "AttachToParent", rb->isAttachedToParent ? "true" : "false");
+        SerialWriteKV(f, ti, "ParentMatter", rb->isParentMatter ? "true" : "false");
+        SerialWriteKV(f, ti, "ChildrenMatter", rb->isChildrenMatter ? "true" : "false");
+        SerialWriteKV(f, ti, "CollisionEnabled", rb->isCollisionEnabled ? "true" : "false");
         const glm::vec3 linearVelocity = rb->body ? rb->body->GetLinearVelocity() : rb->initialLinearVelocity;
         const glm::vec3 angularVelocity = rb->body ? rb->body->GetAngularVelocity() : rb->initialAngularVelocity;
         if (glm::length(linearVelocity) > 0.0001f)
@@ -597,11 +752,17 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             SerialWriteKV(f, ti, "IsTrigger", "true");
     }
 
+    if (auto* cc = reg.try_get<CharacterControllerComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "CharacterController");
+        SerialWriteKV(f, ti, "Radius", FloatStr(cc->radius));
+        SerialWriteKV(f, ti, "Height", FloatStr(cc->height));
+        SerialWriteKV(f, ti, "StepHeight", FloatStr(cc->stepHeight));
+        SerialWriteKV(f, ti, "MaxSlope", FloatStr(cc->maxSlope));
+    }
+
     if (auto* frag = reg.try_get<FragmentComponent>(entity))
     {
-        LOGGER_INFO("SceneSerializer") << "[FRAG-SAVE] Entity '" << name << "' has Fragment. path='" << frag->path
-                                       << "' overrides.size=" << frag->overrides.size() << " overrides='"
-                                       << frag->overrides << "'";
         WriteComponentHeader(f, ci, "Fragment");
         SerialWriteKV(f, ti, "Path", SceneSerializer::NormalizePath(frag->path));
         if (!frag->overrides.empty())
@@ -621,12 +782,29 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         WriteComponentHeader(f, ci, "AudioSource");
         if (!audio->resourceName.empty())
             SerialWriteKV(f, ti, "Audio", audio->resourceName);
+        else if (!audio->filePath.empty())
+            SerialWriteKV(f, ti, "Path", SceneSerializer::NormalizePath(audio->filePath));
         SerialWriteKV(f, ti, "PlayOnAwake", audio->playOnAwake ? "true" : "false");
         SerialWriteKV(f, ti, "Loop", audio->loop ? "true" : "false");
         SerialWriteKV(f, ti, "Volume", FloatStr(audio->volume));
         SerialWriteKV(f, ti, "Pitch", FloatStr(audio->pitch));
+        SerialWriteKV(f, ti, "Pan", FloatStr(audio->pan));
         SerialWriteKV(f, ti, "Speed", FloatStr(audio->speed));
         SerialWriteKV(f, ti, "Is3d", audio->is3D ? "true" : "false");
+        SerialWriteKV(f, ti, "MinDistance", FloatStr(audio->minDistance));
+        SerialWriteKV(f, ti, "MaxDistance", FloatStr(audio->maxDistance));
+        SerialWriteKV(f, ti, "Velocity", Vec3Str(audio->velocity));
+    }
+
+    if (auto* video = reg.try_get<VideoPlayerComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "VideoPlayer");
+        SerialWriteKV(f, ti, "Path", SceneSerializer::NormalizePath(video->filePath));
+        SerialWriteKV(f, ti, "Loop", video->isLooping ? "true" : "false");
+        SerialWriteKV(f, ti, "Speed", FloatStr(video->speed));
+        SerialWriteKV(f, ti, "PlayOnAwake", video->playOnAwake ? "true" : "false");
+        SerialWriteKV(f, ti, "Volume", FloatStr(video->volume));
+        SerialWriteKV(f, ti, "MaxDecodes", std::to_string(video->maxDecodes));
     }
 
     if (auto* pe = reg.try_get<ParticleEmitterComponent>(entity))
@@ -639,12 +817,19 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
             SerialWriteKV(f, ti, "Shader", pe->customShader);
         SerialWriteKV(f, ti, "SpawnRate", FloatStr(pe->emitter.SpawnRate));
         SerialWriteKV(f, ti, "Lifetime", FloatStr(pe->emitter.LifeTime));
+        SerialWriteKV(f, ti, "Shape",
+                      pe->emitter.Shape == ParticleEmitter::EmissionShape::CONE
+                          ? "CONE"
+                          : (pe->emitter.Shape == ParticleEmitter::EmissionShape::FIGURE_EIGHT ? "FIGURE_EIGHT"
+                                                                                              : "DIRECTIONAL"));
+        SerialWriteKV(f, ti, "Duration", FloatStr(pe->emissionDuration));
         SerialWriteKV(f, ti, "StartSize", FloatStr(pe->emitter.StartSize));
         SerialWriteKV(f, ti, "EndSize", FloatStr(pe->emitter.EndSize));
         SerialWriteKV(f, ti, "StartColor", Vec4Str(pe->emitter.StartColor));
         SerialWriteKV(f, ti, "EndColor", Vec4Str(pe->emitter.EndColor));
         SerialWriteKV(f, ti, "MinVelocity", Vec3Str(pe->emitter.MinVelocity));
         SerialWriteKV(f, ti, "MaxVelocity", Vec3Str(pe->emitter.MaxVelocity));
+        SerialWriteKV(f, ti, "MaxParticles", std::to_string(pe->maxParticles));
     }
 
     if (auto* pp = reg.try_get<PostProcessComponent>(entity))
@@ -654,9 +839,10 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         std::string effects;
         for (auto& eff : pp->effects)
         {
-            effects += eff.shaderName + ":" + std::to_string(eff.priority) + ":" + FloatStr(eff.x) + ":" +
-                       FloatStr(eff.y) + ":" + FloatStr(eff.w) + ":" + FloatStr(eff.h) + ":" +
-                       (eff.affectUI ? "1" : "0") + " ";
+            effects += eff.shaderName + ":" + std::to_string(eff.priority) + ":" + std::to_string(eff.x) + ":" +
+                       std::to_string(eff.y) + ":" + std::to_string(eff.w) + ":" + std::to_string(eff.h) + ":" +
+                       (eff.affectUI ? "1" : "0") + ":" + std::to_string(static_cast<uint32_t>(eff.inputs)) + ":" +
+                       (eff.enabled ? "1" : "0") + " ";
         }
         if (!effects.empty())
             SerialWriteKV(f, ti, "Effects", effects);
@@ -669,6 +855,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "position", Vec2PercentStr(uit->position, uit->positionIsPercent));
         SerialWriteKV(f, ti, "size", Vec2PercentStr(uit->size, uit->sizeIsPercent));
         SerialWriteKV(f, ti, "zIndex", std::to_string(uit->zIndex));
+        SerialWriteKV(f, ti, "rotation", FloatStr(uit->rotation));
         SerialWriteKV(f, ti, "pivot", Vec2Str(uit->pivot));
         SerialWriteKV(f, ti, "flipX", uit->flipX ? "true" : "false");
         SerialWriteKV(f, ti, "flipY", uit->flipY ? "true" : "false");
@@ -682,8 +869,9 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "UIRenderer");
         SerialWriteKV(f, ti, "color", Vec4Str(uir->color));
-        if (uir->texture)
-            SerialWriteKV(f, ti, "texture", SceneSerializer::NormalizePath(uir->texture->path));
+        const std::string textureName = uir->texture ? uir->texture->path : uir->textureName;
+        if (!textureName.empty())
+            SerialWriteKV(f, ti, "texture", SceneSerializer::NormalizePath(textureName));
         if (!uir->shaderName.empty())
             SerialWriteKV(f, ti, "shader", uir->shaderName);
     }
@@ -694,8 +882,7 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "text", "\"" + uitext->text + "\"");
         SerialWriteKV(f, ti, "color", Vec4Str(uitext->color));
         SerialWriteKV(f, ti, "scale", FloatStr(uitext->scale));
-        if (uitext->font)
-            SerialWriteKV(f, ti, "fontSize", std::to_string(uitext->font->GetFontSize()));
+        SerialWriteKV(f, ti, "fontSize", std::to_string(uitext->font ? uitext->font->GetFontSize() : uitext->fontSize));
         SerialWriteKV(f, ti, "alignment",
                       (uitext->alignment == TextAlignment::Center
                            ? "Center"
@@ -705,6 +892,8 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "wrapByWord", uitext->wrapByWord ? "true" : "false");
         if (!uitext->fontName.empty())
             SerialWriteKV(f, ti, "font", uitext->fontName);
+        if (!uitext->shaderName.empty())
+            SerialWriteKV(f, ti, "shader", uitext->shaderName);
     }
 
     if (auto* uif = reg.try_get<UIFlexLayoutComponent>(entity))
@@ -716,13 +905,36 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "padding", Vec4Str(uif->padding));
     }
 
+    if (auto* interactive = reg.try_get<UIInteractiveComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "UIInteractive");
+        SerialWriteKV(f, ti, "Interactable", interactive->interactable ? "true" : "false");
+    }
+
+    if (auto* animation = reg.try_get<UIAnimationComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "UIAnimation");
+        SerialWriteKV(f, ti, "Enabled", animation->enabled ? "true" : "false");
+        SerialWriteKV(f, ti, "AnimateColor", animation->animateColor ? "true" : "false");
+        SerialWriteKV(f, ti, "AnimateScale", animation->animateScale ? "true" : "false");
+        SerialWriteKV(f, ti, "NormalColor", Vec4Str(animation->normalColor));
+        SerialWriteKV(f, ti, "HoverColor", Vec4Str(animation->hoverColor));
+        SerialWriteKV(f, ti, "PressedColor", Vec4Str(animation->pressedColor));
+        SerialWriteKV(f, ti, "NormalScale", FloatStr(animation->normalScale));
+        SerialWriteKV(f, ti, "HoverScale", FloatStr(animation->hoverScale));
+        SerialWriteKV(f, ti, "PressedScale", FloatStr(animation->pressedScale));
+        SerialWriteKV(f, ti, "TransitionSpeed", FloatStr(animation->transitionSpeed));
+    }
+
     if (auto* sky = reg.try_get<SkyboxRenderComponent>(entity))
     {
         WriteComponentHeader(f, ci, "SkyboxRenderer");
-        if (sky->skybox)
-            SerialWriteKV(f, ti, "Skybox", sky->skybox->GetName());
+        const std::string skyboxName = sky->skybox ? sky->skybox->GetName() : sky->skyboxName;
+        if (!skyboxName.empty())
+            SerialWriteKV(f, ti, "Skybox", skyboxName);
         if (!sky->shaderName.empty())
             SerialWriteKV(f, ti, "Shader", sky->shaderName);
+        SerialWriteKV(f, ti, "Primary", sky->isPrimary ? "true" : "false");
     }
 
     if (auto* rp = reg.try_get<ReflectionProbeComponent>(entity))
@@ -749,17 +961,36 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "PlanarReflection");
         SerialWriteKV(f, ti, "Resolution", std::to_string(pr->resolution));
+        SerialWriteKV(f, ti, "ResolutionY", std::to_string(pr->resolution_y));
+        SerialWriteKV(f, ti, "ResolutionScale", FloatStr(pr->resolutionScale));
+        SerialWriteKV(f, ti, "UpdateIntervalFrames", std::to_string(pr->updateIntervalFrames));
         SerialWriteKV(f, ti, "Normal", Vec3Str(pr->normal));
     }
 
     if (auto* d = reg.try_get<DecalComponent>(entity))
     {
         WriteComponentHeader(f, ci, "Decal");
+        if (!d->albedoTexture.empty())
+            SerialWriteKV(f, ti, "Albedo", d->albedoTexture);
         SerialWriteKV(f, ti, "Opacity", FloatStr(d->opacity));
         SerialWriteKV(f, ti, "Roughness", FloatStr(d->roughness));
         SerialWriteKV(f, ti, "Metallic", FloatStr(d->metallic));
         SerialWriteKV(f, ti, "Reflectivity", FloatStr(d->reflectivity));
         SerialWriteKV(f, ti, "TintColor", Vec4Str(d->tintColor));
+        SerialWriteKV(f, ti, "Lifetime", FloatStr(d->lifetime));
+        SerialWriteKV(f, ti, "RenderOrder", std::to_string(d->renderOrder));
+        SerialWriteKV(f, ti, "LightingMode", std::to_string(d->lightingMode));
+        if (!d->targetTags.empty())
+        {
+            std::ostringstream tags;
+            for (size_t i = 0; i < d->targetTags.size(); ++i)
+            {
+                if (i != 0)
+                    tags << ' ';
+                tags << d->targetTags[i];
+            }
+            SerialWriteKV(f, ti, "TargetTags", tags.str());
+        }
         if (!d->customShader.empty())
             SerialWriteKV(f, ti, "Shader", d->customShader);
     }
@@ -769,6 +1000,15 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         WriteComponentHeader(f, ci, "LightProbe");
         SerialWriteKV(f, ti, "Intensity", FloatStr(lp->intensity));
         SerialWriteKV(f, ti, "Radius", FloatStr(lp->radius));
+        SerialWriteKV(f, ti, "Tint", Vec3Str(lp->tint));
+        std::ostringstream sh;
+        for (const glm::vec3& coefficient : lp->sh)
+        {
+            if (sh.tellp() > 0)
+                sh << ' ';
+            sh << Vec3Str(coefficient);
+        }
+        SerialWriteKV(f, ti, "SH", sh.str());
     }
 
     if (auto* t = reg.try_get<TerrainComponent>(entity))
@@ -776,10 +1016,31 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         WriteComponentHeader(f, ci, "Terrain");
         if (!t->heightMapName.empty())
             SerialWriteKV(f, ti, "HeightMap", t->heightMapName);
+        if (!t->splatMapName.empty())
+            SerialWriteKV(f, ti, "SplatMap", t->splatMapName);
+        auto writeNames = [&](const char* key, const std::vector<std::string>& names) {
+            if (names.empty())
+                return;
+            std::ostringstream value;
+            for (size_t i = 0; i < names.size(); ++i)
+            {
+                if (i != 0)
+                    value << ' ';
+                value << names[i];
+            }
+            SerialWriteKV(f, ti, key, value.str());
+        };
+        writeNames("DiffuseLayers", t->diffuseLayerNames);
+        writeNames("NormalLayers", t->normalLayerNames);
         SerialWriteKV(f, ti, "Size", Vec3Str(t->terrainSize));
+        SerialWriteKV(f, ti, "MaxHeight", FloatStr(t->maxHeight));
         SerialWriteKV(f, ti, "Resolution", std::to_string(t->resolution));
+        SerialWriteKV(f, ti, "ChunkSize", std::to_string(t->chunkSize));
+        SerialWriteKV(f, ti, "LODDistances", Vec3Str(t->lodDistances));
         SerialWriteKV(f, ti, "TextureScale", FloatStr(t->textureScale));
         SerialWriteKV(f, ti, "CastShadows", t->castShadows ? "true" : "false");
+        SerialWriteKV(f, ti, "GeneratePhysics", t->generatePhysics ? "true" : "false");
+        SerialWriteKV(f, ti, "Walkable", t->isWalkable ? "true" : "false");
         if (!t->customShader.empty())
             SerialWriteKV(f, ti, "Shader", t->customShader);
     }
@@ -788,19 +1049,158 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
     {
         WriteComponentHeader(f, ci, "LOD");
         std::string models, dists;
-        const size_t pairCount = std::min(lod->lodModels.size(), lod->lodDistancesSq.size());
+        const size_t pairCount =
+            std::min(std::max(lod->lodModels.size(), lod->lodModelNames.size()), lod->lodDistancesSq.size());
         for (size_t i = 0; i < pairCount; ++i)
         {
-            if (!lod->lodModels[i])
+            const std::string modelName = i < lod->lodModels.size() && lod->lodModels[i]
+                                              ? lod->lodModels[i]->GetName()
+                                              : (i < lod->lodModelNames.size() ? lod->lodModelNames[i] : "");
+            if (modelName.empty())
                 continue;
 
-            models += lod->lodModels[i]->GetName() + " ";
+            models += modelName + " ";
             dists += FloatStr(sqrtf(lod->lodDistancesSq[i])) + " ";
         }
         if (!models.empty())
             SerialWriteKV(f, ti, "Models", models);
         if (!dists.empty())
             SerialWriteKV(f, ti, "Distances", dists);
+    }
+
+    if (auto* follower = reg.try_get<PathFollowerComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "PathFollower");
+        SerialWriteKV(f, ti, "MoveSpeed", FloatStr(follower->moveSpeed));
+        SerialWriteKV(f, ti, "RotationSpeed", FloatStr(follower->rotationSpeed));
+        SerialWriteKV(f, ti, "MaxRotationSpeed", FloatStr(follower->maxRotationSpeed));
+        SerialWriteKV(f, ti, "RotationAcceleration", FloatStr(follower->rotationAcceleration));
+        SerialWriteKV(f, ti, "RotationOffset", Vec3Str(follower->rotationOffset));
+        SerialWriteKV(f, ti, "ArrivalDistance", FloatStr(follower->arrivalDistance));
+        SerialWriteKV(f, ti, "RecordDebugPath", follower->recordDebugPath ? "true" : "false");
+        SerialWriteKV(f, ti, "Provider", std::to_string(static_cast<int>(follower->pathfindingOptions.provider)));
+        SerialWriteKV(f, ti, "Criteria", std::to_string(static_cast<int>(follower->pathfindingOptions.criteria)));
+        std::ostringstream preferredTags;
+        for (size_t i = 0; i < follower->pathfindingOptions.preferredTags.size(); ++i)
+        {
+            if (i != 0)
+                preferredTags << ' ';
+            preferredTags << follower->pathfindingOptions.preferredTags[i];
+        }
+        SerialWriteKV(f, ti, "PreferredTags", preferredTags.str());
+        SerialWriteKV(f, ti, "TagWeightBonus", FloatStr(follower->pathfindingOptions.tagWeightBonus));
+        SerialWriteKV(f, ti, "AltitudePenaltyWeight", FloatStr(follower->pathfindingOptions.altitudePenaltyWeight));
+        std::string providerName = follower->navigationProviderName;
+        if (reg.valid(follower->navigationProviderEntity))
+        {
+            if (auto* providerInfo = reg.try_get<InfoComponent>(follower->navigationProviderEntity))
+                providerName = providerInfo->name;
+        }
+        if (!providerName.empty())
+            SerialWriteKV(f, ti, "ProviderEntity", providerName);
+        SerialWriteKV(f, ti, "LockXPitch", follower->lockXPitch ? "true" : "false");
+        SerialWriteKV(f, ti, "LockYYaw", follower->lockYYaw ? "true" : "false");
+        SerialWriteKV(f, ti, "LockZRoll", follower->lockZRoll ? "true" : "false");
+        SerialWriteKV(f, ti, "LockMoveX", follower->lockMoveX ? "true" : "false");
+        SerialWriteKV(f, ti, "LockMoveY", follower->lockMoveY ? "true" : "false");
+        SerialWriteKV(f, ti, "LockMoveZ", follower->lockMoveZ ? "true" : "false");
+        SerialWriteKV(f, ti, "LocalAvoidance", follower->localAvoidanceEnabled ? "true" : "false");
+        SerialWriteKV(f, ti, "SeparationRadius", FloatStr(follower->separationRadius));
+        SerialWriteKV(f, ti, "SeparationWeight", FloatStr(follower->separationWeight));
+        SerialWriteKV(f, ti, "ObstacleAvoidanceDistance", FloatStr(follower->obstacleAvoidanceDistance));
+        SerialWriteKV(f, ti, "ObstacleAvoidanceWeight", FloatStr(follower->obstacleAvoidanceWeight));
+    }
+
+    if (auto* nav = reg.try_get<NavMeshComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "NavMesh");
+        SerialWriteKV(f, ti, "IsDynamic", nav->isDynamic ? "true" : "false");
+        SerialWriteKV(f, ti, "NeedsRebuild", nav->needsRebuild ? "true" : "false");
+        SerialWriteKV(f, ti, "TerrainGridResolution", std::to_string(nav->terrainGridResolution));
+        SerialWriteKV(f, ti, "WalkableNormalY", FloatStr(nav->walkableNormalY));
+        SerialWriteKV(f, ti, "CarveHeightPadding", FloatStr(nav->carveHeightPadding));
+        SerialWriteKV(f, ti, "CarveAgentRadius", FloatStr(nav->carveAgentRadius));
+        if (!nav->vertices.empty())
+        {
+            for (int i = 0; i < ti; ++i) f << "  ";
+            f << "Vertices:\n";
+            for (const glm::vec3& vertex : nav->vertices) SerialWriteKV(f, ti + 1, "Vertex", Vec3Str(vertex));
+        }
+        if (!nav->triangles.empty())
+        {
+            for (int i = 0; i < ti; ++i) f << "  ";
+            f << "Triangles:\n";
+            for (const NavMeshTriangle& triangle : nav->triangles)
+            {
+                for (int i = 0; i < ti + 1; ++i) f << "  ";
+                f << "Triangle:\n";
+                SerialWriteKV(f, ti + 2, "Indices", std::to_string(triangle.indices[0]) + " " +
+                                                           std::to_string(triangle.indices[1]) + " " +
+                                                           std::to_string(triangle.indices[2]));
+                SerialWriteKV(f, ti + 2, "Center", Vec3Str(triangle.center));
+                SerialWriteKV(f, ti + 2, "Normal", Vec3Str(triangle.normal));
+                SerialWriteKV(f, ti + 2, "Tag", triangle.tag);
+            }
+        }
+        if (!nav->nodes.empty())
+        {
+            for (int i = 0; i < ti; ++i) f << "  ";
+            f << "Nodes:\n";
+            for (const NavMeshNode& node : nav->nodes)
+            {
+                for (int i = 0; i < ti + 1; ++i) f << "  ";
+                f << "Node:\n";
+                SerialWriteKV(f, ti + 2, "Position", Vec3Str(node.position));
+                SerialWriteKV(f, ti + 2, "TriangleIndex", std::to_string(node.triangleIndex));
+                SerialWriteKV(f, ti + 2, "Tag", node.tag);
+                std::ostringstream neighbors;
+                for (size_t i = 0; i < node.neighbors.size(); ++i)
+                {
+                    if (i != 0)
+                        neighbors << ' ';
+                    neighbors << node.neighbors[i];
+                }
+                SerialWriteKV(f, ti + 2, "Neighbors", neighbors.str());
+            }
+        }
+    }
+
+    if (auto* grid = reg.try_get<NavigationGridComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "NavigationGrid");
+        SerialWriteKV(f, ti, "Origin", Vec3Str(grid->origin));
+        SerialWriteKV(f, ti, "Width", std::to_string(grid->width));
+        SerialWriteKV(f, ti, "Height", std::to_string(grid->height));
+        SerialWriteKV(f, ti, "CellSize", FloatStr(grid->cellSize));
+        SerialWriteKV(f, ti, "AllowDiagonal", grid->allowDiagonal ? "true" : "false");
+        if (!grid->cells.empty())
+        {
+            for (int i = 0; i < ti; ++i) f << "  ";
+            f << "Cells:\n";
+            for (const NavigationGridCell& cell : grid->cells)
+            {
+                for (int i = 0; i < ti + 1; ++i) f << "  ";
+                f << "Cell:\n";
+                SerialWriteKV(f, ti + 2, "Walkable", cell.walkable ? "true" : "false");
+                SerialWriteKV(f, ti + 2, "Cost", FloatStr(cell.cost));
+                SerialWriteKV(f, ti + 2, "Tag", cell.tag);
+            }
+        }
+    }
+
+    if (auto* occlusion = reg.try_get<OcclusionComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "Occlusion");
+        SerialWriteKV(f, ti, "Visible", occlusion->isVisible ? "true" : "false");
+    }
+
+    if (auto* streaming = reg.try_get<StreamingComponent>(entity))
+    {
+        WriteComponentHeader(f, ci, "Streaming");
+        SerialWriteKV(f, ti, "Model", SceneSerializer::NormalizePath(streaming->modelPath));
+        SerialWriteKV(f, ti, "Static", streaming->isStatic ? "true" : "false");
+        SerialWriteKV(f, ti, "LoadDistance", FloatStr(streaming->loadDistance));
+        SerialWriteKV(f, ti, "UnloadDistance", FloatStr(streaming->unloadDistance));
     }
 
     if (auto* sc = reg.try_get<ScriptComponent>(entity); sc && !sc->className.empty())
@@ -815,6 +1215,16 @@ static void SerializeEntity(std::ofstream& f, entt::registry& reg, entt::entity 
         SerialWriteKV(f, ti, "NetworkId", std::to_string(net->networkId));
         SerialWriteKV(f, ti, "OwnerId", std::to_string(net->ownerId));
         SerialWriteKV(f, ti, "IsLocal", net->isLocal ? "true" : "false");
+        SerialWriteKV(f, ti, "ReplicateTransform", net->replicateTransform ? "true" : "false");
+        SerialWriteKV(f, ti, "InterestRadius", FloatStr(net->interestRadius));
+    }
+
+    for (auto& [type, component] : ComponentLoader::CollectSerializedComponents(reg, entity))
+    {
+        if (IsBuiltInComponentType(type))
+            continue;
+        WriteComponentHeader(f, ci, type);
+        YAMLWriter::Write(f, component.children, ti * YAMLWriter::IndentWidth);
     }
 
     // Parent
@@ -850,24 +1260,39 @@ static bool HasSerializableComponents(entt::registry& reg, entt::entity entity)
     auto* script = reg.try_get<ScriptComponent>(entity);
     const bool hasNamedScript = script && !script->className.empty();
     return hasNamedScript ||
-           reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent,
-                      MaterialComponent, DirectionalLightComponent, PointLightComponent, SpotLightComponent,
-                      CameraComponent, RigidShapeComponent, RigidBodyComponent, CharacterControllerComponent,
-                      AudioSourceComponent, VideoPlayerComponent, AnimationComponent, ParticleEmitterComponent,
-                      PostProcessComponent, UITransformComponent, UIRendererComponent, UITextComponent,
-                      UIFlexLayoutComponent, SkyboxRenderComponent, ReflectionProbeComponent, ReflectiveComponent,
-                      PlanarReflectionComponent, DecalComponent, LightProbeComponent, TerrainComponent, LODComponent,
-                      NetworkComponent, FragmentComponent>(entity);
+           reg.any_of<PositionComponent, RotationComponent, ScaleComponent, MeshRendererComponent, MaterialComponent,
+                      DirectionalLightComponent, PointLightComponent, SpotLightComponent, CameraComponent,
+                      RigidShapeComponent, RigidBodyComponent, CharacterControllerComponent, AudioSourceComponent,
+                      VideoPlayerComponent, AnimationComponent, ParticleEmitterComponent, PostProcessComponent,
+                      UITransformComponent, UIRendererComponent, UITextComponent, UIFlexLayoutComponent,
+                      UIInteractiveComponent, UIAnimationComponent, SkyboxRenderComponent, ReflectionProbeComponent,
+                      ReflectiveComponent, PlanarReflectionComponent, DecalComponent, LightProbeComponent,
+                       TerrainComponent, LODComponent, PathFollowerComponent, NavMeshComponent,
+                       NavigationGridComponent, OcclusionComponent, StreamingComponent, NetworkComponent,
+                       FragmentComponent>(entity) ||
+           ComponentLoader::HasSerializedComponents(reg, entity);
 }
 
-bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constScene,
-                                const std::string& sceneName)
+bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constScene, const std::string& sceneName)
 {
-    ResourceManager& res = m_Res;
-    Scene& scene = const_cast<Scene&>(constScene);
     std::ofstream f(filepath);
     if (!f.is_open())
         return false;
+    return SerializeToStream(f, constScene, sceneName);
+}
+
+std::string SceneSerializer::SerializeToString(const Scene& scene, const std::string& sceneName)
+{
+    std::ostringstream stream;
+    if (!SerializeToStream(stream, scene, sceneName))
+        return {};
+    return stream.str();
+}
+
+bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene, const std::string& sceneName)
+{
+    ResourceManager& res = m_Res;
+    Scene& scene = const_cast<Scene&>(constScene);
     f << "axis_scene:\n";
 
     std::string normName = SceneSerializer::NormalizeSceneName(sceneName);
@@ -987,18 +1412,23 @@ bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constS
 
         f << "    " << def.type << ":\n";
         f << "      Name: " << def.name << "\n";
-        for (const auto& prop : def.properties)
+        std::vector<std::string> propertyKeys;
+        propertyKeys.reserve(def.properties.size());
+        for (const auto& [key, value] : def.properties)
+            propertyKeys.push_back(key);
+        std::sort(propertyKeys.begin(), propertyKeys.end());
+        for (const auto& propertyKey : propertyKeys)
         {
-            std::string val = prop.second;
-            if (prop.first == "Path" || prop.first == "Vertex" || prop.first == "Fragment" ||
-                prop.first == "Geometry" || prop.first == "Albedo" || prop.first == "Normal" ||
-                prop.first == "MetallicMap" || prop.first == "RoughnessMap" || prop.first == "Right" ||
-                prop.first == "Left" || prop.first == "Top" || prop.first == "Bottom" || prop.first == "Front" ||
-                prop.first == "Back")
+            std::string val = def.properties.at(propertyKey);
+            if (propertyKey == "Path" || propertyKey == "Vertex" || propertyKey == "Fragment" ||
+                propertyKey == "Geometry" || propertyKey == "Albedo" || propertyKey == "Normal" ||
+                propertyKey == "MetallicMap" || propertyKey == "RoughnessMap" || propertyKey == "Right" ||
+                propertyKey == "Left" || propertyKey == "Top" || propertyKey == "Bottom" ||
+                propertyKey == "Front" || propertyKey == "Back")
             {
                 val = SceneSerializer::NormalizePath(val);
             }
-            SerialWriteKV(f, 3, prop.first, val);
+            SerialWriteKV(f, 3, propertyKey, val);
         }
     }
 
@@ -1027,15 +1457,9 @@ bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constS
         {
             if (!HasSerializableComponents(scene.GetRegistry(), entity))
                 continue;
-            if (scene.HasAllComponents<FragmentComponent>(entity))
-            {
-                auto& fc = scene.GetComponent<FragmentComponent>(entity);
-                LOGGER_INFO("SceneSerializer") << "[FRAG-ROOT] Writing root fragment entity '" << info.name
-                                               << "' overrides.size=" << fc.overrides.size();
-            }
             SerializeEntity(f, scene.GetRegistry(), entity, 2, normName);
         }
     }
 
-    return true;
+    return f.good();
 }

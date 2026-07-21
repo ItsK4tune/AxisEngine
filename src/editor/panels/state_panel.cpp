@@ -176,17 +176,16 @@ void StatePanel::OnImGui(Scene& scene)
         canvas_size.y = 50.0f;
     ImVec2 canvas_end = ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y);
 
-    static ImVec2 scrolling = ImVec2(0.0f, 0.0f);
-    static float zoom = 0.9f;
-    static bool firstFrame = true;
+    ImVec2 scrolling(m_ScrollX, m_ScrollY);
+    float& zoom = m_Zoom;
 
-    if (firstFrame || resetView)
+    if (m_FirstFrame || resetView)
     {
         float rows = (float)std::max(1, (nodeCount + columns - 1) / columns);
         float graphWidth = nodeCount == 0 ? 240.0f : (std::min(nodeCount, columns) - 1) * xSpacing + 220.0f;
         float graphHeight = nodeCount == 0 ? 72.0f : (rows - 1.0f) * ySpacing + 72.0f;
         scrolling = ImVec2((canvas_size.x - graphWidth * zoom) * 0.5f, (canvas_size.y - graphHeight * zoom) * 0.35f);
-        firstFrame = false;
+        m_FirstFrame = false;
     }
 
     if (ImGui::IsWindowHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0f))
@@ -207,6 +206,9 @@ void StatePanel::OnImGui(Scene& scene)
         scrolling.x -= mouse_in_canvas.x * (zoom / prevZoom - 1.0f);
         scrolling.y -= mouse_in_canvas.y * (zoom / prevZoom - 1.0f);
     }
+
+    m_ScrollX = scrolling.x;
+    m_ScrollY = scrolling.y;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddRectFilled(canvas_pos, canvas_end, IM_COL32(20, 20, 25, 255));

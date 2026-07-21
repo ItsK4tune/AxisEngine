@@ -62,6 +62,8 @@ private:
     };
 
     void WorkerLoop();
+    bool TryExecuteOne();
+    void RunJob(Job job);
 
     std::vector<std::thread> m_Workers;
     std::queue<Job> m_JobQueue;

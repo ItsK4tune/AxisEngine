@@ -3,7 +3,6 @@
 #include <entt/entt.hpp>
 #include <glm/glm.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct RayHit
 {

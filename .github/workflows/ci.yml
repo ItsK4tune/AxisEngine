@@ -218,3 +218,25 @@ jobs:
       - name: Run Tests
         if: matrix.audio-backend == 'Null' || steps.audio-sdk.outputs.available == 'true'
         run: ctest --preset=ci-tests-${{ matrix.preset }} -C Release
+
+      - name: Verify installed SDK package
+        if: matrix.audio-backend == 'Null'
+        shell: pwsh
+        run: |
+          cmake --install build --config Release
+          $consumerArgs = @(
+            "-S", "tests/package_consumer",
+            "-B", "build/package-consumer",
+            "-DCMAKE_PREFIX_PATH=${{ github.workspace }}/build/install"
+          )
+          if ("${{ matrix.os }}" -eq "windows-latest") {
+            $consumerArgs += "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+            $consumerArgs += "-DVCPKG_OVERLAY_PORTS=${{ github.workspace }}/cmake/vcpkg-overlay-ports"
+            $consumerArgs += "-DVCPKG_OVERLAY_TRIPLETS=${{ github.workspace }}/cmake/vcpkg-triplets"
+            $consumerArgs += "-DVCPKG_TARGET_TRIPLET=x64-windows-release"
+            $consumerArgs += "-DVCPKG_INSTALLED_DIR=${{ github.workspace }}/build/vcpkg_installed"
+            $consumerArgs += "-DCMAKE_CONFIGURATION_TYPES=Release"
+          }
+          cmake @consumerArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build build/package-consumer --config Release

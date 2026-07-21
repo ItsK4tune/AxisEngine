@@ -20,8 +20,7 @@ public:
             auto& rot = GetComponent<RotationComponent>();
             glm::quat deltaRot = glm::quat(glm::radians(rotationSpeed * dt));
             rot.value = rot.value * deltaRot;
-            if (HasComponent<WorldTransformComponent>())
-                GetComponent<WorldTransformComponent>().isDirty = true;
+            MarkTransformDirty();
         }
     }
 };

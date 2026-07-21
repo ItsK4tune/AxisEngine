@@ -17,13 +17,9 @@ public:
     void Resize(int width, int height);
 
     void BindForWriting();
-    void BindForReading();
     void Unbind();
+    void Resolve();
 
-    uint32_t GetPositionTexture() const
-    {
-        return m_PositionTexture ? m_PositionTexture->Get() : 0;
-    }
     uint32_t GetNormalTexture() const
     {
         return m_NormalTexture ? m_NormalTexture->Get() : 0;
@@ -71,21 +67,38 @@ public:
 
     void SetRenderScale(float scale)
     {
-        m_RenderScale = scale;
+        m_RenderScale = scale > 0.0f ? scale : 1.0f;
     }
     float GetRenderScale() const
     {
         return m_RenderScale;
     }
+    void SetSampleCount(int samples)
+    {
+        m_RequestedSampleCount = samples > 1 ? samples : 1;
+        m_SampleCount = m_RequestedSampleCount;
+    }
+    int GetSampleCount() const
+    {
+        return m_RequestedSampleCount;
+    }
+    int GetActiveSampleCount() const { return m_SampleCount; }
+    void SetEntityIdEnabled(bool enabled) { m_EntityIdEnabled = enabled; }
+    bool IsEntityIdEnabled() const { return m_EntityIdEnabled; }
 
 private:
     IGraphicsContext* m_Context = nullptr;
     int m_Width = 0;
     int m_Height = 0;
     float m_RenderScale = 1.0f;
+    float m_AllocatedRenderScale = 0.0f;
+    int m_SampleCount = 1;
+    int m_RequestedSampleCount = 1;
+    int m_AllocatedSampleCount = 0;
+    bool m_EntityIdEnabled = true;
+    bool m_AllocatedEntityIdEnabled = false;
 
     std::unique_ptr<GPUFramebuffer> m_FBO;
-    std::unique_ptr<GPUTexture> m_PositionTexture;
     std::unique_ptr<GPUTexture> m_NormalTexture;
     std::unique_ptr<GPUTexture> m_AlbedoSpecTexture;
     std::unique_ptr<GPUTexture> m_IDTexture;
@@ -93,5 +106,10 @@ private:
     std::unique_ptr<GPUTexture> m_PBRParamsTexture;
     std::unique_ptr<GPUTexture> m_DepthTexture;
 
+    std::unique_ptr<GPUFramebuffer> m_MultisampleFBO;
+    std::vector<std::unique_ptr<GPUTexture>> m_MultisampleColorTextures;
+    std::unique_ptr<GPUTexture> m_MultisampleDepthTexture;
+
     void CreateTextures();
+    void CreateMultisampleTargets();
 };

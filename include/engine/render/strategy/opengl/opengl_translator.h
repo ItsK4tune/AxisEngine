@@ -65,8 +65,24 @@ public:
                 return GL_ELEMENT_ARRAY_BUFFER;
             case BufferType::UniformBuffer:
                 return GL_UNIFORM_BUFFER;
+            case BufferType::TextureBuffer:
+                return GL_TEXTURE_BUFFER;
+            case BufferType::TransformFeedbackBuffer:
+                return GL_TRANSFORM_FEEDBACK_BUFFER;
+            case BufferType::PixelPackBuffer:
+                return GL_PIXEL_PACK_BUFFER;
+            case BufferType::PixelUnpackBuffer:
+                return GL_PIXEL_UNPACK_BUFFER;
+            case BufferType::DrawIndirectBuffer:
+                return GL_DRAW_INDIRECT_BUFFER;
+            case BufferType::DispatchIndirectBuffer:
+                return GL_DISPATCH_INDIRECT_BUFFER;
             case BufferType::ShaderStorageBuffer:
                 return GL_SHADER_STORAGE_BUFFER;
+            case BufferType::QueryBuffer:
+                return GL_QUERY_BUFFER;
+            case BufferType::AtomicCounterBuffer:
+                return GL_ATOMIC_COUNTER_BUFFER;
             default:
                 return GL_ARRAY_BUFFER;
         }
@@ -107,6 +123,8 @@ public:
                 return GL_TEXTURE_1D;
             case TextureType::Texture2D:
                 return GL_TEXTURE_2D;
+            case TextureType::Texture2DMultisample:
+                return GL_TEXTURE_2D_MULTISAMPLE;
             case TextureType::TextureCubeMap:
                 return GL_TEXTURE_CUBE_MAP;
             case TextureType::Texture3D:
@@ -165,6 +183,8 @@ public:
                 return GL_RGB8;
             case InternalFormat::RGBA8:
                 return GL_RGBA8;
+            case InternalFormat::RGBA8Snorm:
+                return GL_RGBA8_SNORM;
             case InternalFormat::RGBA16F:
                 return GL_RGBA16F;
             case InternalFormat::DepthComponent24:
@@ -173,6 +193,16 @@ public:
                 return GL_DEPTH24_STENCIL8;
             case InternalFormat::R32UI:
                 return GL_R32UI;
+            case InternalFormat::BC1RGBA:
+                return 0x83F1;  // GL_COMPRESSED_RGBA_S3TC_DXT1_EXT
+            case InternalFormat::BC2RGBA:
+                return 0x83F2;  // GL_COMPRESSED_RGBA_S3TC_DXT3_EXT
+            case InternalFormat::BC3RGBA:
+                return 0x83F3;  // GL_COMPRESSED_RGBA_S3TC_DXT5_EXT
+            case InternalFormat::BC4R:
+                return GL_COMPRESSED_RED_RGTC1;
+            case InternalFormat::BC5RG:
+                return GL_COMPRESSED_RG_RGTC2;
             default:
                 return GL_RGBA8;
         }

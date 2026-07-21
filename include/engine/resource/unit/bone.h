@@ -5,7 +5,6 @@
 #include <glm/gtx/quaternion.hpp>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct KeyPosition
 {
@@ -28,12 +27,10 @@ struct KeyScale
 class Bone
 {
 public:
-    Bone(const std::string& name, int ID, const aiNodeAnim* channel);
+    Bone(const std::string& name, const aiNodeAnim* channel);
 
     glm::mat4 GetTransform(float animationTime);
     std::string GetBoneName() const;
-    int GetBoneID() const;
-
     int GetPositionIndex(float animationTime) const;
     int GetRotationIndex(float animationTime) const;
     int GetScaleIndex(float animationTime) const;
@@ -57,5 +54,4 @@ private:
     int m_NumScalings;
 
     std::string m_Name;
-    int m_ID;
 };

@@ -55,8 +55,6 @@ public:
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
 
-    void Shutdown() override;
-
     void SetFilterLayerMask(uint32_t mask);
     void SetFaceCulling(bool enabled, CullMode mode = CullMode::Back);
     void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less);
@@ -66,5 +64,5 @@ public:
 
 private:
     bool m_Enabled = true;
-    class RenderServiceImpl* m_RenderService = nullptr;
+    class IRenderRuntimeControl* m_RenderService = nullptr;
 };

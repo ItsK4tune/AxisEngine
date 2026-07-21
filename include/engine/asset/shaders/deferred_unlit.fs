@@ -1,5 +1,4 @@
 #version 460 core
-layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out uint gEntityID;
@@ -13,6 +12,7 @@ in vec3 Normal;
 uniform sampler2D u_AlbedoMap;
 uniform vec4 u_BaseColor = vec4(1.0);
 uniform uint u_EntityID;
+flat in uint EntityID;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -26,7 +26,6 @@ layout(std140, binding = 20) uniform CameraData {
 
 void main()
 {    
-    gPosition = FragPos;
     gNormal = normalize(Normal);
     
     vec4 texColor = texture(u_AlbedoMap, TexCoords);
@@ -36,8 +35,8 @@ void main()
     
     // Write to Albedo so lighting/u_Ambient pass can see it
     gAlbedoSpec = vec4(finalColor, 0.04); // Default FresnelBias (unlit, non-reflective)
-    gEntityID = u_EntityID;
+    gEntityID = EntityID;
     gEmissive = finalColor;
 
-    gPBRParams = vec4(0.0, 1.0, 0.0, 0.05); // Metallic=0, Roughness=1, Reflectivity=0, packed(noProbe + 5/100)
+    gPBRParams = vec4(0.0, 1.0, 0.0, 5.0 / 255.0);
 }

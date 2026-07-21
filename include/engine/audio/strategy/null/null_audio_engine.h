@@ -54,6 +54,7 @@ public:
     void SetPlayPosition(unsigned int pos) override;
     unsigned int GetPlayPosition() override;
     unsigned int GetPlayLength() override;
+    bool IsPaused() const;
 
 private:
     float m_Volume = 100.0f;
@@ -65,6 +66,7 @@ private:
     float m_MaxDistance = 100.0f;
     bool m_Looped = false;
     bool m_Finished = false;
+    bool m_Paused = false;
     unsigned int m_PlayPosition = 0;
 };
 

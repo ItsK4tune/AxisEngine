@@ -11,7 +11,6 @@
 class IBufferManager;
 class IDrawContext;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class StaticBatchManager
 {
@@ -43,6 +42,7 @@ public:
     bool HasBatch(const std::string& name) const;
 
     static void SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext);
+    static void ClearManagers();
 
 private:
     std::map<std::string, BatchData> m_Batches;

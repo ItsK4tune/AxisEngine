@@ -6,14 +6,15 @@
 
 class ITextureManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct Character
 {
-    unsigned int textureID;
-    glm::ivec2 size;
-    glm::ivec2 bearing;
-    unsigned int advance;
+    unsigned int textureID = 0;
+    glm::ivec2 size{0};
+    glm::ivec2 bearing{0};
+    unsigned int advance = 0;
+    glm::vec2 uvMin{0.0f};
+    glm::vec2 uvMax{0.0f};
 };
 
 class Font
@@ -28,11 +29,17 @@ public:
     {
         return m_FontSize;
     }
+    unsigned int GetAtlasTextureID() const
+    {
+        return m_AtlasTextureID;
+    }
 
     static void SetTextureManager(ITextureManager& textureManager);
+    static void ClearTextureManager();
 
 private:
     unsigned int m_FontSize = 16;
+    unsigned int m_AtlasTextureID = 0;
     std::map<unsigned int, Character> m_Characters;
     static ITextureManager* s_TextureManager;
     static ITextureManager& GetTextureManager();

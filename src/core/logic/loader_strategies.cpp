@@ -1,31 +1,23 @@
 #include <core/interface/i_loader_strategy.h>
-#include <core/logic/config_loader.h>
+#include <core/logic/loader_strategies.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/config_serializer.h>
 #include <core/logic/filesystem.h>
-#include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <physics/logic/physics_loader.h>
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
-#include <scene/logic/component_loader.h>
-#include <fstream>
-#include <sstream>
 
 class ConfigLoaderStrategy : public ILoaderStrategy
 {
 public:
     bool Load(const std::string& path) override
     {
-        std::ifstream file(FileSystem::getPath(path));
-        if (!file.is_open())
-            return false;
-        std::stringstream ss;
-        ss << file.rdbuf();
-
         auto& configMgr = ServiceLocator::Instance().Require<ConfigManager>();
         AppConfig temp = configMgr.GetConfig();
-        ConfigLoader::LoadConfig(ss, temp, configMgr.IsHeadless());
+        ConfigSerializer serializer(configMgr.IsHeadless());
+        if (!serializer.Deserialize(FileSystem::getPath(path), temp))
+            return false;
         configMgr.UpdateConfig(temp);
         return true;
     }
@@ -44,7 +36,7 @@ public:
         if (auto* io = sl.Resolve<IOHandler>())
         {
             InputSerializer serializer;
-            return serializer.Deserialize(FileSystem::getPath(path), io->GetInputManager());
+            return serializer.Deserialize(path, io->GetInputManager());
         }
         return false;
     }
@@ -54,41 +46,10 @@ public:
     }
 };
 
-class PhysicsLoaderStrategy : public ILoaderStrategy
-{
-public:
-    bool Load(const std::string& path) override
-    {
-        LOGGER_INFO("PhysicsLoaderStrategy") << "Physics strategy invoked for: " << path;
-        return true;
-    }
-    const char* GetName() const override
-    {
-        return "PHYSICS";
-    }
-};
-
-class ComponentLoaderStrategy : public ILoaderStrategy
-{
-public:
-    bool Load(const std::string& path) override
-    {
-        ComponentLoader::InitializeDefaultLoaders();
-        return true;
-    }
-    const char* GetName() const override
-    {
-        return "COMPONENT";
-    }
-};
-
 #include <resource/logic/resource_manager.h>
 
-void RegisterDefaultLoaderStrategies()
+void RegisterDefaultLoaderStrategies(ResourceManager& loader)
 {
-    auto& loader = ServiceLocator::Instance().Require<ResourceManager>();
-    loader.RegisterLoader(std::make_unique<ConfigLoaderStrategy>());
-    loader.RegisterLoader(std::make_unique<InputLoaderStrategy>());
-    loader.RegisterLoader(std::make_unique<PhysicsLoaderStrategy>());
-    loader.RegisterLoader(std::make_unique<ComponentLoaderStrategy>());
+    loader.RegisterLoaderInternal(std::make_unique<ConfigLoaderStrategy>(), false);
+    loader.RegisterLoaderInternal(std::make_unique<InputLoaderStrategy>(), false);
 }

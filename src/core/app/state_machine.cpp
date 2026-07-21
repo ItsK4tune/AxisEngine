@@ -1,7 +1,9 @@
 #include <core/app/state_machine.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/logger.h>
 #include <scene/logic/scene.h>
 #include <algorithm>
+#include <stdexcept>
 
 const char* StateTransitionKindName(StateTransitionKind kind)
 {
@@ -23,10 +25,6 @@ StateMachine::StateMachine()
 {
 }
 
-void StateMachine::Initialize()
-{
-}
-
 void StateMachine::Shutdown()
 {
     Clear();
@@ -39,22 +37,44 @@ void StateMachine::PushState(std::unique_ptr<State> state)
 
 void StateMachine::PushStateInternal(std::unique_ptr<State> state, bool recordTransition)
 {
+    if (!state)
+        throw std::invalid_argument("Cannot push a null state");
+
+    State* previous = m_States.empty() ? nullptr : m_States.back().get();
     if (!m_States.empty())
     {
-        m_States.back()->OnPause();
+        previous->OnPause();
     }
 
-    const std::string fromState = m_States.empty() ? "" : GetStateName(*m_States.back());
+    const std::string fromState = previous ? GetStateName(*previous) : "";
     const std::string toState = GetStateName(*state);
-    RegisterStateName(toState, false, true, false);
-    if (recordTransition && !fromState.empty())
-        RegisterTransition(fromState, toState, "PushState", StateTransitionKind::Push, true);
 
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     state->SetActiveScene(&scene);
-    state->OnEnter();
+    try
+    {
+        state->OnEnter();
+    }
+    catch (...)
+    {
+        if (previous)
+        {
+            try
+            {
+                previous->OnResume();
+            }
+            catch (...)
+            {
+                LOGGER_ERROR("StateMachine") << "Previous state also failed while rolling back OnEnter";
+            }
+        }
+        throw;
+    }
     m_States.push_back(std::move(state));
     m_CurrentState = m_States.back().get();
+    RegisterStateName(toState, false, true, false);
+    if (recordTransition && !fromState.empty())
+        RegisterTransition(fromState, toState, "PushState", StateTransitionKind::Push, true);
 }
 
 void StateMachine::PopState()
@@ -67,7 +87,18 @@ void StateMachine::PopStateInternal(bool recordTransition)
     if (!m_States.empty())
     {
         const std::string fromState = GetStateName(*m_States.back());
-        m_States.back()->OnExit();
+        try
+        {
+            m_States.back()->OnExit();
+        }
+        catch (const std::exception& exception)
+        {
+            LOGGER_ERROR("StateMachine") << "State OnExit failed: " << exception.what();
+        }
+        catch (...)
+        {
+            LOGGER_ERROR("StateMachine") << "State OnExit failed with an unknown exception";
+        }
         m_States.pop_back();
         m_CurrentState = m_States.empty() ? nullptr : m_States.back().get();
         if (!m_States.empty())
@@ -75,7 +106,18 @@ void StateMachine::PopStateInternal(bool recordTransition)
             const std::string toState = GetStateName(*m_States.back());
             if (recordTransition)
                 RegisterTransition(fromState, toState, "PopState", StateTransitionKind::Pop, true);
-            m_States.back()->OnResume();
+            try
+            {
+                m_States.back()->OnResume();
+            }
+            catch (const std::exception& exception)
+            {
+                LOGGER_ERROR("StateMachine") << "State OnResume failed: " << exception.what();
+            }
+            catch (...)
+            {
+                LOGGER_ERROR("StateMachine") << "State OnResume failed with an unknown exception";
+            }
         }
     }
 }
@@ -84,21 +126,78 @@ void StateMachine::Clear()
 {
     while (!m_States.empty())
     {
-        PopState();
+        try
+        {
+            m_States.back()->OnExit();
+        }
+        catch (const std::exception& exception)
+        {
+            LOGGER_ERROR("StateMachine") << "State OnExit failed during shutdown: " << exception.what();
+        }
+        catch (...)
+        {
+            LOGGER_ERROR("StateMachine") << "State OnExit failed during shutdown with an unknown exception";
+        }
+        m_States.pop_back();
     }
     m_CurrentState = nullptr;
 }
 
 void StateMachine::ChangeState(std::unique_ptr<State> state)
 {
+    if (!state)
+        throw std::invalid_argument("Cannot change to a null state");
+
     const std::string fromState = m_States.empty() ? "" : GetStateName(*m_States.back());
     const std::string toState = GetStateName(*state);
+    State* previous = m_States.empty() ? nullptr : m_States.back().get();
+    if (previous)
+        previous->OnPause();
+
+    auto& scene = ServiceLocator::Instance().Require<Scene>();
+    state->SetActiveScene(&scene);
+    try
+    {
+        state->OnEnter();
+    }
+    catch (...)
+    {
+        if (previous)
+        {
+            try
+            {
+                previous->OnResume();
+            }
+            catch (...)
+            {
+                LOGGER_ERROR("StateMachine") << "Previous state also failed while rolling back ChangeState";
+            }
+        }
+        throw;
+    }
+
+    if (previous)
+    {
+        try
+        {
+            previous->OnExit();
+        }
+        catch (const std::exception& exception)
+        {
+            LOGGER_ERROR("StateMachine") << "Replaced state OnExit failed: " << exception.what();
+        }
+        catch (...)
+        {
+            LOGGER_ERROR("StateMachine") << "Replaced state OnExit failed with an unknown exception";
+        }
+        m_States.pop_back();
+    }
+
+    m_States.push_back(std::move(state));
+    m_CurrentState = m_States.back().get();
     RegisterStateName(toState, false, true, false);
     if (!fromState.empty())
         RegisterTransition(fromState, toState, "ChangeState", StateTransitionKind::Change, true);
-
-    PopStateInternal(false);
-    PushStateInternal(std::move(state), false);
 }
 
 State* StateMachine::GetCurrentState()
@@ -278,4 +377,10 @@ void StateMachine::Render()
 {
     if (State* s = GetCurrentState())
         s->OnRender();
+}
+
+void StateMachine::RenderDebug()
+{
+    if (State* state = GetCurrentState())
+        state->OnRenderDebug();
 }

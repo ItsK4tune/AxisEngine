@@ -1,6 +1,8 @@
 #include <navigation/logic/navigation_system.h>
 #include <core/logic/logger.h>
+#include <core/logic/job_system.h>
 #include <core/logic/service_locator.h>
+#include <core/type/app_config.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <navigation/logic/navmesh_generator.h>
@@ -10,11 +12,49 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <algorithm>
+#include <cmath>
+#include <unordered_map>
+#include <chrono>
 
-REGISTER_SYSTEM(NavigationSystem)
 
 namespace
 {
+struct AgentCell
+{
+    int x = 0;
+    int y = 0;
+    int z = 0;
+
+    bool operator==(const AgentCell&) const = default;
+};
+
+struct AgentCellHash
+{
+    size_t operator()(const AgentCell& cell) const
+    {
+        size_t seed = std::hash<int>{}(cell.x);
+        seed ^= std::hash<int>{}(cell.y) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
+        seed ^= std::hash<int>{}(cell.z) + 0x9e3779b9u + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+};
+
+using AgentGrid = std::unordered_map<AgentCell, std::vector<entt::entity>, AgentCellHash>;
+
+AgentCell ToAgentCell(const glm::vec3& position, float cellSize, bool fly3D)
+{
+    return {static_cast<int>(std::floor(position.x / cellSize)),
+            fly3D ? static_cast<int>(std::floor(position.y / cellSize)) : 0,
+            static_cast<int>(std::floor(position.z / cellSize))};
+}
+
+bool UsesThreeDimensionalMovement(const PathFollowerComponent& follower)
+{
+    return follower.pathfindingOptions.criteria == PathfindingCriteria::Shortest ||
+           follower.pathfindingOptions.criteria == PathfindingCriteria::Smoothest ||
+           follower.pathfindingOptions.criteria == PathfindingCriteria::HighGround;
+}
+
 std::vector<glm::vec3> SmoothPathCorners(const std::vector<glm::vec3>& path, int iterations)
 {
     if (path.size() < 3 || iterations <= 0)
@@ -49,36 +89,55 @@ bool HasTag(const std::vector<std::string>& tags, const std::string& value)
 
 glm::vec3 ComputeLocalAvoidance(Scene& scene, entt::entity self, const glm::vec3& position,
                                 const glm::vec3& moveDir, const PathFollowerComponent& follower,
-                                IPhysicsWorld* physics, const std::vector<std::string>& obstacleTags, bool fly3D)
+                                IPhysicsWorld* physics, const std::vector<std::string>& obstacleTags, bool fly3D,
+                                const AgentGrid* agents, float cellSize)
 {
     if (!follower.localAvoidanceEnabled)
         return glm::vec3(0.0f);
 
     glm::vec3 avoidance(0.0f);
-    auto view = scene.View<PositionComponent, PathFollowerComponent, InfoComponent>();
-    for (auto other : view)
-    {
+    auto accumulateAgent = [&](entt::entity other) {
         if (other == self)
-            continue;
+            return;
+        const auto* otherInfo = scene.TryGetComponent<InfoComponent>(other);
+        const auto* otherFollower = scene.TryGetComponent<PathFollowerComponent>(other);
+        const auto* otherPosition = scene.TryGetComponent<PositionComponent>(other);
+        if (!otherInfo || !otherInfo->isActive || !otherFollower || !otherPosition ||
+            (!otherFollower->isMoving && !otherFollower->pathPending))
+            return;
 
-        const auto& otherInfo = view.get<InfoComponent>(other);
-        if (!otherInfo.isActive)
-            continue;
-
-        const auto& otherFollower = view.get<PathFollowerComponent>(other);
-        if (!otherFollower.isMoving && !otherFollower.pathPending)
-            continue;
-
-        glm::vec3 offset = position - view.get<PositionComponent>(other).value;
+        glm::vec3 offset = position - otherPosition->value;
         if (!fly3D)
             offset.y = 0.0f;
-
         const float distance = glm::length(offset);
         if (distance <= 0.0001f || distance >= follower.separationRadius)
-            continue;
-
+            return;
         const float strength = 1.0f - (distance / follower.separationRadius);
         avoidance += (offset / distance) * strength * follower.separationWeight;
+    };
+
+    if (agents)
+    {
+        const AgentCell center = ToAgentCell(position, cellSize, fly3D);
+        const int cellRadius = (std::max)(1, static_cast<int>(std::ceil(follower.separationRadius / cellSize)));
+        const int minY = fly3D ? -cellRadius : 0;
+        const int maxY = fly3D ? cellRadius : 0;
+        for (int dz = -cellRadius; dz <= cellRadius; ++dz)
+        for (int dy = minY; dy <= maxY; ++dy)
+        for (int dx = -cellRadius; dx <= cellRadius; ++dx)
+        {
+            const auto cell = agents->find({center.x + dx, center.y + dy, center.z + dz});
+            if (cell == agents->end())
+                continue;
+            for (const entt::entity other : cell->second)
+                accumulateAgent(other);
+        }
+    }
+    else
+    {
+        auto allAgents = scene.View<PositionComponent, PathFollowerComponent, InfoComponent>();
+        for (const entt::entity other : allAgents)
+            accumulateAgent(other);
     }
 
     if (physics && follower.obstacleAvoidanceDistance > 0.0f && glm::length(moveDir) > 0.001f)
@@ -106,12 +165,41 @@ glm::vec3 ComputeLocalAvoidance(Scene& scene, entt::entity self, const glm::vec3
         avoidance.y = 0.0f;
     return avoidance;
 }
+
+bool BoundsNearlyEqual(const glm::vec3& leftMin, const glm::vec3& leftMax,
+                       const glm::vec3& rightMin, const glm::vec3& rightMax)
+{
+    constexpr float epsilon = 0.001f;
+    return glm::all(glm::lessThanEqual(glm::abs(leftMin - rightMin), glm::vec3(epsilon))) &&
+           glm::all(glm::lessThanEqual(glm::abs(leftMax - rightMax), glm::vec3(epsilon)));
+}
 }  // namespace
 
 void NavigationSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<NavigationSystem>(this);
+    sl.Register<INavigationService>(this);
+}
+
+void NavigationSystem::Shutdown()
+{
+    // Jobs own immutable copies only, so dropping futures safely cancels
+    // delivery without allowing workers to touch a destroyed scene/system.
+    m_PendingPaths.clear();
+    m_NavMeshRuntime.clear();
+    m_RuntimeScene = nullptr;
+}
+
+void NavigationSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    SetSpatialHashConfig(config.navigationSpatialHashEnabled, config.navigationAgentCellSize);
+    SetAsyncPathfindingConfig(config.navigationAsyncPathfindingEnabled, config.navigationMaxPathRequestsPerFrame);
+    m_NavMeshRebuildBudgetEnabled = config.navMeshRebuildBudgetEnabled;
+    m_MaxNavMeshRebuildsPerFrame = (std::max)(1, config.maxNavMeshRebuildsPerFrame);
+    m_NavMeshDirtyTilesEnabled = config.navigationDirtyTilesEnabled;
+    m_NavMeshTileSize = (std::max)(0.25f, config.navigationNavMeshTileSize);
+    m_MaxNavMeshDirtyTilesPerFrame = (std::max)(1, config.navigationMaxDirtyTilesPerFrame);
 }
 
 void NavigationSystem::Update(Scene& scene, float dt)
@@ -119,46 +207,224 @@ void NavigationSystem::Update(Scene& scene, float dt)
     if (!m_Enabled)
         return;
 
-    UpdateNavMesh(scene);
+    UpdateNavMesh(scene, dt);
     UpdatePathFollowing(scene, dt);
 }
 
-void NavigationSystem::UpdateNavMesh(Scene& scene)
+void NavigationSystem::UpdateNavMesh(Scene& scene, float dt)
 {
+    if (m_RuntimeScene != &scene)
+    {
+        m_NavMeshRuntime.clear();
+        m_RuntimeScene = &scene;
+    }
     auto& sl = ServiceLocator::Instance();
     auto& resources = sl.Require<ResourceManager>();
 
     auto view = scene.View<NavMeshComponent>();
+    std::erase_if(m_NavMeshRuntime, [&](const auto& entry) {
+        return !scene.IsValid(entry.first) || !scene.HasAllComponents<NavMeshComponent>(entry.first);
+    });
+    int rebuilds = 0;
     for (auto entity : view)
     {
         auto& navMesh = view.get<NavMeshComponent>(entity);
+        auto& runtime = m_NavMeshRuntime[entity];
+        navMesh.rebuildRetryRemaining = (std::max)(0.0f, navMesh.rebuildRetryRemaining - dt);
+        if (navMesh.rebuildRetryRemaining > 0.0f)
+            continue;
         if (navMesh.needsRebuild)
         {
+            if (m_NavMeshRebuildBudgetEnabled && rebuilds >= m_MaxNavMeshRebuildsPerFrame)
+                continue;
+            ++rebuilds;
             LOGGER_INFO("NavigationSystem") << "NavMesh rebuild triggered for entity " << (uint32_t)entity;
-            NavMeshGenerator::Generate(scene, navMesh, &resources, m_WalkableTags, m_CarveTags);
+            NavMeshGenerator::Generate(scene, navMesh, &resources, m_WalkableTags, m_CarveTags,
+                                       &runtime.uncarvedTriangles);
+            runtime.dirtyTiles.clear();
+            runtime.obstacles.clear();
+            for (const auto& obstacle : NavMeshGenerator::CollectObstacleBounds(scene, navMesh, m_CarveTags))
+                runtime.obstacles.emplace(obstacle.entity, DirtyBounds{obstacle.min, obstacle.max});
             LOGGER_INFO("NavigationSystem")
                 << "NavMesh state: Nodes=" << navMesh.nodes.size() << ", Tris=" << navMesh.triangles.size();
             if (navMesh.nodes.empty())
             {
                 navMesh.needsRebuild = true;
+                navMesh.rebuildRetryRemaining = 1.0f;
+            }
+            continue;
+        }
+
+        if (!navMesh.isDynamic)
+            continue;
+
+        const auto obstacles = NavMeshGenerator::CollectObstacleBounds(scene, navMesh, m_CarveTags);
+        std::unordered_map<entt::entity, DirtyBounds> currentObstacles;
+        currentObstacles.reserve(obstacles.size());
+        bool obstacleChanged = false;
+        for (const auto& obstacle : obstacles)
+        {
+            const DirtyBounds current{obstacle.min, obstacle.max};
+            currentObstacles.emplace(obstacle.entity, current);
+            const auto previous = runtime.obstacles.find(obstacle.entity);
+            if (previous == runtime.obstacles.end())
+            {
+                obstacleChanged = true;
+                QueueDirtyBounds(runtime, current);
+            }
+            else if (!BoundsNearlyEqual(previous->second.min, previous->second.max, current.min, current.max))
+            {
+                obstacleChanged = true;
+                QueueDirtyBounds(runtime,
+                                 {glm::min(previous->second.min, current.min), glm::max(previous->second.max, current.max)});
             }
         }
+        for (const auto& [obstacleEntity, previous] : runtime.obstacles)
+        {
+            if (!currentObstacles.contains(obstacleEntity))
+            {
+                obstacleChanged = true;
+                QueueDirtyBounds(runtime, previous);
+            }
+        }
+        runtime.obstacles = std::move(currentObstacles);
+
+        if (obstacleChanged && (!m_NavMeshDirtyTilesEnabled || runtime.uncarvedTriangles.empty()))
+        {
+            navMesh.needsRebuild = true;
+            runtime.dirtyTiles.clear();
+            continue;
+        }
+
+        if (!runtime.dirtyTiles.empty() &&
+            (!m_NavMeshRebuildBudgetEnabled || rebuilds < m_MaxNavMeshRebuildsPerFrame))
+        {
+            DirtyBounds merged = runtime.dirtyTiles.front();
+            runtime.dirtyTiles.pop_front();
+            int tiles = 1;
+            while (!runtime.dirtyTiles.empty() && tiles < m_MaxNavMeshDirtyTilesPerFrame)
+            {
+                merged.min = glm::min(merged.min, runtime.dirtyTiles.front().min);
+                merged.max = glm::max(merged.max, runtime.dirtyTiles.front().max);
+                runtime.dirtyTiles.pop_front();
+                ++tiles;
+            }
+            NavMeshGenerator::RebuildRegion(scene, navMesh, runtime.uncarvedTriangles, merged.min, merged.max,
+                                            m_CarveTags);
+            ++rebuilds;
+        }
     }
+}
+
+bool NavigationSystem::QueueDirtyBounds(NavMeshRuntime& runtime, const DirtyBounds& bounds)
+{
+    const auto finite = [](const glm::vec3& value) {
+        return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+    };
+    if (!finite(bounds.min) || !finite(bounds.max))
+        return false;
+    const glm::vec3 minimum = glm::min(bounds.min, bounds.max);
+    const glm::vec3 maximum = glm::max(bounds.min, bounds.max);
+    const int minX = static_cast<int>(std::floor(minimum.x / m_NavMeshTileSize));
+    const int maxX = static_cast<int>(std::floor(maximum.x / m_NavMeshTileSize));
+    const int minZ = static_cast<int>(std::floor(minimum.z / m_NavMeshTileSize));
+    const int maxZ = static_cast<int>(std::floor(maximum.z / m_NavMeshTileSize));
+    const int64_t tileCount = static_cast<int64_t>(maxX - minX + 1) * (maxZ - minZ + 1);
+    if (tileCount <= 0)
+        return false;
+    if (tileCount > 4096)
+    {
+        runtime.dirtyTiles.push_back({minimum, maximum});
+        return true;
+    }
+
+    for (int z = minZ; z <= maxZ; ++z)
+    {
+        for (int x = minX; x <= maxX; ++x)
+        {
+            const DirtyBounds tile{{x * m_NavMeshTileSize, minimum.y, z * m_NavMeshTileSize},
+                                   {(x + 1) * m_NavMeshTileSize, maximum.y,
+                                    (z + 1) * m_NavMeshTileSize}};
+            const bool queued = std::any_of(runtime.dirtyTiles.begin(), runtime.dirtyTiles.end(),
+                                            [&](const DirtyBounds& existing) {
+                                                return existing.min.x == tile.min.x && existing.min.z == tile.min.z;
+                                            });
+            if (!queued)
+                runtime.dirtyTiles.push_back(tile);
+        }
+    }
+    return true;
 }
 
 void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 {
     auto& sl = ServiceLocator::Instance();
     auto physics_ptr = sl.Resolve<IPhysicsWorld>();
+    for (auto pending = m_PendingPaths.begin(); pending != m_PendingPaths.end();)
+    {
+        if (pending->second.result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+        {
+            ++pending;
+            continue;
+        }
+
+        std::vector<glm::vec3> path = pending->second.result.get();
+        if (scene.IsValid(pending->first))
+        {
+            const bool navMeshStillCurrent =
+                pending->second.navMeshProvider == entt::null ||
+                (scene.IsValid(pending->second.navMeshProvider) &&
+                 scene.HasAllComponents<NavMeshComponent>(pending->second.navMeshProvider) &&
+                 scene.GetComponent<NavMeshComponent>(pending->second.navMeshProvider).revision ==
+                     pending->second.navMeshRevision);
+            if (auto* follower = scene.TryGetComponent<PathFollowerComponent>(pending->first);
+                follower && follower->pathPending && navMeshStillCurrent &&
+                follower->pathRequestGeneration == pending->second.generation)
+            {
+                follower->currentPath = std::move(path);
+                follower->currentPathIndex = 0;
+                follower->pathPending = false;
+                follower->isMoving = !follower->currentPath.empty();
+                follower->debugPlannedPath = follower->currentPath;
+                follower->debugTraveledPath.clear();
+                if (follower->recordDebugPath)
+                {
+                    if (const auto* position = scene.TryGetComponent<PositionComponent>(pending->first))
+                        follower->debugTraveledPath.push_back(position->value);
+                }
+            }
+        }
+        pending = m_PendingPaths.erase(pending);
+    }
+    int pathRequestsStarted = 0;
 
     auto view =
         scene.View<PositionComponent, RotationComponent, WorldTransformComponent, PathFollowerComponent>();
 
+    AgentGrid agentGrid;
+    auto avoidanceView = scene.View<PositionComponent, PathFollowerComponent, InfoComponent>();
+    if (m_SpatialHashEnabled)
+    {
+        agentGrid.reserve(avoidanceView.size_hint());
+        for (auto agent : avoidanceView)
+        {
+            const auto& info = avoidanceView.get<InfoComponent>(agent);
+            if (!info.isActive)
+                continue;
+            const auto& follower = avoidanceView.get<PathFollowerComponent>(agent);
+            const bool agentFly3D = UsesThreeDimensionalMovement(follower);
+            agentGrid[ToAgentCell(avoidanceView.get<PositionComponent>(agent).value, m_AgentCellSize, agentFly3D)]
+                .push_back(agent);
+        }
+    }
+
     NavMeshComponent* globalNavMesh = nullptr;
+    entt::entity globalNavMeshEntity = entt::null;
     auto navMeshView = scene.View<NavMeshComponent>();
     if (!navMeshView.empty())
     {
-        globalNavMesh = &navMeshView.get<NavMeshComponent>(navMeshView.front());
+        globalNavMeshEntity = navMeshView.front();
+        globalNavMesh = &navMeshView.get<NavMeshComponent>(globalNavMeshEntity);
     }
 
     NavigationGridComponent* globalGrid = nullptr;
@@ -180,6 +446,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
         auto& world = view.get<WorldTransformComponent>(entity);
         auto& follower = view.get<PathFollowerComponent>(entity);
         NavMeshComponent* selectedNavMesh = globalNavMesh;
+        entt::entity selectedNavMeshEntity = globalNavMeshEntity;
         NavigationGridComponent* selectedGrid = globalGrid;
 
         if (follower.navigationProviderEntity != entt::null && scene.IsValid(follower.navigationProviderEntity))
@@ -188,7 +455,10 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 follower.pathfindingOptions.provider == NavigationProvider::Auto)
             {
                 if (auto* nav = scene.TryGetComponent<NavMeshComponent>(follower.navigationProviderEntity))
+                {
                     selectedNavMesh = nav;
+                    selectedNavMeshEntity = follower.navigationProviderEntity;
+                }
             }
             if (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
                 follower.pathfindingOptions.provider == NavigationProvider::Auto)
@@ -213,6 +483,61 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                 follower.debugTraveledPath.clear();
                 if (follower.recordDebugPath)
                     follower.debugTraveledPath.push_back(pos.value);
+            }
+            else if (m_AsyncPathfindingEnabled && pathRequestsStarted < m_MaxPathRequestsPerFrame &&
+                     m_PendingPaths.find(entity) == m_PendingPaths.end() &&
+                     !follower.pathfindingOptions.customCostFunc &&
+                     !follower.pathfindingOptions.customGridCostFunc &&
+                     !follower.pathfindingOptions.customHeuristicFunc && (selectedGrid || selectedNavMesh))
+            {
+                const bool useGrid = selectedGrid &&
+                                     (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
+                                      (follower.pathfindingOptions.provider == NavigationProvider::Auto &&
+                                       (!selectedNavMesh || selectedNavMesh->nodes.empty())));
+                const glm::vec3 start = pos.value;
+                const glm::vec3 target = follower.targetPosition;
+                const PathfindingOptions options = follower.pathfindingOptions;
+                std::future<std::vector<glm::vec3>> future;
+                if (useGrid)
+                {
+                    NavigationGridComponent snapshot = *selectedGrid;
+                    future = JobSystem::Instance().ExecuteAsync(
+                        [start, target, options, snapshot = std::move(snapshot)]() mutable {
+                            return Pathfinding::FindGridPath(start, target, snapshot, options);
+                        });
+                }
+                else if (selectedNavMesh && !selectedNavMesh->nodes.empty())
+                {
+                    NavMeshComponent snapshot = *selectedNavMesh;
+                    future = JobSystem::Instance().ExecuteAsync(
+                        [start, target, options, snapshot = std::move(snapshot)]() mutable {
+                            auto path = Pathfinding::FindPath(start, target, snapshot, options);
+                            if (options.criteria == PathfindingCriteria::Smoothest)
+                                path = SmoothPathCorners(path, 2);
+                            return path;
+                        });
+                }
+                if (future.valid())
+                {
+                    const entt::entity navProvider = useGrid ? entt::null : selectedNavMeshEntity;
+                    const uint64_t navRevision = useGrid || !selectedNavMesh ? 0 : selectedNavMesh->revision;
+                    m_PendingPaths.emplace(
+                        entity, PendingPathRequest{follower.pathRequestGeneration, navProvider, navRevision,
+                                                   std::move(future)});
+                    ++pathRequestsStarted;
+                }
+            }
+            else if (m_PendingPaths.find(entity) != m_PendingPaths.end())
+            {
+                // The immutable snapshot is still being processed.
+            }
+            else if (m_AsyncPathfindingEnabled && pathRequestsStarted >= m_MaxPathRequestsPerFrame &&
+                     !follower.pathfindingOptions.customCostFunc &&
+                     !follower.pathfindingOptions.customGridCostFunc &&
+                     !follower.pathfindingOptions.customHeuristicFunc && (selectedGrid || selectedNavMesh))
+            {
+                // Keep the request pending for the next frame instead of
+                // turning a burst into synchronous main-thread work.
             }
             else if (selectedGrid &&
                      (follower.pathfindingOptions.provider == NavigationProvider::Grid ||
@@ -300,14 +625,12 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
 
         if (follower.isMoving && !follower.currentPath.empty())
         {
-            const bool fly3D = follower.pathfindingOptions.criteria == PathfindingCriteria::Shortest ||
-                               follower.pathfindingOptions.criteria == PathfindingCriteria::Smoothest ||
-                               follower.pathfindingOptions.criteria == PathfindingCriteria::HighGround;
+            const bool fly3D = UsesThreeDimensionalMovement(follower);
             glm::vec3 target = follower.currentPath[follower.currentPathIndex];
             glm::vec3 diff = target - pos.value;
             float distance = fly3D ? glm::length(diff) : glm::length(glm::vec3(diff.x, 0.0f, diff.z));
 
-            if (distance < follower.arrivalDistance)
+            if (distance < (std::max)(0.001f, follower.arrivalDistance))
             {
                 follower.currentPathIndex++;
                 if (follower.currentPathIndex >= follower.currentPath.size())
@@ -325,14 +648,16 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     moveDir /= moveDist;
                     glm::vec3 avoidance =
                         ComputeLocalAvoidance(scene, entity, pos.value, moveDir, follower, physics_ptr, m_CarveTags,
-                                              fly3D);
+                                              fly3D, m_SpatialHashEnabled ? &agentGrid : nullptr, m_AgentCellSize);
                     if (glm::length(avoidance) > 0.001f)
                     {
                         glm::vec3 adjustedDir = moveDir + avoidance;
                         if (glm::length(adjustedDir) > 0.001f)
                             moveDir = glm::normalize(adjustedDir);
                     }
-                    glm::vec3 moveStep = moveDir * follower.moveSpeed * dt;
+                    const float stepDistance =
+                        (std::min)(moveDist, (std::max)(0.0f, follower.moveSpeed) * (std::max)(0.0f, dt));
+                    glm::vec3 moveStep = moveDir * stepDistance;
                     if (follower.lockMoveX)
                         moveStep.x = 0.0f;
                     if (follower.lockMoveY)
@@ -346,7 +671,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     {
                         follower.debugTraveledPath.push_back(pos.value);
                     }
-                    world.isDirty = true;
+                    scene.MarkTransformDirty(entity);
                 }
                 else
                 {
@@ -505,7 +830,7 @@ void NavigationSystem::UpdatePathFollowing(Scene& scene, float dt)
                     }
                 }
 
-                world.isDirty = true;
+                scene.MarkTransformDirty(entity);
             }
         }
     }
@@ -518,6 +843,8 @@ void NavigationSystem::StopMoving(Scene& scene, entt::entity entity)
     {
         follower->isMoving = false;
         follower->pathPending = false;
+        ++follower->pathRequestGeneration;
+        m_PendingPaths.erase(entity);
         follower->currentPath.clear();
         follower->debugPlannedPath.clear();
         follower->debugTraveledPath.clear();
@@ -564,6 +891,8 @@ void NavigationSystem::MoveTo(Scene& scene, entt::entity entity, const glm::vec3
     if (follower)
     {
         follower->targetPosition = position;
+        ++follower->pathRequestGeneration;
+        m_PendingPaths.erase(entity);
         follower->pathPending = true;
     }
 }
@@ -661,14 +990,28 @@ void NavigationSystem::SetPathfindingCriteria(Scene& scene, entt::entity entity,
 {
     auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
+    {
         follower->pathfindingOptions.criteria = criteria;
+        if (follower->pathPending)
+        {
+            ++follower->pathRequestGeneration;
+            m_PendingPaths.erase(entity);
+        }
+    }
 }
 
 void NavigationSystem::SetPreferredTags(Scene& scene, entt::entity entity, const std::vector<std::string>& tags)
 {
     auto* follower = scene.TryGetComponent<PathFollowerComponent>(entity);
     if (follower)
+    {
         follower->pathfindingOptions.preferredTags = tags;
+        if (follower->pathPending)
+        {
+            ++follower->pathRequestGeneration;
+            m_PendingPaths.erase(entity);
+        }
+    }
 }
 
 void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity,
@@ -679,6 +1022,8 @@ void NavigationSystem::SetCustomCostFunction(Scene& scene, entt::entity entity,
     {
         follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
         follower->pathfindingOptions.customCostFunc = func;
+        ++follower->pathRequestGeneration;
+        m_PendingPaths.erase(entity);
     }
 }
 
@@ -690,6 +1035,8 @@ void NavigationSystem::SetCustomGridCostFunction(
     {
         follower->pathfindingOptions.criteria = PathfindingCriteria::Custom;
         follower->pathfindingOptions.customGridCostFunc = func;
+        ++follower->pathRequestGeneration;
+        m_PendingPaths.erase(entity);
     }
 }
 
@@ -702,7 +1049,32 @@ void NavigationSystem::SetNavigationProviderEntity(Scene& scene, entt::entity en
         follower->navigationProviderEntity = provider;
         if (providerType != NavigationProvider::Auto)
             follower->pathfindingOptions.provider = providerType;
+        if (follower->pathPending)
+        {
+            ++follower->pathRequestGeneration;
+            m_PendingPaths.erase(entity);
+        }
     }
+}
+
+bool NavigationSystem::MarkNavMeshDirty(Scene& scene, entt::entity provider, const glm::vec3& minimum,
+                                        const glm::vec3& maximum)
+{
+    auto* navMesh = scene.TryGetComponent<NavMeshComponent>(provider);
+    if (!navMesh)
+        return false;
+    if (m_RuntimeScene != &scene)
+    {
+        m_NavMeshRuntime.clear();
+        m_RuntimeScene = &scene;
+    }
+    auto& runtime = m_NavMeshRuntime[provider];
+    if (!m_NavMeshDirtyTilesEnabled || runtime.uncarvedTriangles.empty())
+    {
+        navMesh->needsRebuild = true;
+        return true;
+    }
+    return QueueDirtyBounds(runtime, {glm::min(minimum, maximum), glm::max(minimum, maximum)});
 }
 
 std::vector<entt::id_type> NavigationSystem::GetReadComponents() const
@@ -714,5 +1086,5 @@ std::vector<entt::id_type> NavigationSystem::GetReadComponents() const
 std::vector<entt::id_type> NavigationSystem::GetWriteComponents() const
 {
     return {entt::type_id<PositionComponent>().hash(), entt::type_id<RotationComponent>().hash(),
-            entt::type_id<PathFollowerComponent>().hash()};
+            entt::type_id<PathFollowerComponent>().hash(), entt::type_id<NavMeshComponent>().hash()};
 }

@@ -1,5 +1,6 @@
 #include <scene/logic/octree.h>
 #include <scene/type/scene_types.h>
+#include <algorithm>
 
 OctreeNode::OctreeNode(const AABB& boundary, int depth) : m_Boundary(boundary), m_Depth(depth)
 {
@@ -177,18 +178,27 @@ void OctreeNode::Rebuild(const std::vector<OctreeElement>& elements)
     }
 }
 
-Octree::Octree(const AABB& boundary) : m_InitialBoundary(boundary)
+Octree::Octree(const AABB& boundary) : m_InitialBoundary(boundary), m_CurrentBoundary(boundary)
 {
     m_Root = std::make_unique<OctreeNode>(boundary);
 }
 
 void Octree::Insert(entt::entity entity, const AABB& aabb)
 {
+    if (const auto existing = m_Entries.find(entity); existing != m_Entries.end())
+        m_Root->Remove(entity);
+    m_Entries[entity] = aabb;
+    if (!RootContains(aabb))
+    {
+        RebuildFromEntries();
+        return;
+    }
     m_Root->Insert(entity, aabb);
 }
 
 void Octree::Remove(entt::entity entity)
 {
+    m_Entries.erase(entity);
     m_Root->Remove(entity);
 }
 
@@ -204,5 +214,47 @@ void Octree::Query(const AABB& aabb, std::vector<entt::entity>& out_entities) co
 
 void Octree::Rebuild(const std::vector<OctreeElement>& elements)
 {
+    m_Entries.clear();
+    m_Entries.reserve(elements.size());
+    for (const auto& element : elements)
+        m_Entries[element.entity] = element.aabb;
+    RebuildFromEntries();
+}
+
+bool Octree::RootContains(const AABB& aabb) const
+{
+    return m_CurrentBoundary.Contains(aabb.minBound) && m_CurrentBoundary.Contains(aabb.maxBound);
+}
+
+void Octree::RebuildFromEntries()
+{
+    if (m_Entries.empty())
+    {
+        m_CurrentBoundary = m_InitialBoundary;
+        m_Root = std::make_unique<OctreeNode>(m_InitialBoundary);
+        return;
+    }
+
+    auto first = m_Entries.begin();
+    glm::vec3 minBound = first->second.minBound;
+    glm::vec3 maxBound = first->second.maxBound;
+    std::vector<OctreeElement> elements;
+    elements.reserve(m_Entries.size());
+    for (const auto& [entity, aabb] : m_Entries)
+    {
+        minBound = glm::min(minBound, aabb.minBound);
+        maxBound = glm::max(maxBound, aabb.maxBound);
+        elements.push_back({entity, aabb});
+    }
+
+    // Keep a small loose margin so sub-pixel/interpolation changes do not
+    // force an object onto the root boundary on every rebuild.
+    const glm::vec3 center = (minBound + maxBound) * 0.5f;
+    const float halfExtent = (std::max)({maxBound.x - minBound.x, maxBound.y - minBound.y,
+                                         maxBound.z - minBound.z}) *
+                                 0.525f +
+                             1.0f;
+    m_CurrentBoundary = AABB(center - glm::vec3(halfExtent), center + glm::vec3(halfExtent));
+    m_Root = std::make_unique<OctreeNode>(m_CurrentBoundary);
     m_Root->Rebuild(elements);
 }

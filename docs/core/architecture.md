@@ -7,7 +7,7 @@ AXIS Engine is built on a **Modular Abstraction Layer** that decouples high-leve
 ## 🏗️ 1. Design Philosophy
 
 The engine architecture follows a **Pillar-Bridge-Provider** pattern:
-1.  **Pillar (Interfaces)**: Precise C++ interfaces (e.g., `IRenderSystem`, `IPhysicsWorld`) defined in the `engine::interface` namespace. These define *what* a system must do without dictating *how*.
+1.  **Pillar (Interfaces)**: Precise C++ interfaces (e.g., `IRenderSystem`, `IPhysicsWorld`) under the module `interface/` include directories. These define *what* a system must do without dictating *how*.
 2.  **Bridge (Core systems)**: The ECS orchestration layer (`entt`) that moves data between systems and handles lifecycle management.
 3.  **Provider (Backends)**: Concrete implementations for specific APIs (e.g., `OpenGLContext`, `BulletPhysicsWorld`). Provider selection is validated against the backends compiled into the current build.
 
@@ -23,18 +23,18 @@ graph TD
     B[<b>Logic Layer</b><br/>ECS Systems, Scripting API, Navigation] --> C
     C[<b>Core Layer</b><br/>Resource Caching, Job System, Event Dispatch] --> D
     D[<b>Abstraction Layer</b><br/>Graphics/Physics/Audio Interfaces] --> E
-    E[<b>Module Layer</b><br/>OpenGL, Bullet, IrrKlang]
+    E[<b>Module Layer</b><br/>OpenGL, Bullet, Null/FMOD/irrKlang]
 ```
 
 ### Abstraction Mechanics
-Backends are managed via **Service Locators** and **Context Wrappers**. For instance, the `RenderSystem` does not call OpenGL commands directly; it issues commands to an `IGraphicsContext`. The current build provides an OpenGL implementation and rejects unsupported backend requests instead of falling back silently.
+Application code installs instance-owned backend providers through `AppBuilder`; the runtime keeps service lookup internal and exposes type-safe access through `EngineAccessor`. Worker jobs inherit the active application's service context. For instance, `RenderSystem` does not call OpenGL commands directly; it issues commands to an `IGraphicsContext`. Configuration values naming providers not compiled into the build are reported and sanitized to the build default before provider creation.
 
 ---
 
 ## ⚙️ 3. Execution & Memory Model
 - **Data-Oriented ECS**: Components are stored in contiguous memory blocks. Systems process entities in "views", ensuring high CPU cache hit rates and SIMD-friendly loops.
 - **Dual-Timestep Pipeline**: 
-    - **Fixed Time (60Hz)**: Deterministic steps for Physics and core state reconciliation.
+    - **Fixed Time**: Configurable deterministic steps for Physics and core state reconciliation.
     - **Variable Time**: Frame-rate independent updates for Animation, Particles, and UI.
 - **Job-Based Concurrency**: A worker-pool `JobSystem` distributes asset decoding and snapshot-safe parallel system work across configured worker threads.
 
@@ -45,7 +45,7 @@ Backends are managed via **Service Locators** and **Context Wrappers**. For inst
 ECS is the backbone of the engine, separating data from logic to maximize cache efficiency.
 
 ### Entities
-Entities are lightweight `uint32_t` IDs. They contain no data. Use **[EntityBuilder](file:///l:/C++/AxisEngine/docs/scripting/scriptable_api.md#entitybuilder-reference)** for fluent creation.
+Entities are lightweight IDs. They contain no data. Use **[EntityBuilder](../scripting/scriptable_api.md#entitybuilder-reference)** for fluent creation.
 
 ### Components (Data)
 Pure data structures. Examples:
@@ -86,7 +86,7 @@ Systems iterate over entities with matching component "views".
 
 The engine handles timing via a **Dual-Timestep Loop**:
 
-1.  **Fixed Update (60Hz default)**:
+1.  **Fixed Update (configured by physics mode/tick rate)**:
     - Guaranteed intervals for stable Physics and State logic.
 2.  **Variable Update (Frame Rate dependant)**:
     - Responsive Scripting, Animation, and UI updates.

@@ -95,16 +95,6 @@ void AttachDebugCameraScript(Scene& scene, entt::entity camera)
 }
 }  // namespace
 
-CameraEditorModule::CameraEditorModule()
-{
-}
-CameraEditorModule::~CameraEditorModule()
-{
-}
-
-void CameraEditorModule::Initialize()
-{
-}
 void CameraEditorModule::OnUpdate(float dt)
 {
     if (m_IsDebugCameraActive)
@@ -122,10 +112,6 @@ void CameraEditorModule::OnUpdate(float dt)
         }
     }
 }
-void CameraEditorModule::Render(Scene& scene)
-{
-}
-
 void CameraEditorModule::ProcessInput(KeyboardManager& keyboard)
 {
     if (!m_Enabled)
@@ -215,7 +201,8 @@ void CameraEditorModule::ToggleDebugCamera()
                 auto& lastCam = registry.get<CameraComponent>(m_LastActiveCamera);
                 cam.fov = lastCam.fov;
                 cam.nearPlane = lastCam.nearPlane;
-                cam.farPlane = lastCam.farPlane * 20.0f; // Multiplied by 20 to ensure it is much further than gameplay camera
+                cam.farPlane =
+                    lastCam.farPlane * 20.0f;  // Multiplied by 20 to ensure it is much further than gameplay camera
                 cam.screenWidth = lastCam.screenWidth;
                 cam.screenHeight = lastCam.screenHeight;
                 cam.aspectRatio = lastCam.aspectRatio;

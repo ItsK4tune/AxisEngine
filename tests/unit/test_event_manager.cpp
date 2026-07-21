@@ -52,3 +52,15 @@ AXIS_TEST_CASE("EventSubscriptionList clears mixed event types")
     events.Publish(EventManagerTestEventB{8});
     AXIS_CHECK(calls == 3);
 }
+
+AXIS_TEST_CASE("EventManager clear releases process-lifetime listeners between applications")
+{
+    int calls = 0;
+    auto& events = EventManager::Instance();
+    events.Subscribe<EventManagerTestEventA>([&](const EventManagerTestEventA&) { ++calls; });
+    events.Clear();
+
+    events.Publish(EventManagerTestEventA{});
+    AXIS_CHECK(calls == 0);
+    AXIS_CHECK(!events.HasListeners<EventManagerTestEventA>());
+}

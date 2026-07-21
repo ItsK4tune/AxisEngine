@@ -2,8 +2,6 @@
 
 #include <glm/glm.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
-
 class ISound
 {
 public:

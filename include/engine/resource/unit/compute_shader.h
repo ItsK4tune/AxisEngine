@@ -5,7 +5,6 @@
 
 class IShaderManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class ComputeShader
 {

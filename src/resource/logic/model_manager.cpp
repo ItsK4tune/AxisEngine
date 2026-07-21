@@ -9,10 +9,6 @@
 #include <render/interface/i_graphics_context.h>
 #include <resource/type/resource_events.h>
 
-ModelManager::ModelManager(ModelInstanceManager& instanceManager) : m_InstanceManager(instanceManager)
-{
-}
-
 void ModelManager::Initialize()
 {
     m_ErrorModel = m_Cache.Get("capsuleModel");
@@ -40,7 +36,6 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
             m_Cache.Add(name, model);
             m_NameToPathMap[name] = fullPath;
             m_PathReferenceCounts[fullPath]++;
-            m_InstanceManager.RegisterModel(name, model);
             LOGGER_INFO("ModelManager") << "Deduplicated model load for path: " << path << " under name: " << name;
             return model;
         }
@@ -50,6 +45,8 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
     {
         auto model = std::make_shared<Model>();
         model->SetName(name);
+        auto decodedModel = std::make_shared<Model>();
+        decodedModel->SetName(name);
         m_Cache.Add(name, model);
 
         {
@@ -59,11 +56,11 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
             m_NameToPathMap[name] = fullPath;
         }
 
-        auto future = JobSystem::Instance().ExecuteAsync([model, path, isStatic]() {
+        auto future = JobSystem::Instance().ExecuteAsync([decodedModel, path, isStatic]() {
             try
             {
-                model->LoadCPU(path, isStatic);
-                return !model->meshes.empty();
+                decodedModel->LoadCPU(path, isStatic);
+                return !decodedModel->meshes.empty();
             }
             catch (...)
             {
@@ -73,7 +70,8 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         });
 
         std::lock_guard<std::mutex> lock(m_PendingMutex);
-        m_PendingModels.push_back({name, model, std::move(future)});
+        const uint64_t generation = ++m_LoadGenerations[fullPath];
+        m_PendingModels.push_back({name, fullPath, model, decodedModel, std::move(future), generation});
 
         return model;
     }
@@ -100,10 +98,10 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
             if (ServiceLocator::Instance().Has<IGraphicsContext>())
             {
                 model->UploadToGPU();
+                if (m_DiscardCpuMeshDataAfterUpload)
+                    model->ReleaseCpuMeshData();
             }
             m_Cache.Add(name, model);
-            m_InstanceManager.RegisterModel(name, model);
-
             {
                 std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
                 m_PathToModelMap[fullPath] = model;
@@ -117,8 +115,8 @@ std::shared_ptr<Model> ModelManager::Load(const std::string& name, const std::st
         catch (...)
         {
             LOGGER_ERROR("ModelManager") << "Failed to load model: " << path << "."
-                                         << (m_StrictLoading ? " Strict loading is enabled." :
-                                                              " Returning fallback model.");
+                                         << (m_StrictLoading ? " Strict loading is enabled."
+                                                             : " Returning fallback model.");
             if (m_StrictLoading)
                 return nullptr;
             if (m_ErrorModel)
@@ -138,86 +136,122 @@ std::shared_ptr<Model> ModelManager::Get(const std::string& name)
 
 void ModelManager::Unload(const std::string& name)
 {
-    std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
-    auto pathIt = m_NameToPathMap.find(name);
-    if (pathIt != m_NameToPathMap.end())
+    std::string fullyUnloadedPath;
     {
-        std::string fullPath = pathIt->second;
-        m_PathReferenceCounts[fullPath]--;
-        if (m_PathReferenceCounts[fullPath] <= 0)
+        std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+        auto pathIt = m_NameToPathMap.find(name);
+        if (pathIt != m_NameToPathMap.end())
         {
-            m_PathToModelMap.erase(fullPath);
-            m_PathReferenceCounts.erase(fullPath);
-            m_InstanceManager.UnloadModel(name);
-            LOGGER_INFO("ModelManager") << "Fully unloaded physical model: " << fullPath;
+            std::string fullPath = pathIt->second;
+            m_PathReferenceCounts[fullPath]--;
+            if (m_PathReferenceCounts[fullPath] <= 0)
+            {
+                m_PathToModelMap.erase(fullPath);
+                m_PathReferenceCounts.erase(fullPath);
+                fullyUnloadedPath = fullPath;
+                LOGGER_INFO("ModelManager") << "Fully unloaded physical model: " << fullPath;
+            }
+            m_NameToPathMap.erase(pathIt);
         }
-        else
-        {
-            m_InstanceManager.UnloadModel(name);
-        }
-        m_NameToPathMap.erase(pathIt);
     }
-    else
+    if (!fullyUnloadedPath.empty())
     {
-        m_InstanceManager.UnloadModel(name);
+        std::lock_guard<std::mutex> lock(m_PendingMutex);
+        ++m_LoadGenerations[fullyUnloadedPath];
     }
     m_Cache.Remove(name);
 }
 
 void ModelManager::Update(float dt)
 {
-    std::lock_guard<std::mutex> lock(m_PendingMutex);
-
-    for (auto it = m_PendingModels.begin(); it != m_PendingModels.end();)
+    std::vector<PendingModel> completed;
     {
-        if (it->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+        std::lock_guard<std::mutex> lock(m_PendingMutex);
+        const size_t completionLimit =
+            m_CompletedLoadBudgetEnabled ? m_MaxCompletedLoadsPerFrame : m_PendingModels.size();
+        completed.reserve((std::min)(completionLimit, m_PendingModels.size()));
+        for (auto it = m_PendingModels.begin();
+             it != m_PendingModels.end() && completed.size() < completionLimit;)
         {
-            const bool loaded = it->future.get();
-            if (!loaded)
+            if (it->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
-                LOGGER_ERROR("ModelManager") << "Async model failed to load: " << it->name
-                                             << (m_StrictLoading ? ". Strict loading is enabled." :
-                                                                  ". Applying fallback model.");
+                completed.push_back(std::move(*it));
+                it = m_PendingModels.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
+    for (auto& pending : completed)
+    {
+        const bool loaded = pending.future.get();
+        bool currentGeneration = false;
+        {
+            std::lock_guard<std::mutex> lock(m_PendingMutex);
+            const auto generation = m_LoadGenerations.find(pending.path);
+            currentGeneration = generation != m_LoadGenerations.end() && generation->second == pending.generation;
+        }
+        if (!currentGeneration)
+            continue;
+
+        if (!loaded)
+        {
+            LOGGER_ERROR("ModelManager")
+                << "Async model failed to load: " << pending.name
+                << (m_StrictLoading ? ". Strict loading is enabled." : ". Applying fallback model.");
+            {
+                std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+                m_PathToModelMap.erase(pending.path);
+                m_PathReferenceCounts.erase(pending.path);
+            }
+            std::vector<std::string> aliases;
+            {
+                std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+                for (auto it = m_NameToPathMap.begin(); it != m_NameToPathMap.end();)
                 {
-                    std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
-                    auto pathIt = m_NameToPathMap.find(it->name);
-                    if (pathIt != m_NameToPathMap.end())
+                    if (it->second == pending.path)
                     {
-                        const std::string fullPath = pathIt->second;
-                        m_PathToModelMap.erase(fullPath);
-                        m_PathReferenceCounts.erase(fullPath);
-                        m_NameToPathMap.erase(pathIt);
+                        aliases.push_back(it->first);
+                        it = m_NameToPathMap.erase(it);
+                    }
+                    else
+                    {
+                        ++it;
                     }
                 }
-
-                if (!m_StrictLoading && m_ErrorModel)
-                {
-                    m_Cache.Add(it->name, m_ErrorModel);
-                    m_InstanceManager.RegisterModel(it->name, m_ErrorModel);
-                }
-                else
-                {
-                    m_Cache.Remove(it->name);
-                }
-
-                EventManager::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", false});
-                it = m_PendingModels.erase(it);
-                continue;
             }
-
-            if (!it->model->IsReadyToRender())
+            for (const auto& alias : aliases)
             {
-                it->model->UploadToGPU();
-                m_InstanceManager.RegisterModel(it->name, it->model);
-                LOGGER_INFO("ModelManager") << "Async model finished loading and uploaded to GPU: " << it->name;
-                EventManager::Instance().Publish(ResourceLoadedEvent{it->name, "MODEL", true});
+                if (!m_StrictLoading && m_ErrorModel)
+                    m_Cache.Add(alias, m_ErrorModel);
+                else
+                    m_Cache.Remove(alias);
+                EventManager::Instance().Publish(ResourceLoadedEvent{alias, "MODEL", false});
             }
-            it = m_PendingModels.erase(it);
+            continue;
         }
-        else
+
+        pending.model->AdoptCpuData(std::move(*pending.decodedModel));
+
+        if (!pending.model->IsReadyToRender() && ServiceLocator::Instance().Has<IGraphicsContext>())
         {
-            ++it;
+            pending.model->UploadToGPU();
+            if (m_DiscardCpuMeshDataAfterUpload)
+                pending.model->ReleaseCpuMeshData();
+            LOGGER_INFO("ModelManager") << "Async model finished loading and uploaded to GPU: " << pending.name;
         }
+        std::vector<std::string> aliases;
+        {
+            std::lock_guard<std::mutex> lock(m_DeduplicationMutex);
+            for (const auto& [alias, path] : m_NameToPathMap)
+                if (path == pending.path)
+                    aliases.push_back(alias);
+        }
+        for (const auto& alias : aliases)
+            EventManager::Instance().Publish(ResourceLoadedEvent{alias, "MODEL", true});
     }
 }
 
@@ -239,4 +273,5 @@ void ModelManager::Clear()
 
     std::lock_guard<std::mutex> lock(m_PendingMutex);
     m_PendingModels.clear();
+    m_LoadGenerations.clear();
 }

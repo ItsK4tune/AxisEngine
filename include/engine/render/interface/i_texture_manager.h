@@ -23,6 +23,14 @@ public:
                             TextureFormat format, DataType type, const void* data) = 0;
     virtual void TexImage2D(TextureType target, int level, InternalFormat internalFormat, int width, int height,
                             int border, TextureFormat format, DataType type, const void* data) = 0;
+    virtual bool CompressedTexImage2D(TextureType, int, InternalFormat, int, int, size_t, const void*)
+    {
+        return false;
+    }
+    virtual bool TexImage2DMultisample(TextureType, int, InternalFormat, int, int, bool)
+    {
+        return false;
+    }
     virtual void TexImage3D(TextureType target, int level, InternalFormat internalFormat, int width, int height,
                             int depth, int border, TextureFormat format, DataType type, const void* data) = 0;
     virtual void TexSubImage2D(TextureType target, int level, int xoffset, int yoffset, int width, int height,
@@ -30,6 +38,10 @@ public:
 
     virtual void ActiveTexture(TextureUnit unit) = 0;
     virtual void PixelStorei(PixelStoreParam pname, int param) = 0;
+    virtual bool SetTextureSwizzle(TextureType, unsigned int, TextureSwizzle)
+    {
+        return false;
+    }
 
     virtual const char* GetBackendName() const = 0;
 };

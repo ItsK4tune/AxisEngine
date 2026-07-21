@@ -3,8 +3,15 @@
 #ifdef ENABLE_EDITOR
 #include <imgui.h>
 #include <algorithm>
+#include <cctype>
 
 ConsolePanel* ConsolePanel::s_Instance = nullptr;
+
+ConsolePanel::~ConsolePanel()
+{
+    if (s_Instance == this)
+        s_Instance = nullptr;
+}
 
 void ConsolePanel::Initialize()
 {
@@ -63,7 +70,8 @@ void ConsolePanel::OnImGui(Scene& scene)
         std::lock_guard<std::mutex> lock(m_Mutex);
         std::string filterStr = m_FilterBuf;
         std::string filterLower = filterStr;
-        std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(), ::tolower);
+        std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(),
+                       [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
 
         for (const auto& entry : m_Logs)
         {
@@ -82,7 +90,8 @@ void ConsolePanel::OnImGui(Scene& scene)
             {
                 std::string combined = entry.tag + " " + entry.message;
                 std::string combinedLower = combined;
-                std::transform(combinedLower.begin(), combinedLower.end(), combinedLower.begin(), ::tolower);
+                std::transform(combinedLower.begin(), combinedLower.end(), combinedLower.begin(),
+                               [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
                 if (combinedLower.find(filterLower) == std::string::npos)
                     continue;
             }

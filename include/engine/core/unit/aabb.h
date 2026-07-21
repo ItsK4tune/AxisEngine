@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 #include <algorithm>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct AABB
 {

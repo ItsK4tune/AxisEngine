@@ -3,6 +3,7 @@
 #include <core/unit/aabb.h>
 #include <glm/glm.hpp>
 #include <memory>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,29 @@ struct MaterialComponent;
 struct ReflectiveComponent;
 struct ReflectionProbeComponent;
 
+struct RenderReflectionProbe
+{
+    ReflectionProbeComponent* component = nullptr;
+    glm::vec3 position{0.0f};
+    uint32_t entityId = 0;
+    int gpuIndex = -1;
+};
+
+struct RenderPlanarReflection
+{
+    uint32_t textureId = 0;
+    glm::vec3 normal{0.0f, 1.0f, 0.0f};
+};
+
+struct RenderLightProbe
+{
+    glm::vec3 coefficients[9]{};
+    glm::vec3 position{0.0f};
+    glm::vec3 tint{1.0f};
+    float intensity = 1.0f;
+    float radius = 5.0f;
+};
+
 struct RenderItem
 {
     Model* model = nullptr;
@@ -48,7 +72,6 @@ struct RenderItem
     bool isTransparent = false;
     bool ignoreDepth = false;
     RenderMode renderMode = RenderMode::Auto;
-    uint64_t sortKey = 0;
     uint64_t materialBatchKey = 0;
 
     bool hasAnimation = false;
@@ -94,12 +117,26 @@ struct RenderSceneData
     std::vector<RenderItem> transparentItems;
     std::vector<RenderItem> shadowQueue;
     std::vector<RenderLight> lights;
+    const std::vector<RenderItem>* shadowQueueView = nullptr;
+    const std::vector<RenderLight>* lightView = nullptr;
+
+    const std::vector<RenderItem>& GetShadowQueue() const
+    {
+        return shadowQueueView ? *shadowQueueView : shadowQueue;
+    }
+
+    const std::vector<RenderLight>& GetLights() const
+    {
+        return lightView ? *lightView : lights;
+    }
 
     glm::mat4 viewMatrix;
     glm::mat4 projMatrix;
     glm::vec3 cameraPosition;
     float nearPlane;
     float farPlane;
+    int viewportWidth = 0;
+    int viewportHeight = 0;
 
     unsigned int irradianceMap = 0;
     unsigned int prefilterMap = 0;

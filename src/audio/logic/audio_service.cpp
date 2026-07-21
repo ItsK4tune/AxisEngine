@@ -24,6 +24,7 @@ bool AudioService::Initialize(std::unique_ptr<IAudioEngine> engine)
     }
 
     ServiceLocator::Instance().Register<AudioService>(this);
+    ServiceLocator::Instance().Register<IAudioEngine>(m_Engine.get());
     LOGGER_INFO("AudioService") << "Audio service initialized successfully.";
     return true;
 }
@@ -31,6 +32,7 @@ bool AudioService::Initialize(std::unique_ptr<IAudioEngine> engine)
 void AudioService::Shutdown()
 {
     ServiceLocator::Instance().Unregister<AudioService>();
+    ServiceLocator::Instance().Unregister<IAudioEngine>();
     if (m_Engine)
     {
         m_Engine->Shutdown();

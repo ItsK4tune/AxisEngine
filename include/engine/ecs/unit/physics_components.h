@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct RigidShapeComponent
 {
@@ -111,6 +110,8 @@ struct CharacterControllerComponent
 {
     std::shared_ptr<ICharacterController> controller = nullptr;
 
+    float radius = 0.5f;
+    float height = 1.0f;
     float stepHeight = 0.35f;
     float maxSlope = 45.0f;
 

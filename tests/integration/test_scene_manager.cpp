@@ -79,3 +79,18 @@ AXIS_TEST_CASE("SceneManager SetSceneActive propagates inactive state to childre
     AXIS_CHECK(!fixture.scene.GetComponent<InfoComponent>(parent).isActive);
     AXIS_CHECK(!fixture.scene.GetComponent<InfoComponent>(child).isActive);
 }
+
+AXIS_TEST_CASE("SceneManager AddEntity keeps scene membership idempotent")
+{
+    axis_test_support::SceneServiceFixture fixture;
+    SceneManager manager;
+    auto entity = fixture.scene.CreateEntity("Member");
+
+    manager.AddEntity(entity, "arena");
+    manager.AddEntity(entity, "arena");
+
+    const auto* record = manager.GetSceneByName("arena");
+    AXIS_CHECK(record != nullptr);
+    if (record)
+        AXIS_CHECK(record->entities.size() == 1);
+}

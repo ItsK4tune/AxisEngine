@@ -14,6 +14,7 @@
 struct MeshRendererComponent
 {
     std::shared_ptr<Model> model = nullptr;
+    std::string modelName;
     std::weak_ptr<Shader> shader;
     std::string shaderName;
     int order = 0;
@@ -81,6 +82,7 @@ struct MaterialComponent
 struct SkyboxRenderComponent
 {
     std::shared_ptr<Skybox> skybox = nullptr;
+    std::string skyboxName;
     std::weak_ptr<Shader> shader;
     std::string shaderName;
     bool isPrimary = true;
@@ -93,6 +95,7 @@ struct SkyboxRenderComponent
 struct LODComponent
 {
     std::vector<std::shared_ptr<Model>> lodModels;
+    std::vector<std::string> lodModelNames;
     std::vector<float> lodDistancesSq;
 };
 
@@ -103,6 +106,15 @@ struct OcclusionComponent
     bool queryPending = false;
 };
 
+enum class StreamingState
+{
+    Unloaded,
+    Loading,
+    Resident,
+    Unloading,
+    Failed
+};
+
 struct StreamingComponent
 {
     std::string modelPath;
@@ -110,4 +122,6 @@ struct StreamingComponent
     float loadDistance = 100.0f;
     float unloadDistance = 150.0f;
     bool isRequested = false;
+    bool isResident = false;
+    StreamingState state = StreamingState::Unloaded;
 };

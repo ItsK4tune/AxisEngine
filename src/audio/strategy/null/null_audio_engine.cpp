@@ -104,10 +104,14 @@ void NullSound::Stop()
 
 void NullSound::Pause()
 {
+    if (!m_Finished)
+        m_Paused = true;
 }
 
 void NullSound::Resume()
 {
+    if (!m_Finished)
+        m_Paused = false;
 }
 
 bool NullSound::IsFinished()
@@ -180,6 +184,11 @@ unsigned int NullSound::GetPlayLength()
     return 0;
 }
 
+bool NullSound::IsPaused() const
+{
+    return m_Paused;
+}
+
 bool NullAudioEngine::Initialize()
 {
     return true;
@@ -211,17 +220,23 @@ std::shared_ptr<ISound> NullAudioEngine::Play2D(const std::string& filename, boo
     auto sound = std::make_shared<NullSound>();
     sound->SetVolume(m_GlobalVolume);
     sound->SetIsLooped(loop);
+    if (startPaused)
+        sound->Pause();
     m_ActiveSounds.push_back(sound);
     return sound;
 }
 
 std::shared_ptr<ISound> NullAudioEngine::Play2D(IAudioSource* source, bool loop, bool startPaused)
 {
+    if (!source)
+        return nullptr;
     auto sound = std::make_shared<NullSound>();
-    sound->SetVolume(source ? ApplyGlobalVolume(source->GetDefaultVolume(), m_GlobalVolume) : m_GlobalVolume);
-    sound->SetPitch(source ? source->GetDefaultPitch() : 1.0f);
-    sound->SetPan(source ? source->GetDefaultPan() : 0.0f);
+    sound->SetVolume(ApplyGlobalVolume(source->GetDefaultVolume(), m_GlobalVolume));
+    sound->SetPitch(source->GetDefaultPitch());
+    sound->SetPan(source->GetDefaultPan());
     sound->SetIsLooped(loop);
+    if (startPaused)
+        sound->Pause();
     m_ActiveSounds.push_back(sound);
     return sound;
 }
@@ -233,18 +248,24 @@ std::shared_ptr<ISound> NullAudioEngine::Play3D(const std::string& filename, con
     sound->SetVolume(m_GlobalVolume);
     sound->SetPosition(pos);
     sound->SetIsLooped(loop);
+    if (startPaused)
+        sound->Pause();
     m_ActiveSounds.push_back(sound);
     return sound;
 }
 
 std::shared_ptr<ISound> NullAudioEngine::Play3D(IAudioSource* source, const glm::vec3& pos, bool loop, bool startPaused)
 {
+    if (!source)
+        return nullptr;
     auto sound = std::make_shared<NullSound>();
-    sound->SetVolume(source ? ApplyGlobalVolume(source->GetDefaultVolume(), m_GlobalVolume) : m_GlobalVolume);
-    sound->SetPitch(source ? source->GetDefaultPitch() : 1.0f);
-    sound->SetPan(source ? source->GetDefaultPan() : 0.0f);
+    sound->SetVolume(ApplyGlobalVolume(source->GetDefaultVolume(), m_GlobalVolume));
+    sound->SetPitch(source->GetDefaultPitch());
+    sound->SetPan(source->GetDefaultPan());
     sound->SetPosition(pos);
     sound->SetIsLooped(loop);
+    if (startPaused)
+        sound->Pause();
     m_ActiveSounds.push_back(sound);
     return sound;
 }

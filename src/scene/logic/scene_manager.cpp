@@ -53,7 +53,8 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
     {
         if (rec.name == normName || rec.name == sceneName || rec.filePath == sceneName)
         {
-            if (std::find(rec.entities.begin(), rec.entities.end(), entity) == rec.entities.end())
+            auto& lookup = m_SceneEntityLookup[rec.name];
+            if (lookup.insert(entity).second)
             {
                 rec.entities.push_back(entity);
                 if (auto* info = ServiceLocator::Instance().Require<Scene>().TryGetComponent<InfoComponent>(entity))
@@ -73,6 +74,7 @@ void SceneManager::AddEntity(entt::entity entity, const std::string& sceneName)
     newRec.persistent = false;
     newRec.isActive = true;
     newRec.entities.push_back(entity);
+    m_SceneEntityLookup[newRec.name].insert(entity);
 
     if (auto* info = ServiceLocator::Instance().Require<Scene>().TryGetComponent<InfoComponent>(entity))
     {
@@ -86,10 +88,16 @@ void SceneManager::RemoveEntity(entt::entity entity)
 {
     for (auto& rec : m_LoadedScenes)
     {
+        auto lookup = m_SceneEntityLookup.find(rec.name);
+        if (lookup != m_SceneEntityLookup.end() && lookup->second.erase(entity) == 0)
+            continue;
+
         auto it = std::find(rec.entities.begin(), rec.entities.end(), entity);
         if (it != rec.entities.end())
         {
             rec.entities.erase(it);
+            if (lookup != m_SceneEntityLookup.end() && lookup->second.empty())
+                m_SceneEntityLookup.erase(lookup);
             return;
         }
     }
@@ -131,6 +139,7 @@ void SceneManager::SetSceneActive(const std::string& name, bool active, Scene& s
 
 void SceneManager::RebuildEntityRecords(Scene& scene)
 {
+    m_SceneEntityLookup.clear();
     for (auto& rec : m_LoadedScenes)
     {
         rec.entities.clear();
@@ -161,12 +170,13 @@ void SceneManager::RebuildEntityRecords(Scene& scene)
             rec.persistent = false;
             rec.isActive = true;
             rec.entities.push_back(entity);
+            m_SceneEntityLookup[rec.name].insert(entity);
             info.isActive = rec.isActive;
             m_LoadedScenes.push_back(std::move(rec));
         }
         else
         {
-            if (std::find(it->entities.begin(), it->entities.end(), entity) == it->entities.end())
+            if (m_SceneEntityLookup[it->name].insert(entity).second)
                 it->entities.push_back(entity);
             info.isActive = it->isActive;
         }
@@ -237,6 +247,9 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     rec.ownedAnimations = std::move(res.loadedAnimations);
     rec.ownedSounds = std::move(res.loadedSounds);
 
+    auto& lookup = m_SceneEntityLookup[rec.name];
+    lookup.reserve(rec.entities.size());
+    lookup.insert(rec.entities.begin(), rec.entities.end());
     m_LoadedScenes.push_back(std::move(rec));
     EventManager::Instance().Publish(SceneLoadedEvent{filePath});
 }
@@ -346,6 +359,7 @@ void SceneManager::ClearAllIncludingPersistent()
         Internal_UnloadRecord(rec);
     }
     m_LoadedScenes.clear();
+    m_SceneEntityLookup.clear();
     m_NextLoadOrder = 0;
 }
 
@@ -474,12 +488,15 @@ void SceneManager::Internal_DestroySceneEntities(SceneRecord& rec)
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     std::vector<entt::entity> entities;
     entities.swap(rec.entities);
+    m_SceneEntityLookup.erase(rec.name);
 
     for (auto entity : entities)
     {
         if (scene.IsValid(entity))
         {
-            scene.DestroyEntity(entity, this);
+            // Membership was detached in bulk above; do not search all remaining
+            // scene records again for every entity in a large teardown.
+            scene.DestroyEntity(entity, nullptr);
         }
     }
 }

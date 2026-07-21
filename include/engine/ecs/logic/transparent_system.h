@@ -3,16 +3,12 @@
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <render/logic/material_renderer.h>
-#include <render/unit/command_queue.h>
 #include <memory>
 
 class TransparentSystem : public IRenderSystem, public IECSSystem
 {
 public:
     void Initialize() override;
-    void Shutdown() override
-    {
-    }
 
     bool IsEnabled() const override
     {
@@ -38,9 +34,6 @@ public:
     {
         return SystemRequirement::Graphics;
     }
-    void Render(Scene& scene) override
-    {
-    }
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void RenderTransparentPass(Scene& scene, int width, int height, float alpha) override;
 
@@ -49,5 +42,4 @@ public:
 
 private:
     bool m_Enabled = true;
-    CommandQueue m_CommandQueue;
 };

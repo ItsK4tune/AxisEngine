@@ -18,7 +18,8 @@ void SampleState::LoadScene26()
         EntityBuilder(scene, res, camera)
             .WithPosition(glm::vec3(0.0f, 4.45f, 10.0f))
             .WithRotation(glm::quatLookAt(glm::normalize(glm::vec3(0.0f, -0.14f, -1.0f)), glm::vec3(0.0f, 1.0f, 0.0f)))
-            .WithScriptable("Scenario26FpsCameraScript", []() { return std::make_unique<Scenario26FpsCameraScript>(); });
+            .WithScriptable("Scenario26FpsCameraScript",
+                            []() { return std::make_unique<Scenario26FpsCameraScript>(); });
     }
 
     EntityBuilder(scene, res, "scenario")
@@ -159,13 +160,14 @@ void SampleState::LoadScene26()
         const bool sphere = (i % 2) == 0;
         const float x = -18.0f + static_cast<float>(i % 4) * 12.0f;
         const float z = -2.0f + static_cast<float>(i / 4) * 13.0f;
-        auto target = EntityBuilder(scene, res, "scenario")
-                          .WithName("S26_DraggableTarget_" + std::to_string(i))
-                          .WithTransform(glm::vec3(x, 2.2f, z), glm::vec3(0.0f), glm::vec3(sphere ? 1.35f : 1.15f))
-                          .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.08f, 0.42f, 1.0f)
-                          .WithRigidShape(sphere ? ShapeType::Sphere : ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.65f, 0.25f)
-                          .WithRigidBody(1.0f, false, false, 0.25f, 0.45f)
-                          .Build();
+        auto target =
+            EntityBuilder(scene, res, "scenario")
+                .WithName("S26_DraggableTarget_" + std::to_string(i))
+                .WithTransform(glm::vec3(x, 2.2f, z), glm::vec3(0.0f), glm::vec3(sphere ? 1.35f : 1.15f))
+                .WithPBRMesh(sphere ? "sphereModel" : "cubeModel", "deferred_lit", 0.08f, 0.42f, 1.0f)
+                .WithRigidShape(sphere ? ShapeType::Sphere : ShapeType::Box, glm::vec3(1.0f), 1.0f, 2.0f, 0.65f, 0.25f)
+                .WithRigidBody(1.0f, false, false, 0.25f, 0.45f)
+                .Build();
         target.SetColor(sphere ? glm::vec4(0.95f, 0.42f, 0.22f, 1.0f) : glm::vec4(0.28f, 0.78f, 0.95f, 1.0f));
     }
 
@@ -177,25 +179,26 @@ void SampleState::LoadScene26()
     const float initialMaxSlope = m_S26MaxSlope;
     const bool initialIgnoreCharacterTrigger = m_S26IgnoreCharacterTrigger;
 
-    m_S26ControllerEntity = EntityBuilder(scene, res, "scenario")
-                                .WithName("S26_CharacterController")
-                                .WithTag("mover")
-                                .WithTransform(glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(0.0f), glm::vec3(1.2f))
-                                .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.45f, 1.0f)
-                                .WithScriptable("Scenario26CharacterControllerScript", [initialMoveSpeed, initialSprintMultiplier, initialSlowMultiplier,
-                                                                                      initialJumpSpeed, initialStepHeight, initialMaxSlope,
-                                                                                      initialIgnoreCharacterTrigger]() {
-                                    auto script = std::make_unique<Scenario26CharacterControllerScript>();
-                                    script->moveSpeed = initialMoveSpeed;
-                                    script->sprintMultiplier = initialSprintMultiplier;
-                                    script->slowMultiplier = initialSlowMultiplier;
-                                    script->jumpSpeed = initialJumpSpeed;
-                                    script->stepHeight = initialStepHeight;
-                                    script->maxSlope = initialMaxSlope;
-                                    script->ignoreCharacterTrigger = initialIgnoreCharacterTrigger;
-                                    return script;
-                                })
-                                .Build();
+    m_S26ControllerEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("S26_CharacterController")
+            .WithTag("mover")
+            .WithTransform(glm::vec3(0.0f, 3.0f, 10.0f), glm::vec3(0.0f), glm::vec3(1.2f))
+            .WithPBRMesh("capsuleModel", "deferred_lit", 0.0f, 0.45f, 1.0f)
+            .WithScriptable("Scenario26CharacterControllerScript",
+                            [initialMoveSpeed, initialSprintMultiplier, initialSlowMultiplier, initialJumpSpeed,
+                             initialStepHeight, initialMaxSlope, initialIgnoreCharacterTrigger]() {
+                                auto script = std::make_unique<Scenario26CharacterControllerScript>();
+                                script->moveSpeed = initialMoveSpeed;
+                                script->sprintMultiplier = initialSprintMultiplier;
+                                script->slowMultiplier = initialSlowMultiplier;
+                                script->jumpSpeed = initialJumpSpeed;
+                                script->stepHeight = initialStepHeight;
+                                script->maxSlope = initialMaxSlope;
+                                script->ignoreCharacterTrigger = initialIgnoreCharacterTrigger;
+                                return script;
+                            })
+            .Build();
     Entity(m_S26ControllerEntity, &scene).SetColor(glm::vec4(0.2f, 0.95f, 0.35f, 1.0f));
 
     if (phys)
@@ -210,7 +213,7 @@ void SampleState::LoadScene26()
             controller->SetUserPointer((void*)((uintptr_t)(entt::entity)m_S26ControllerEntity + 1));
             phys->AddCharacterController(controller.get());
             EntityBuilder(scene, res, m_S26ControllerEntity)
-                .WithCharacterController(controller, m_S26StepHeight, m_S26MaxSlope);
+                .WithCharacterController(controller, m_S26StepHeight, m_S26MaxSlope, 0.82f, 1.2f);
         }
     }
 

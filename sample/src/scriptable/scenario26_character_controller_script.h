@@ -64,7 +64,7 @@ public:
         if (cc.controller)
             cc.controller->SetMaxSlope(glm::radians(maxSlope));
 
-        auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+        auto* io = Resolve<IOHandler>();
         const auto keyHeld = [io](Key key) { return io && io->GetKeyboard().GetKey(key); };
 
         glm::vec3 cameraForward(0.0f, 0.0f, -1.0f);
@@ -290,7 +290,7 @@ private:
     }
 
     void UpdateZoneCountersAndVisuals(const glm::vec3& controllerPos, bool insideSlowZone, bool insideSinkZone,
-                                       bool insideFlyZone, bool insideSlipperyZone, bool insideBoostZone)
+                                      bool insideFlyZone, bool insideSlipperyZone, bool insideBoostZone)
     {
         auto& scene = GetScene();
         const bool insideTrigger = PointInsideNamedBox("S26_TriggerZone", controllerPos, glm::vec3(0.75f, 0.5f, 0.75f));

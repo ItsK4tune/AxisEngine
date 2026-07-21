@@ -1,4 +1,5 @@
 #include "sample_scenario_common.h"
+#include <glm/gtc/constants.hpp>
 
 void SampleState::LoadScene23()
 {
@@ -98,6 +99,32 @@ void SampleState::LoadScene23()
     follower.SetColor(glm::vec4(0.1f, 0.9f, 0.25f, 1.0f));
     follower.ConfigurePathFollower(m_S23LockXPitch, m_S23LockYYaw, m_S23LockZRoll, m_S23LockMoveX, m_S23LockMoveY, m_S23LockMoveZ, true, m_S23PathfindingCriteria);
 
+    m_S23CrowdCount = glm::clamp(m_S23CrowdCount, 0, 128);
+    m_S23CrowdFollowers.clear();
+    m_S23CrowdFollowers.reserve(static_cast<size_t>(m_S23CrowdCount));
+    for (int i = 0; i < m_S23CrowdCount; ++i)
+    {
+        const float angle = glm::two_pi<float>() * static_cast<float>(i) /
+                            static_cast<float>((std::max)(1, m_S23CrowdCount));
+        const glm::vec3 offset(std::cos(angle) * 3.5f, 0.0f, std::sin(angle) * 3.5f);
+        auto crowdEntity = EntityBuilder(scene, res, "scenario")
+                               .WithName("CrowdFollower_" + std::to_string(i))
+                               .WithTransform(glm::vec3(-20.0f, 2.5f, 20.0f) + offset, glm::vec3(0.0f),
+                                              glm::vec3(0.65f))
+                               .WithPBRMesh("capsuleModel", "deferred_lit", 0.05f, 0.55f, 1.0f)
+                               .WithPathFollower(m_S23FollowerSpeed * (0.85f + 0.01f * static_cast<float>(i % 11)),
+                                                 15.0f, 30.0f, 60.0f)
+                               .Build();
+        auto& crowdFollower = scene.GetComponent<PathFollowerComponent>(crowdEntity);
+        ConfigureScenario23FollowerOptions(crowdFollower, m_S23PathfindingCriteria);
+        crowdFollower.recordDebugPath = false;
+        crowdFollower.localAvoidanceEnabled = true;
+        crowdFollower.separationRadius = 1.4f;
+        crowdFollower.separationWeight = 1.0f;
+        Entity(crowdEntity, &scene).SetColor(glm::vec4(0.2f, 0.55f + 0.35f * (i % 3) / 2.0f, 1.0f, 1.0f));
+        m_S23CrowdFollowers.push_back(crowdEntity);
+    }
+
     const auto waypoint = [this](float x, float z) {
         return glm::vec3(x, Scenario23WaypointY(m_S23PathfindingCriteria, x, z), z);
     };
@@ -151,4 +178,6 @@ void SampleState::LoadScene23()
         outPos.y = onRoad ? 0.5f : Scenario23NavHeight(pos.x, pos.z);
     });
     navSystem.MoveTo(scene, m_NavFollower, m_NavWaypoints[m_CurrentWaypointIndex]);
+    for (entt::entity crowdEntity : m_S23CrowdFollowers)
+        navSystem.MoveTo(scene, crowdEntity, m_NavWaypoints[m_CurrentWaypointIndex]);
 }

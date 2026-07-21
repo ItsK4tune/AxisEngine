@@ -6,7 +6,5 @@ enum class DeviceType
     Keyboard,
     Mouse,
     Joystick,
-    Gamepad,
-    AudioOutput,
-    AudioInput
+    Gamepad
 };

@@ -2,7 +2,6 @@
 
 #include <render/type/graphics_types.h>
 #include <glm/glm.hpp>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -10,7 +9,6 @@
 
 class IShaderManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class Shader
 {
@@ -62,7 +60,6 @@ public:
     mutable int m_Loc_u_FresnelPower = -2;
     mutable int m_Loc_u_FresnelBias = -2;
     mutable int m_Loc_u_ReflectionIntensity = -2;
-    mutable int m_Loc_isInstanced = -2;
 
     bool IsError() const
     {
@@ -128,7 +125,6 @@ private:
     void checkCompileErrors(unsigned int shader, std::string type);
 
     mutable std::unordered_map<std::string, int> m_UniformLocations;
-    mutable std::mutex m_UniformMutex;
 
     IShaderManager& m_ShaderManager;
     std::string m_Name;

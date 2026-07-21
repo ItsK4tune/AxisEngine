@@ -22,8 +22,7 @@ public:
             auto& scale = GetComponent<ScaleComponent>();
             float s = 1.0f + 0.4f * sin(time * speed);
             scale.value = glm::vec3(s);
-            if (HasComponent<WorldTransformComponent>())
-                GetComponent<WorldTransformComponent>().isDirty = true;
+            MarkTransformDirty();
         }
     }
 };

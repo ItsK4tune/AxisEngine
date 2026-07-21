@@ -16,30 +16,6 @@
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>
 
-void GeneralEditorModule::Initialize()
-{
-}
-
-void GeneralEditorModule::OnUpdate(float dt)
-{
-    if (!m_Enabled)
-        return;
-
-    m_FpsTimer += dt;
-    m_FrameCount++;
-    if (m_FpsTimer >= 1.0f)
-    {
-        m_CurrentFps = (float)m_FrameCount / m_FpsTimer;
-        m_CurrentFrameTime = (m_FpsTimer / m_FrameCount) * 1000.0f;
-        m_FpsTimer = 0.0f;
-        m_FrameCount = 0;
-    }
-}
-
-void GeneralEditorModule::Render(Scene& scene)
-{
-}
-
 void GeneralEditorModule::ProcessInput(KeyboardManager& keyboard)
 {
     if (!m_Enabled)

@@ -1,8 +1,10 @@
 #pragma once
 
 #include <axis_all.h>
+#include <audio/interface/i_audio_capture_service.h>
 #include <physics/logic/collision_matrix.h>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <glm/gtx/quaternion.hpp>
 #ifdef ENABLE_EDITOR
@@ -71,9 +73,13 @@ private:
     void LoadScene30();  // Network Messaging
     void LoadScene31();  // Audio 2D & 3D
     void LoadScene32();  // Outline & Portal (Generic Stencil Test)
+    void LoadScene33();  // Microphone input visualization
     void StopScenario31Audio();
     AudioSourceComponent* FindScenario31AudioSource(const char* name);
     void ApplyScenario31AudioSettings();
+    void RefreshScenario33Capture(bool startIfAvailable);
+    void ApplyScenario33CaptureSettings();
+    void StopScenario33Capture();
 
 #ifdef ENABLE_EDITOR
     ImGuiLayer* m_EditorImGuiLayer = nullptr;
@@ -129,6 +135,7 @@ private:
 
     // Scenario 23 parameters
     int m_S23ObstacleCount = 12;
+    int m_S23CrowdCount = 24;
     float m_S23ObstacleSize = 5.0f;
     float m_S23FollowerSpeed = 8.0f;
     bool m_S23LockXPitch = false;
@@ -141,6 +148,7 @@ private:
     glm::vec3 m_S23NewWaypoint = glm::vec3(0.0f, 0.5f, 0.0f);
     bool m_S23RepathRequested = false;
     int m_S23LastPathfindingCriteria = -1;
+    std::vector<entt::entity> m_S23CrowdFollowers;
 
     // Scenario 24 parameters
     int m_S24EntityCount = 100;
@@ -235,6 +243,27 @@ private:
     float m_S31MaxDistance = 50.0f;
     bool m_S31Play2D = false;
     bool m_S31Play3D = false;
+
+    // Scenario 33 microphone input test
+    static constexpr size_t kScenario33HistorySamples = 180;
+    AudioCaptureSnapshot m_S33Snapshot;
+    std::array<float, kScenario33HistorySamples> m_S33History{};
+    size_t m_S33HistoryOffset = 0;
+    std::vector<entt::entity> m_S33VisualizerBars;
+    std::string m_S33SelectedDeviceId;
+    float m_S33InputVolume = 1.0f;
+    float m_S33NoiseGate = 0.02f;
+    float m_S33Gain = 4.0f;
+    float m_S33AttackSeconds = 0.05f;
+    float m_S33ReleaseSeconds = 0.05f;
+    float m_S33PeakDecaySeconds = 0.125f;
+    float m_S33CalibrationSeconds = 1.0f;
+    float m_S33PulseThreshold = 0.15f;
+    float m_S33PulseCooldown = 0.08f;
+    float m_S33PulseDuration = 0.6f;
+    AudioCaptureResult m_S33LastResult = AudioCaptureResult::Unsupported;
+    bool m_S33DeviceDetected = false;
+    bool m_S33StartedCapture = false;
 
     // Scenario 18 UI variables
     bool m_S18VideoPlaying = true;

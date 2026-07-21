@@ -48,13 +48,13 @@ void StatsPanel::OnImGui(Scene& scene)
         auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
         if (cm)
         {
-            auto conf = cm->GetConfig();
+            const auto conf = cm->GetConfigSnapshot();
 
             auto boolStr = [](bool v) { return v ? "ON" : "OFF"; };
-            ImGui::Text("Entity Names    : %s", boolStr(conf.debug.entityNames));
-            ImGui::Text("Transform Gizmos: %s", boolStr(conf.debug.gizmos));
-            ImGui::Text("Light Gizmos    : %s", boolStr(conf.debug.lightGizmos));
-            ImGui::Text("Physics Debug   : %s", boolStr(conf.debug.physicsDebug));
+            ImGui::Text("Entity Names    : %s", boolStr(conf->debug.entityNames));
+            ImGui::Text("Transform Gizmos: %s", boolStr(conf->debug.gizmos));
+            ImGui::Text("Light Gizmos    : %s", boolStr(conf->debug.lightGizmos));
+            ImGui::Text("Physics Debug   : %s", boolStr(conf->debug.physicsDebug));
             auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
             bool uiSysEnabled = true;
             if (sysMgr)
@@ -65,8 +65,8 @@ void StatsPanel::OnImGui(Scene& scene)
             }
             ImGui::Text("UI Enabled      : %s", boolStr(uiSysEnabled));
             ImGui::Separator();
-            ImGui::Text("Audio Debug     : %s", boolStr(conf.debug.audioDebug));
-            ImGui::Text("Particle Debug  : %s", boolStr(conf.debug.particleDebug));
+            ImGui::Text("Audio Debug     : %s", boolStr(conf->debug.audioDebug));
+            ImGui::Text("Particle Debug  : %s", boolStr(conf->debug.particleDebug));
         }
     }
 
@@ -76,7 +76,7 @@ void StatsPanel::OnImGui(Scene& scene)
         for (auto entity : view)
         {
             const auto& info = view.get<InfoComponent>(entity);
-            uint32_t sequentialId = (uint32_t)entity & 0xFFFFF;
+            uint32_t sequentialId = static_cast<uint32_t>(entt::to_entity(entity));
 
             std::string label = "[" + std::to_string(sequentialId) + "] " + info.name;
             if (!info.tag.empty())

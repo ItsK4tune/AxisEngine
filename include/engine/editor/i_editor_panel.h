@@ -19,6 +19,9 @@ public:
     virtual void Initialize()
     {
     }
+    virtual void Shutdown()
+    {
+    }
     virtual void OnUpdate(float dt)
     {
     }

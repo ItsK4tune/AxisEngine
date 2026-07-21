@@ -32,9 +32,9 @@ bool KeyboardManager::GetKey(Key key) const
 
 bool KeyboardManager::GetKeyUp(Key key) const
 {
-    if (!m_Window)
-        return false;
-    return !m_Window->GetKey(key);
+    const auto current = m_CurrentState.find(key);
+    const auto previous = m_PreviousState.find(key);
+    return current != m_CurrentState.end() && previous != m_PreviousState.end() && !current->second && previous->second;
 }
 
 bool KeyboardManager::IsKeyDown(Key key) const
@@ -47,7 +47,7 @@ bool KeyboardManager::IsKeyDown(Key key) const
 
     if (itCurr == m_CurrentState.end() && m_Window)
     {
-        const_cast<KeyboardManager*>(this)->m_CurrentState[key] = currentlyPressed;
+        m_CurrentState[key] = currentlyPressed;
     }
 
     return currentlyPressed && !previouslyPressed;

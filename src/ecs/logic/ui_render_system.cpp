@@ -11,13 +11,90 @@
 #include <render/interface/i_texture_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
-#include <sstream>
+#include <cstdint>
+#include <string_view>
 
 struct UIRect
 {
     glm::vec2 pos;
     glm::vec2 size;
 };
+
+namespace
+{
+void DecodeUtf8(std::string_view text, std::vector<uint32_t>& result)
+{
+    result.clear();
+    result.reserve(text.size());
+    for (size_t i = 0; i < text.size();)
+    {
+        const auto first = static_cast<unsigned char>(text[i]);
+        if (first < 0x80)
+        {
+            result.push_back(first);
+            ++i;
+            continue;
+        }
+
+        uint32_t codepoint = 0;
+        size_t continuationCount = 0;
+        uint32_t minimum = 0;
+        if ((first & 0xE0) == 0xC0)
+        {
+            codepoint = first & 0x1F;
+            continuationCount = 1;
+            minimum = 0x80;
+        }
+        else if ((first & 0xF0) == 0xE0)
+        {
+            codepoint = first & 0x0F;
+            continuationCount = 2;
+            minimum = 0x800;
+        }
+        else if ((first & 0xF8) == 0xF0)
+        {
+            codepoint = first & 0x07;
+            continuationCount = 3;
+            minimum = 0x10000;
+        }
+        else
+        {
+            result.push_back('?');
+            ++i;
+            continue;
+        }
+
+        if (i + continuationCount >= text.size())
+        {
+            result.push_back('?');
+            ++i;
+            continue;
+        }
+
+        bool valid = true;
+        for (size_t offset = 1; offset <= continuationCount; ++offset)
+        {
+            const auto next = static_cast<unsigned char>(text[i + offset]);
+            if ((next & 0xC0) != 0x80)
+            {
+                valid = false;
+                break;
+            }
+            codepoint = (codepoint << 6) | (next & 0x3F);
+        }
+        if (!valid || codepoint < minimum || codepoint > 0x10FFFF ||
+            (codepoint >= 0xD800 && codepoint <= 0xDFFF))
+        {
+            result.push_back('?');
+            ++i;
+            continue;
+        }
+
+        result.push_back(codepoint);
+        i += continuationCount + 1;
+    }
+}
+}  // namespace
 
 UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screenWidth, float screenHeight)
 {
@@ -72,6 +149,47 @@ UIRect CalculateRect(entt::registry& registry, entt::entity entity, float screen
     return {finalMin, size};
 }
 
+UIRect CalculateRectCached(entt::registry& registry, entt::entity entity, float screenWidth, float screenHeight,
+                           std::unordered_map<entt::entity, glm::vec4>& cache)
+{
+    if (const auto found = cache.find(entity); found != cache.end())
+        return {{found->second.x, found->second.y}, {found->second.z, found->second.w}};
+
+    auto& transform = registry.get<UITransformComponent>(entity);
+    glm::vec2 parentSize(screenWidth, screenHeight);
+    glm::vec2 parentPos(0.0f);
+    if (auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
+        hierarchy && hierarchy->parent != entt::null &&
+        registry.all_of<UITransformComponent>(hierarchy->parent))
+    {
+        const UIRect parent = CalculateRectCached(registry, hierarchy->parent, screenWidth, screenHeight, cache);
+        parentPos = parent.pos;
+        parentSize = parent.size;
+    }
+
+    const auto evalVec = [](const glm::vec2& value, const glm::bvec2& percent, const glm::vec2& reference) {
+        return glm::vec2(percent.x ? value.x * 0.01f * reference.x : value.x,
+                         percent.y ? value.y * 0.01f * reference.y : value.y);
+    };
+    const glm::vec2 anchorMin = evalVec(transform.anchorMin, transform.anchorMinIsPercent, glm::vec2(1.0f));
+    const glm::vec2 anchorMax = evalVec(transform.anchorMax, transform.anchorMaxIsPercent, glm::vec2(1.0f));
+    glm::vec2 finalMin = parentPos + anchorMin * parentSize +
+                         evalVec(transform.offsetMin, transform.offsetMinIsPercent, parentSize);
+    glm::vec2 finalMax = parentPos + anchorMax * parentSize +
+                         evalVec(transform.offsetMax, transform.offsetMaxIsPercent, parentSize);
+    const glm::vec2 position = evalVec(transform.position, transform.positionIsPercent, parentSize);
+    finalMin += position;
+    finalMax += position;
+    const glm::vec2 size = evalVec(transform.size, transform.sizeIsPercent, parentSize);
+    if (anchorMin.x == anchorMax.x)
+        finalMax.x = finalMin.x + size.x;
+    if (anchorMin.y == anchorMax.y)
+        finalMax.y = finalMin.y + size.y;
+    const UIRect result{finalMin, finalMax - finalMin};
+    cache.emplace(entity, glm::vec4(result.pos, result.size));
+    return result;
+}
+
 static UIRect ApplyVisualScale(const UIRect& rect, const UITransformComponent& transform, float scale)
 {
     if (scale <= 0.0f || scale == 1.0f)
@@ -82,7 +200,6 @@ static UIRect ApplyVisualScale(const UIRect& rect, const UITransformComponent& t
     return {pivot - transform.pivot * scaledSize, scaledSize};
 }
 
-REGISTER_SYSTEM(UIRenderSystem)
 
 void UIRenderSystem::Initialize()
 {
@@ -93,6 +210,10 @@ void UIRenderSystem::Initialize()
 void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenHeight, IRenderStateManager& renderState)
 {
     if (!m_Enabled)
+        return;
+    auto* configManager = ServiceLocator::Instance().Resolve<ConfigManager>();
+    const auto config = configManager ? configManager->GetConfigSnapshot() : nullptr;
+    if (config && !config->debug.uiEnabled)
         return;
 
     renderState.SetViewport(0, 0, (int)screenWidth, (int)screenHeight);
@@ -106,10 +227,10 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
 
     float referenceWidth = 1920.0f;
     float referenceHeight = 1080.0f;
-    if (auto* config = ServiceLocator::Instance().Resolve<ConfigManager>())
+    if (config)
     {
-        referenceWidth = (std::max)(1.0f, config->GetConfig().uiReferenceWidth);
-        referenceHeight = (std::max)(1.0f, config->GetConfig().uiReferenceHeight);
+        referenceWidth = (std::max)(1.0f, config->render.uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, config->render.uiReferenceHeight);
     }
 
     float scaleFactor = std::min(screenWidth / referenceWidth, screenHeight / referenceHeight);
@@ -121,25 +242,45 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
     // Execute layout rules against virtual resolution
     UpdateLayout(scene, virtualWidth, virtualHeight);
 
-    std::vector<entt::entity> sortedEntities;
     auto view = scene.View<UITransformComponent, InfoComponent>();
+    uint64_t orderSignature = static_cast<uint64_t>(view.size_hint());
     for (auto entity : view)
     {
-        if (view.get<InfoComponent>(entity).isActive)
-            sortedEntities.push_back(entity);
+        const auto& info = view.get<InfoComponent>(entity);
+        const auto& transform = view.get<UITransformComponent>(entity);
+        uint64_t value = static_cast<uint64_t>(static_cast<uint32_t>(entity));
+        value ^= static_cast<uint64_t>(static_cast<uint32_t>(transform.zIndex)) << 32;
+        value ^= info.isActive ? 0x9e3779b97f4a7c15ULL : 0;
+        orderSignature ^= value + 0x9e3779b97f4a7c15ULL + (orderSignature << 6) + (orderSignature >> 2);
+    }
+    if (!m_LayoutCacheEnabled || orderSignature != m_UIOrderSignature)
+    {
+        m_SortedEntities.clear();
+        m_SortedEntities.reserve(view.size_hint());
+        for (auto entity : view)
+            if (view.get<InfoComponent>(entity).isActive)
+                m_SortedEntities.push_back(entity);
+        const auto zOrder = [&](entt::entity a, entt::entity b) {
+            return view.get<UITransformComponent>(a).zIndex < view.get<UITransformComponent>(b).zIndex;
+        };
+        std::stable_sort(m_SortedEntities.begin(), m_SortedEntities.end(), zOrder);
+        m_UIOrderSignature = orderSignature;
     }
 
-    std::sort(sortedEntities.begin(), sortedEntities.end(), [&](entt::entity a, entt::entity b) {
-        return view.get<UITransformComponent>(a).zIndex < view.get<UITransformComponent>(b).zIndex;
-    });
+    m_RectCache.clear();
+    m_RectCache.reserve(m_SortedEntities.size());
 
     glm::mat4 projection = glm::ortho(0.0f, virtualWidth, virtualHeight, 0.0f, -1.0f, 1.0f);
     Shader* currentShader = nullptr;
 
-    for (auto entity : sortedEntities)
+    for (auto entity : m_SortedEntities)
     {
+        if (!scene.IsValid(entity) || !scene.HasAllComponents<UITransformComponent, InfoComponent>(entity))
+            continue;
         auto& transform = view.get<UITransformComponent>(entity);
-        UIRect rect = CalculateRect(scene.GetRegistry(), entity, virtualWidth, virtualHeight);
+        UIRect rect = m_LayoutCacheEnabled
+                          ? CalculateRectCached(scene.GetRegistry(), entity, virtualWidth, virtualHeight, m_RectCache)
+                          : CalculateRect(scene.GetRegistry(), entity, virtualWidth, virtualHeight);
         if (auto* animation = scene.TryGetComponent<UIAnimationComponent>(entity))
             rect = ApplyVisualScale(rect, transform, animation->visualScale);
 
@@ -194,24 +335,27 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                 }
 
                 float scale = textComp->scale;
-                std::string text = textComp->text;
+                const std::string& text = textComp->text;
+                DecodeUtf8(text, m_TextCodepoints);
+                const auto& codepoints = m_TextCodepoints;
 
-                std::vector<std::string> lines;
+                using CodepointLine = std::vector<uint32_t>;
+                auto& lines = m_TextLines;
+                lines.clear();
                 if (textComp->wordWrap && textComp->maxWidth > 0)
                 {
                     if (textComp->wrapByWord)
                     {
-                        std::string currentLine;
+                        CodepointLine currentLine;
                         float currentLineWidth = 0.0f;
-                        std::string currentWord;
+                        CodepointLine currentWord;
                         float wordWidth = 0.0f;
 
-                        for (size_t i = 0; i < text.length(); ++i)
+                        for (uint32_t c : codepoints)
                         {
-                            char c = text[i];
                             if (c == '\n')
                             {
-                                currentLine += currentWord;
+                                currentLine.insert(currentLine.end(), currentWord.begin(), currentWord.end());
                                 lines.push_back(currentLine);
                                 currentLine.clear();
                                 currentWord.clear();
@@ -245,7 +389,8 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                                 }
                                 else
                                 {
-                                    currentLine += currentWord + " ";
+                                    currentLine.insert(currentLine.end(), currentWord.begin(), currentWord.end());
+                                    currentLine.push_back(' ');
                                     currentLineWidth += wordWidth + charWidth;
                                     currentWord.clear();
                                     wordWidth = 0.0f;
@@ -253,7 +398,7 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                             }
                             else
                             {
-                                currentWord += c;
+                                currentWord.push_back(c);
                                 wordWidth += charWidth;
 
                                 if (currentLineWidth + wordWidth > textComp->maxWidth)
@@ -279,15 +424,15 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
 
                         if (!currentWord.empty() || !currentLine.empty())
                         {
-                            currentLine += currentWord;
+                            currentLine.insert(currentLine.end(), currentWord.begin(), currentWord.end());
                             lines.push_back(currentLine);
                         }
                     }
                     else
                     {
-                        std::string currentLine;
+                        CodepointLine currentLine;
                         float currentWidth = 0;
-                        for (char c : text)
+                        for (uint32_t c : codepoints)
                         {
                             if (c == '\n')
                             {
@@ -301,12 +446,12 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                             if (currentWidth + charWidth > textComp->maxWidth)
                             {
                                 lines.push_back(currentLine);
-                                currentLine = c;
+                                currentLine.assign(1, c);
                                 currentWidth = charWidth;
                             }
                             else
                             {
-                                currentLine += c;
+                                currentLine.push_back(c);
                                 currentWidth += charWidth;
                             }
                         }
@@ -315,23 +460,30 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                 }
                 else
                 {
-                    std::stringstream ss(text);
-                    std::string line;
-                    while (std::getline(ss, line, '\n'))
+                    CodepointLine line;
+                    for (uint32_t c : codepoints)
                     {
-                        lines.push_back(line);
+                        if (c == '\n')
+                        {
+                            lines.push_back(line);
+                            line.clear();
+                        }
+                        else
+                        {
+                            line.push_back(c);
+                        }
                     }
-                    if (lines.empty())
-                    {
-                        lines.push_back("");
-                    }
+                    lines.push_back(std::move(line));
                 }
 
+                m_TextVertices.clear();
+                m_TextVertices.reserve(codepoints.size() * 6 * 4);
                 float startY = finalPos.y;
                 for (const auto& line : lines)
                 {
                     float lineWidth = 0;
-                    for (char c : line) lineWidth += (textComp->font->GetCharacter(c).advance >> 6) * scale;
+                    for (uint32_t c : line)
+                        lineWidth += (textComp->font->GetCharacter(c).advance >> 6) * scale;
 
                     float startX = finalPos.x;
                     if (textComp->alignment == TextAlignment::Center)
@@ -364,7 +516,7 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                         return {pivotPos.x + dx * cosR - dy * sinR, pivotPos.y + dx * sinR + dy * cosR};
                     };
 
-                    for (char c : line)
+                    for (uint32_t c : line)
                     {
                         const Character& ch = textComp->font->GetCharacter(c);
 
@@ -378,16 +530,24 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
                         glm::vec2 p3 = transformPt(xpos + w, ypos);
                         glm::vec2 p4 = transformPt(xpos + w, ypos - h);
 
-                        std::vector<float> vertices = {
-                            p1.x, p1.y, 0.0f, 0.0f, p2.x, p2.y, 0.0f, 1.0f, p3.x, p3.y, 1.0f, 1.0f,
-
-                            p1.x, p1.y, 0.0f, 0.0f, p3.x, p3.y, 1.0f, 1.0f, p4.x, p4.y, 1.0f, 0.0f};
-
-                        textComp->model->DrawDynamic(*currentShader, ch.textureID, textComp->color, vertices);
+                        if (w > 0.0f && h > 0.0f)
+                        {
+                            m_TextVertices.insert(
+                                m_TextVertices.end(),
+                                {p1.x, p1.y, ch.uvMin.x, ch.uvMin.y,
+                                 p2.x, p2.y, ch.uvMin.x, ch.uvMax.y,
+                                 p3.x, p3.y, ch.uvMax.x, ch.uvMax.y,
+                                 p1.x, p1.y, ch.uvMin.x, ch.uvMin.y,
+                                 p3.x, p3.y, ch.uvMax.x, ch.uvMax.y,
+                                 p4.x, p4.y, ch.uvMax.x, ch.uvMin.y});
+                        }
                         x += (ch.advance >> 6) * scale;
                     }
                     startY += textComp->font->GetFontSize() * 0.8f * scale;
                 }
+                if (!m_TextVertices.empty())
+                    textComp->model->DrawDynamic(*currentShader, textComp->font->GetAtlasTextureID(),
+                                                 textComp->color, m_TextVertices);
             }
         }
     }
@@ -454,14 +614,6 @@ void UIRenderSystem::UpdateLayout(Scene& scene, float screenWidth, float screenH
     }
 }
 
-void UIRenderSystem::Update(Scene& scene, float dt)
-{
-}
-
-void UIRenderSystem::Render(Scene& scene)
-{
-}
-
 std::vector<entt::id_type> UIRenderSystem::GetReadComponents() const
 {
     return {entt::type_id<UIRendererComponent>().hash(), entt::type_id<UITransformComponent>().hash(),
@@ -470,5 +622,5 @@ std::vector<entt::id_type> UIRenderSystem::GetReadComponents() const
 
 std::vector<entt::id_type> UIRenderSystem::GetWriteComponents() const
 {
-    return {};
+    return {entt::type_id<UITransformComponent>().hash()};
 }

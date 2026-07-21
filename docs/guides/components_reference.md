@@ -2,6 +2,8 @@
 
 This guide provides an exhaustive technical reference for all entity components supported by the AXIS Engine's YAML serialization system (.axs).
 
+Runtime-only state is intentionally not serialized. This includes derived camera/world matrices, GPU/FBO/query handles, streaming/loading state, UI hover/press state, current navigation paths and request generations, playback state, and physics contact/controller state. Authoring fields and stable resource/entity references are serialized; runtime systems reconstruct transient fields after load.
+
 ---
 
 ## 🏗️ Core Components
@@ -59,10 +61,16 @@ Projected textures for surface details.
 ```yaml
 Component: Decal
   Albedo: "decals/burn.png"
-  Normal: "decals/burn_n.png"
   Opacity: 1.0
+  Roughness: 1.0
+  Metallic: 0.0
+  Reflectivity: 0.0
+  TintColor: 1 1 1 1
   Lifetime: 10.0            # Seconds (-1 for infinite)
+  RenderOrder: 1
+  LightingMode: 2           # 0=unlit, 1=lit, 2=lit and receives shadows
   TargetTags: "Ground Wall" # Optimization: Only project on these tags
+  Shader: "custom_decal"    # Optional custom shader using the deferred decal contract
 ```
 
 ### SkyboxRenderer
@@ -184,9 +192,9 @@ Component: UIText
 ```yaml
 Component: AudioSource
   Path: "audio/music.mp3"
-  Volume: 0.8               # 0.0 - 1.0
+    Volume: 80.0              # Playback percentage, 0.0 - 100.0
   Loop: 1
-  Is3D: 1                   # Enables spatial attenuation
+    Is3d: true                # Enables spatial attenuation
   MinDistance: 5.0          # Distance at which volume starts dropping
   PlayOnAwake: 1
 ```

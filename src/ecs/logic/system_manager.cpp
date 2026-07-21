@@ -1,4 +1,5 @@
 #include <ecs/logic/system_manager.h>
+#include <core/interface/i_optimization_configurable.h>
 #include <audio/interface/i_audio_engine.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
@@ -18,13 +19,13 @@
 #include <ecs/logic/system_factory.h>
 #include <engine/platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/interface/i_query_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_shader_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
-#include <glad/glad.h>
 #include <algorithm>
 #include <chrono>
 #include <future>
@@ -58,57 +59,109 @@ ProfiledRenderPass GetPassForSystem(const std::string& name)
     return ProfiledRenderPass::Alpha;
 }
 
-class ScopedGpuFrameTimer
+ProfiledRenderPass GetUpdatePassForSystem(const std::string& name)
 {
-public:
-    ScopedGpuFrameTimer()
+    if (name == "PhysicsSystem")
+        return ProfiledRenderPass::Physics;
+    if (name == "NavigationSystem")
+        return ProfiledRenderPass::Navigation;
+    return ProfiledRenderPass::Count;
+}
+
+void ProfileUpdateSystem(IUpdateSystem& system, Scene& scene, float dt)
+{
+    const ProfiledRenderPass pass = GetUpdatePassForSystem(system.GetName());
+    if (pass == ProfiledRenderPass::Count)
     {
-        if (!glGenQueries || !glBeginQuery || !glEndQuery || !glGetQueryObjectuiv || !glGetQueryObjectui64v)
-            return;
+        system.Update(scene, dt);
+        return;
+    }
+    ProfilePass(pass, [&]() { system.Update(scene, dt); });
+}
 
-        if (s_Queries[0] == 0)
+}  // namespace
+
+struct SystemManager::GpuFrameTimerState
+{
+    void Shutdown()
+    {
+        if (manager)
         {
-            glGenQueries(2, s_Queries);
+            for (uint32_t query : queries)
+                if (query != 0)
+                    manager->DeleteQuery(query);
         }
-
-        const int previous = 1 - s_CurrentIndex;
-        if (s_Submitted[previous])
-        {
-            GLuint available = GL_FALSE;
-            glGetQueryObjectuiv(s_Queries[previous], GL_QUERY_RESULT_AVAILABLE, &available);
-            if (available == GL_TRUE)
-            {
-                GLuint64 elapsedNs = 0;
-                glGetQueryObjectui64v(s_Queries[previous], GL_QUERY_RESULT, &elapsedNs);
-                RuntimeProfiler::Instance().SetGpuFrameTime(static_cast<float>(elapsedNs) / 1000000.0f);
-                s_Submitted[previous] = false;
-            }
-        }
-
-        glBeginQuery(GL_TIME_ELAPSED, s_Queries[s_CurrentIndex]);
-        m_Active = true;
+        manager = nullptr;
+        queries[0] = queries[1] = 0;
+        submitted[0] = submitted[1] = false;
+        currentIndex = 0;
+        active = false;
     }
 
-    ~ScopedGpuFrameTimer()
+    void Begin(IQueryManager& queryManager)
     {
-        if (!m_Active)
+        if (!queryManager.SupportsQuery(QueryType::TimeElapsed))
+            return;
+        if (manager && manager != &queryManager)
+            Shutdown();
+        manager = &queryManager;
+
+        if (queries[0] == 0)
+        {
+            queries[0] = manager->GenQuery();
+            queries[1] = manager->GenQuery();
+        }
+
+        const int previous = 1 - currentIndex;
+        if (submitted[previous] && manager->IsResultAvailable(queries[previous]))
+        {
+            const uint64_t elapsedNs = manager->GetQueryResult64(queries[previous]);
+            RuntimeProfiler::Instance().SetGpuFrameTime(static_cast<float>(elapsedNs) / 1000000.0f);
+            submitted[previous] = false;
+        }
+
+        manager->BeginQuery(QueryType::TimeElapsed, queries[currentIndex]);
+        active = true;
+    }
+
+    void End()
+    {
+        if (!active || !manager)
             return;
 
-        glEndQuery(GL_TIME_ELAPSED);
-        s_Submitted[s_CurrentIndex] = true;
-        s_CurrentIndex = 1 - s_CurrentIndex;
+        manager->EndQuery(QueryType::TimeElapsed);
+        submitted[currentIndex] = true;
+        currentIndex = 1 - currentIndex;
+        active = false;
+    }
+
+    IQueryManager* manager = nullptr;
+    uint32_t queries[2] = {0, 0};
+    bool submitted[2] = {false, false};
+    int currentIndex = 0;
+    bool active = false;
+};
+
+namespace
+{
+template <typename Fn>
+class ScopeExit
+{
+public:
+    explicit ScopeExit(Fn fn) : m_Fn(std::move(fn))
+    {
+    }
+    ~ScopeExit()
+    {
+        m_Fn();
     }
 
 private:
-    bool m_Active = false;
-
-    static inline GLuint s_Queries[2] = {0, 0};
-    static inline bool s_Submitted[2] = {false, false};
-    static inline int s_CurrentIndex = 0;
+    Fn m_Fn;
 };
 }  // namespace
 
-SystemManager::SystemManager()
+SystemManager::SystemManager() : m_GpuFrameTimer(std::make_unique<GpuFrameTimerState>())
 {
 }
 
@@ -117,13 +170,33 @@ SystemManager::~SystemManager()
     Shutdown();
 }
 
+IBaseSystem* SystemManager::GetSystem(std::type_index concreteType) const
+{
+    const auto it = m_TypeCache.find(concreteType);
+    return it != m_TypeCache.end() ? it->second : nullptr;
+}
+
 void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
 {
+    if (!system)
+        throw std::invalid_argument("Cannot register a null system");
+    if (!m_AcceptsRegistration)
+        throw std::logic_error("Systems must be registered before SystemManager::Initialize");
+    if (GetSystem(system->GetName()))
+    {
+        LOGGER_WARN("SystemManager") << "Ignoring duplicate system registration: " << system->GetName();
+        return;
+    }
+
     IBaseSystem* sysPtr = system.get();
+    if (const auto collision = m_IdCache.find(system->GetId().value); collision != m_IdCache.end())
+        throw std::invalid_argument("System id collision between " + collision->second->GetName() + " and " +
+                                    system->GetName());
     m_Systems.push_back(std::move(system));
 
     // Auto-cache by concrete type
     m_TypeCache[std::type_index(typeid(*sysPtr))] = sysPtr;
+    m_IdCache[sysPtr->GetId().value] = sysPtr;
 
     if (auto* updateSys = dynamic_cast<IUpdateSystem*>(sysPtr))
     {
@@ -135,17 +208,16 @@ void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
         m_RenderSystems.push_back(renderSys);
     }
 
-    // Bitset optimization for conflict detection (Layer 4)
     if (auto* ecsSys = dynamic_cast<IECSSystem*>(sysPtr))
     {
-        SystemBitset& bs = m_SystemBitsets[sysPtr];
+        SystemAccessSet& access = m_SystemAccess[sysPtr];
         for (auto id : ecsSys->GetReadComponents())
         {
-            bs.read.set(GetComponentBitIndex(id) % 128);
+            access.read.insert(id);
         }
         for (auto id : ecsSys->GetWriteComponents())
         {
-            bs.write.set(GetComponentBitIndex(id) % 128);
+            access.write.insert(id);
         }
     }
 }
@@ -160,17 +232,25 @@ IBaseSystem* SystemManager::GetSystem(const std::string& name) const
     return nullptr;
 }
 
+IBaseSystem* SystemManager::GetSystem(SystemId id) const
+{
+    const auto it = m_IdCache.find(id.value);
+    return it != m_IdCache.end() ? it->second : nullptr;
+}
+
 void SystemManager::CreateSystems()
 {
-    if (!m_Systems.empty())
+    if (m_DefaultSystemsCreated)
         return;
+    m_DefaultSystemsCreated = true;
     LOGGER_INFO("SystemManager") << "Creating systems (via Factory)...";
 
     // Use Factory to create all registered systems (OCP compliance)
     auto systems = SystemFactory::CreateAll();
     for (auto& sys : systems)
     {
-        RegisterSystem(std::move(sys));
+        if (sys && !GetSystem(sys->GetName()))
+            RegisterSystem(std::move(sys));
     }
 
     // Register all systems by name to ServiceLocator
@@ -187,6 +267,7 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
 {
     LOGGER_INFO("SystemManager") << "Initializing systems...";
     m_IsShutdown = false;
+    m_AcceptsRegistration = false;
     m_EventSubscriptions.Clear();
 
     m_UpdateSystems.clear();
@@ -197,13 +278,15 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
     m_RenderUISystems.clear();
     m_RenderCaptureSystems.clear();
     m_PostProcessSystems.clear();
+    m_InitializedSystems.clear();
 
     // Subscribe to events
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
             if (auto* sys = this->GetSystem(e.systemName))
             {
-                sys->SetEnabled(e.enabled);
+                if (sys->IsEnabled() != e.enabled)
+                    sys->SetEnabled(e.enabled);
             }
         }));
 
@@ -231,19 +314,14 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
 
         if (unmet != 0)
         {
-            // Only force-disable in headless mode or if absolutely necessary.
-            // For now, we only alert but allow the system to try initializing anyway if not headless.
-            LOGGER_INFO("SystemManager") << "System requirements partially unmet (" << unmet << "): " << sys->GetName();
-
-            if (sl.Require<ConfigManager>().IsHeadless())
-            {
-                LOGGER_WARN("SystemManager") << "Disabling system due to headless mode: " << sys->GetName();
-                sys->SetEnabled(false);
-                continue;
-            }
+            LOGGER_WARN("SystemManager") << "Disabling system with unmet capabilities (" << unmet
+                                         << "): " << sys->GetName();
+            sys->SetEnabled(false);
+            continue;
         }
 
         sys->Initialize();
+        m_InitializedSystems.push_back(sys.get());
 
         SystemCategory cat = sys->GetCategory();
         LOGGER_INFO("SystemManager") << "Sys: " << sys->GetName() << " | Cat: " << (int)cat
@@ -275,6 +353,9 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
         }
     }
 
+    std::sort(m_UpdateSystems.begin(), m_UpdateSystems.end(),
+              [](IUpdateSystem* left, IUpdateSystem* right) { return left->GetPriority() < right->GetPriority(); });
+
     auto sortRender = [](std::vector<IRenderSystem*>& systems) {
         if (systems.empty())
             return;  // Fix for sorting empty lists
@@ -300,11 +381,19 @@ void SystemManager::Shutdown()
 
     LOGGER_INFO("SystemManager") << "Shutting down systems...";
     m_EventSubscriptions.Clear();
-    for (auto& sys : m_Systems)
+    for (auto it = m_InitializedSystems.rbegin(); it != m_InitializedSystems.rend(); ++it)
     {
-        sys->Shutdown();
+        (*it)->Shutdown();
     }
+    m_InitializedSystems.clear();
+    if (m_GpuFrameTimer)
+        m_GpuFrameTimer->Shutdown();
     m_IsShutdown = true;
+}
+
+void SystemManager::Reset()
+{
+    for (auto* system : m_InitializedSystems) system->Reset();
 }
 
 void SystemManager::FixedUpdate(Scene& scene, float fixedDt)
@@ -313,7 +402,11 @@ void SystemManager::FixedUpdate(Scene& scene, float fixedDt)
     {
         if (sys->IsEnabled() && sys->WantsFixedUpdate())
         {
-            sys->FixedUpdate(scene, fixedDt);
+            const ProfiledRenderPass pass = GetUpdatePassForSystem(sys->GetName());
+            if (pass == ProfiledRenderPass::Count)
+                sys->FixedUpdate(scene, fixedDt);
+            else
+                ProfilePass(pass, [&]() { sys->FixedUpdate(scene, fixedDt); });
         }
     }
 }
@@ -327,7 +420,7 @@ void SystemManager::Update(Scene& scene, float dt)
             continue;
         if (sys->GetPriority() < 30)
         {
-            sys->Update(scene, dt);
+            ProfileUpdateSystem(*sys, scene, dt);
         }
     }
 
@@ -337,50 +430,53 @@ void SystemManager::Update(Scene& scene, float dt)
         if (batch.systems.empty())
             continue;
 
-        std::vector<IParallelUpdateSystem*> parallelSystems;
-        std::vector<FrameSnapshot> snapshots;
-        std::vector<ECSCommandBuffer> commandBuffers;
+        m_ParallelSystemsScratch.clear();
 
         auto flushParallel = [&]() {
-            if (parallelSystems.empty())
+            if (m_ParallelSystemsScratch.empty())
                 return;
 
-            snapshots.resize(parallelSystems.size());
-            commandBuffers.resize(parallelSystems.size());
+            m_FrameSnapshotsScratch.resize(m_ParallelSystemsScratch.size());
+            m_CommandBuffersScratch.resize(m_ParallelSystemsScratch.size());
 
-            for (size_t i = 0; i < parallelSystems.size(); ++i)
+            for (size_t i = 0; i < m_ParallelSystemsScratch.size(); ++i)
             {
-                parallelSystems[i]->CaptureSnapshot(scene, snapshots[i]);
+                m_FrameSnapshotsScratch[i].Clear();
+                m_CommandBuffersScratch[i].Clear();
+                m_ParallelSystemsScratch[i]->CaptureSnapshot(scene, m_FrameSnapshotsScratch[i]);
             }
 
-            if (parallelSystems.size() == 1)
+            if (m_ParallelSystemsScratch.size() == 1)
             {
-                parallelSystems[0]->UpdateParallel(snapshots[0], commandBuffers[0], dt);
+                m_ParallelSystemsScratch[0]->UpdateParallel(m_FrameSnapshotsScratch[0], m_CommandBuffersScratch[0],
+                                                            dt);
             }
             else
             {
-                std::vector<std::future<void>> futures;
-                futures.reserve(parallelSystems.size());
-                for (size_t i = 0; i < parallelSystems.size(); ++i)
+                m_UpdateFuturesScratch.clear();
+                m_UpdateFuturesScratch.reserve(m_ParallelSystemsScratch.size());
+                for (size_t i = 0; i < m_ParallelSystemsScratch.size(); ++i)
                 {
-                    futures.push_back(JobSystem::Instance().ExecuteAsync(
-                        [&, i]() { parallelSystems[i]->UpdateParallel(snapshots[i], commandBuffers[i], dt); }));
+                    m_UpdateFuturesScratch.push_back(JobSystem::Instance().ExecuteAsync([&, i]() {
+                        m_ParallelSystemsScratch[i]->UpdateParallel(m_FrameSnapshotsScratch[i],
+                                                                    m_CommandBuffersScratch[i], dt);
+                    }));
                 }
 
-                for (auto& future : futures)
+                for (auto& future : m_UpdateFuturesScratch)
                 {
                     future.get();
                 }
+                m_UpdateFuturesScratch.clear();
             }
 
-            for (auto& commandBuffer : commandBuffers)
+            for (size_t i = 0; i < m_ParallelSystemsScratch.size(); ++i)
             {
-                commandBuffer.Apply(scene);
+                m_CommandBuffersScratch[i].Apply(scene);
+                m_FrameSnapshotsScratch[i].Clear();
             }
 
-            parallelSystems.clear();
-            snapshots.clear();
-            commandBuffers.clear();
+            m_ParallelSystemsScratch.clear();
         };
 
         for (auto* sys : batch.systems)
@@ -390,12 +486,12 @@ void SystemManager::Update(Scene& scene, float dt)
 
             if (auto* parallelSys = dynamic_cast<IParallelUpdateSystem*>(sys))
             {
-                parallelSystems.push_back(parallelSys);
+                m_ParallelSystemsScratch.push_back(parallelSys);
                 continue;
             }
 
             flushParallel();
-            sys->Update(scene, dt);
+            ProfileUpdateSystem(*sys, scene, dt);
         }
 
         flushParallel();
@@ -408,7 +504,7 @@ void SystemManager::Update(Scene& scene, float dt)
             continue;
         if (sys->GetPriority() >= 80)
         {
-            sys->Update(scene, dt);
+            ProfileUpdateSystem(*sys, scene, dt);
         }
     }
 }
@@ -432,6 +528,8 @@ void SystemManager::RebuildExecutionBatches()
         bool added = false;
         for (auto& batch : m_UpdateBatches)
         {
+            if (!batch.systems.empty() && batch.systems.front()->GetPriority() != sys->GetPriority())
+                continue;
             bool conflict = false;
             for (auto* batchSys : batch.systems)
             {
@@ -481,38 +579,24 @@ void SystemManager::RebuildExecutionBatches()
 
 bool SystemManager::SystemsConflict(IUpdateSystem* a, IUpdateSystem* b) const
 {
-    auto itA = m_SystemBitsets.find(dynamic_cast<IBaseSystem*>(a));
-    auto itB = m_SystemBitsets.find(dynamic_cast<IBaseSystem*>(b));
+    auto itA = m_SystemAccess.find(dynamic_cast<IBaseSystem*>(a));
+    auto itB = m_SystemAccess.find(dynamic_cast<IBaseSystem*>(b));
 
-    if (itA == m_SystemBitsets.end() || itB == m_SystemBitsets.end())
+    if (itA == m_SystemAccess.end() || itB == m_SystemAccess.end())
         return false;
 
-    const auto& bsA = itA->second;
-    const auto& bsB = itB->second;
+    const auto intersects = [](const auto& left, const auto& right) {
+        const auto* smaller = &left;
+        const auto* larger = &right;
+        if (smaller->size() > larger->size())
+            std::swap(smaller, larger);
+        return std::any_of(smaller->begin(), smaller->end(), [&](entt::id_type id) { return larger->contains(id); });
+    };
 
-    // A write conflicts with B read
-    if ((bsA.write & bsB.read).any())
-        return true;
-    // B write conflicts with A read
-    if ((bsB.write & bsA.read).any())
-        return true;
-    // A write conflicts with B write (Race condition)
-    if ((bsA.write & bsB.write).any())
-        return true;
-
-    return false;
-}
-
-uint32_t SystemManager::GetComponentBitIndex(entt::id_type id)
-{
-    static std::unordered_map<entt::id_type, uint32_t> s_BitMapping;
-    auto it = s_BitMapping.find(id);
-    if (it != s_BitMapping.end())
-        return it->second;
-
-    uint32_t index = (uint32_t)s_BitMapping.size();
-    s_BitMapping[id] = index;
-    return index;
+    const auto& accessA = itA->second;
+    const auto& accessB = itB->second;
+    return intersects(accessA.write, accessB.read) || intersects(accessB.write, accessA.read) ||
+           intersects(accessA.write, accessB.write);
 }
 
 void SystemManager::Render(Scene& scene, int width, int height, float alpha)
@@ -523,39 +607,22 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
         return;
 
     auto& profiler = RuntimeProfiler::Instance();
-    profiler.BeginFrame();
-    const auto frameStart = ProfileClock::now();
-    ScopedGpuFrameTimer gpuTimer;
+    m_GpuFrameTimer->Begin(graphicsContext->GetQueryManager());
+    ScopeExit gpuTimer([this] { m_GpuFrameTimer->End(); });
 
     // 1. Shadow Pass
     ProfilePass(ProfiledRenderPass::Shadow, [&]() { RenderShadows(scene, width, height, alpha); });
 
     // 2. Capture Pass (Optional)
-    bool captured = false;
     ProfilePass(ProfiledRenderPass::Capture, [&]() {
         for (IRenderSystem* sys : m_RenderCaptureSystems)
         {
             if (sys->IsEnabled() || sys->GetName() == "PostProcessSystem")
             {
                 sys->RenderCapturePass(scene, width, height);
-                captured = true;
             }
         }
     });
-
-    // 2.5 Rebuild Main Queue if any capture occurred (Capture passes override the global RenderQueueObj)
-    if (captured)
-    {
-        auto* rs = sl.Resolve<IRenderService>();
-        if (rs)
-        {
-            rs->BuildRenderQueues(scene, alpha, width, height);
-            if (auto* shadowSys = sl.Resolve<IShadowService>(); shadowSys && shadowSys->IsEnabled())
-            {
-                shadowSys->PrepareShadowLights(scene);
-            }
-        }
-    }
 
     // 3. Main Render Pass
     for (IRenderSystem* sys : m_RenderMainSystems)
@@ -605,14 +672,6 @@ void SystemManager::Render(Scene& scene, int width, int height, float alpha)
         }
     }
 
-    const float frameMs = ElapsedMs(frameStart, ProfileClock::now());
-    profiler.SetCpuFrameTime(frameMs);
-    profiler.SetPassTime(ProfiledRenderPass::TotalFrame, frameMs);
-}
-
-void SystemManager::UpdateDebug(float realDeltaTime)
-{
-    // Debug/editor behavior is handled by regular systems and editor modules.
 }
 
 void SystemManager::RenderDebug(Scene& scene)
@@ -655,5 +714,13 @@ void SystemManager::RenderShadows(Scene& scene, int width, int height, float alp
     if (shadowSys && shadowSys->IsEnabled())
     {
         shadowSys->Render(scene);
+    }
+}
+void SystemManager::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    for (const auto& system : m_Systems)
+    {
+        if (auto* configurable = dynamic_cast<IOptimizationConfigurable*>(system.get()))
+            configurable->ApplyOptimizationConfig(config);
     }
 }

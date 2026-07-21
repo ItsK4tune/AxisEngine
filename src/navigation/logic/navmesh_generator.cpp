@@ -9,71 +9,96 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <map>
 #include <unordered_map>
 
+namespace
+{
+bool ContainsXZ(const glm::vec3& point, const glm::vec3& minimum, const glm::vec3& maximum)
+{
+    return point.x >= minimum.x && point.x <= maximum.x && point.z >= minimum.z && point.z <= maximum.z;
+}
+
+bool IsCarved(const NavMeshTriangle& triangle, const std::vector<NavMeshGenerator::ObstacleBounds>& obstacles,
+              float heightPadding)
+{
+    for (const auto& obstacle : obstacles)
+    {
+        if (ContainsXZ(triangle.center, obstacle.min, obstacle.max) &&
+            triangle.center.y >= obstacle.min.y - heightPadding &&
+            triangle.center.y <= obstacle.max.y + heightPadding)
+            return true;
+    }
+    return false;
+}
+}  // namespace
+
+std::vector<NavMeshGenerator::ObstacleBounds> NavMeshGenerator::CollectObstacleBounds(
+    Scene& scene, const NavMeshComponent& navMesh, const std::vector<std::string>& carveTags)
+{
+    std::vector<ObstacleBounds> obstacles;
+    auto infoView = scene.View<InfoComponent, WorldTransformComponent, MeshRendererComponent>();
+    obstacles.reserve(infoView.size_hint());
+    for (const entt::entity entity : infoView)
+    {
+        const auto& info = infoView.get<InfoComponent>(entity);
+        if (std::find(carveTags.begin(), carveTags.end(), info.tag) == carveTags.end())
+            continue;
+
+        const auto& transform = infoView.get<WorldTransformComponent>(entity);
+        const auto& renderer = infoView.get<MeshRendererComponent>(entity);
+        glm::vec3 localMin(-0.5f);
+        glm::vec3 localMax(0.5f);
+        if (renderer.model)
+        {
+            localMin = renderer.model->aabb.minBound;
+            localMax = renderer.model->aabb.maxBound;
+        }
+
+        // Transform all corners: transforming only min/max is incorrect for rotations.
+        glm::vec3 worldMin(std::numeric_limits<float>::max());
+        glm::vec3 worldMax(std::numeric_limits<float>::lowest());
+        for (int corner = 0; corner < 8; ++corner)
+        {
+            const glm::vec3 local((corner & 1) ? localMax.x : localMin.x,
+                                  (corner & 2) ? localMax.y : localMin.y,
+                                  (corner & 4) ? localMax.z : localMin.z);
+            const glm::vec3 world = glm::vec3(transform.worldMatrix * glm::vec4(local, 1.0f));
+            worldMin = glm::min(worldMin, world);
+            worldMax = glm::max(worldMax, world);
+        }
+        worldMin.x -= navMesh.carveAgentRadius;
+        worldMin.z -= navMesh.carveAgentRadius;
+        worldMax.x += navMesh.carveAgentRadius;
+        worldMax.z += navMesh.carveAgentRadius;
+        obstacles.push_back({entity, worldMin, worldMax});
+    }
+    return obstacles;
+}
+
 void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, ResourceManager* resources,
-                                const std::vector<std::string>& walkableTags, const std::vector<std::string>& carveTags)
+                                const std::vector<std::string>& walkableTags, const std::vector<std::string>& carveTags,
+                                std::vector<NavMeshTriangle>* uncarvedTriangles)
 {
     navMesh.needsRebuild = false;
 
     navMesh.vertices.clear();
     navMesh.triangles.clear();
     navMesh.nodes.clear();
+    if (uncarvedTriangles)
+        uncarvedTriangles->clear();
 
     RawMeshData raw = GatherWalkableGeometry(scene, resources, walkableTags, carveTags,
                                              navMesh.terrainGridResolution);
     if (raw.vertices.empty())
     {
         LOGGER_WARN("NavMeshGenerator") << "No walkable geometry found! NavMesh will be empty.";
+        ++navMesh.revision;
         return;
     }
 
-    struct ObstacleAABB
-    {
-        glm::vec3 min, max;
-    };
-    std::vector<ObstacleAABB> obstacles;
-    auto infoView = scene.View<InfoComponent, WorldTransformComponent>();
-    for (auto ent : infoView)
-    {
-        auto& info = infoView.get<InfoComponent>(ent);
-        bool isObstacle = false;
-        for (const auto& tag : carveTags)
-        {
-            if (info.tag == tag)
-            {
-                isObstacle = true;
-                break;
-            }
-        }
-        if (!isObstacle)
-            continue;
-
-        auto& transform = infoView.get<WorldTransformComponent>(ent);
-        if (scene.HasAllComponents<MeshRendererComponent>(ent))
-        {
-            auto& renderer = scene.GetComponent<MeshRendererComponent>(ent);
-            glm::vec3 localMin(-0.5f);
-            glm::vec3 localMax(0.5f);
-            if (renderer.model)
-            {
-                localMin = renderer.model->aabb.minBound;
-                localMax = renderer.model->aabb.maxBound;
-            }
-            glm::vec3 worldMin = glm::vec3(transform.worldMatrix * glm::vec4(localMin, 1.0f));
-            glm::vec3 worldMax = glm::vec3(transform.worldMatrix * glm::vec4(localMax, 1.0f));
-
-            glm::vec3 actualMin = glm::min(worldMin, worldMax);
-            glm::vec3 actualMax = glm::max(worldMin, worldMax);
-
-            actualMin.x -= navMesh.carveAgentRadius;
-            actualMin.z -= navMesh.carveAgentRadius;
-            actualMax.x += navMesh.carveAgentRadius;
-            actualMax.z += navMesh.carveAgentRadius;
-            obstacles.push_back({actualMin, actualMax});
-        }
-    }
+    const auto obstacles = CollectObstacleBounds(scene, navMesh, carveTags);
 
     navMesh.vertices = raw.vertices;
 
@@ -95,25 +120,42 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
 
         if (tri.normal.y > navMesh.walkableNormalY)
         {
-            bool obstructed = false;
-            for (const auto& obs : obstacles)
-            {
-                if (tri.center.x >= obs.min.x && tri.center.x <= obs.max.x && tri.center.z >= obs.min.z &&
-                    tri.center.z <= obs.max.z && tri.center.y >= obs.min.y - navMesh.carveHeightPadding &&
-                    tri.center.y <= obs.max.y + navMesh.carveHeightPadding)
-                {
-                    obstructed = true;
-                    break;
-                }
-            }
-            if (!obstructed)
-            {
+            if (uncarvedTriangles)
+                uncarvedTriangles->push_back(tri);
+            if (!IsCarved(tri, obstacles, navMesh.carveHeightPadding))
                 navMesh.triangles.push_back(tri);
-            }
         }
     }
 
     BuildConnectivity(navMesh);
+    ++navMesh.revision;
+}
+
+void NavMeshGenerator::RebuildRegion(Scene& scene, NavMeshComponent& navMesh,
+                                     const std::vector<NavMeshTriangle>& uncarvedTriangles,
+                                     const glm::vec3& dirtyMin, const glm::vec3& dirtyMax,
+                                     const std::vector<std::string>& carveTags)
+{
+    if (uncarvedTriangles.empty())
+        return;
+    const auto obstacles = CollectObstacleBounds(scene, navMesh, carveTags);
+    std::erase_if(navMesh.triangles,
+                  [&](const NavMeshTriangle& triangle) { return ContainsXZ(triangle.center, dirtyMin, dirtyMax); });
+    for (const auto& triangle : uncarvedTriangles)
+    {
+        if (ContainsXZ(triangle.center, dirtyMin, dirtyMax) &&
+            !IsCarved(triangle, obstacles, navMesh.carveHeightPadding))
+            navMesh.triangles.push_back(triangle);
+    }
+    std::sort(navMesh.triangles.begin(), navMesh.triangles.end(), [](const auto& left, const auto& right) {
+        if (left.indices[0] != right.indices[0])
+            return left.indices[0] < right.indices[0];
+        if (left.indices[1] != right.indices[1])
+            return left.indices[1] < right.indices[1];
+        return left.indices[2] < right.indices[2];
+    });
+    BuildConnectivity(navMesh);
+    ++navMesh.revision;
 }
 
 NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& scene, ResourceManager* resources,
@@ -153,9 +195,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
             uint32_t baseIndex = (uint32_t)result.vertices.size();
             for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
             {
-                const float* posPtr =
-                    reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
-                glm::vec3 pos(posPtr[0], posPtr[1], posPtr[2]);
+                const glm::vec3 pos = mesh.GetPosition(vIdx);
                 glm::vec4 worldPos = transform.worldMatrix * glm::vec4(pos, 1.0f);
                 result.vertices.push_back(glm::vec3(worldPos));
             }

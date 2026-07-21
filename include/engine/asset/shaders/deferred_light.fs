@@ -3,7 +3,6 @@ out vec4 FragColor;
 
 in vec2 TexCoords;
 
-layout (binding = 0) uniform sampler2D gPosition;
 layout (binding = 1) uniform sampler2D gNormal;
 layout (binding = 2) uniform sampler2D gAlbedoSpec;
 layout (binding = 3) uniform usampler2D gID;
@@ -63,6 +62,12 @@ struct SpotLight {
 layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 layout(std430, binding = 24) buffer PointLightBuffer { PointLight pointLights[]; };
 layout(std430, binding = 25) buffer SpotLightBuffer { SpotLight spotLights[]; };
+layout(std430, binding = 27) readonly buffer LightTileGridBuffer { uvec2 lightTileGrid[]; };
+layout(std430, binding = 28) readonly buffer LightTileIndexBuffer { uint lightTileIndices[]; };
+
+uniform bool u_UseTiledLights = false;
+uniform int u_LightTileSize = 16;
+uniform vec2 u_LightTileCount = vec2(1.0);
 
 layout(binding = 10) uniform sampler2DArray u_ShadowMapDir;
 layout(binding = 11) uniform samplerCubeArray u_ShadowMapPoint;
@@ -99,6 +104,7 @@ vec3 BoxProjection(vec3 dir, vec3 fragPos, vec3 probePos, vec3 boxMin, vec3 boxM
 uniform vec3 u_SH[9];
 uniform bool u_HasLightProbe = false;
 uniform float u_LightProbeIntensity = 1.0;
+uniform vec3 u_LightProbeTint = vec3(1.0);
 
 vec3 EvaluateSH(vec3 n) {
     const float C1 = 0.429043;
@@ -125,14 +131,83 @@ float ShadowCalculationPoint(vec3 fragPos, vec3 u_LightPos, int lightIdx);
 float ShadowCalculationSpot(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int lightIdx);
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float u_Roughness);
 
+vec3 ReconstructWorldPosition(vec2 uv, float depth)
+{
+    vec4 clipPosition = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 viewPosition = camera.u_InvProjection * clipPosition;
+    float safeW = abs(viewPosition.w) > 0.000001 ? viewPosition.w : 0.000001;
+    viewPosition /= safeW;
+    return (camera.u_InvView * viewPosition).xyz;
+}
+
+vec3 EvaluatePointLight(int i, vec3 fragPos, vec3 normal, vec3 viewDir, vec3 albedo,
+                        float metallic, float roughness, vec3 f0Direct,
+                        float activeSpecularMask, bool receiveShadowFlag)
+{
+    vec3 toLight = pointLights[i].position - fragPos;
+    float dist = length(toLight);
+    if (pointLights[i].radius > 0.0 && dist > pointLights[i].radius) return vec3(0.0);
+    vec3 L = toLight / max(dist, 0.0001);
+    vec3 H = normalize(viewDir + L);
+    float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist +
+                               pointLights[i].quadratic * (dist * dist));
+    float diff = max(dot(normal, L), 0.0);
+    float specPower = mix(128.0, 2.0, roughness);
+    float spec = pow(max(dot(normal, H), 0.0), specPower) * (1.0 - roughness);
+    float shadow = 0.0;
+    int shadowIndex = int(pointLights[i].shadowIndex);
+    if (light.u_ReceiveShadow != 0 && receiveShadowFlag && shadowIndex >= 0 && shadowIndex < 16)
+        shadow = ShadowCalculationPoint(fragPos, pointLights[i].position, shadowIndex);
+    vec3 F = fresnelSchlickRoughness(max(dot(H, viewDir), 0.0), f0Direct, roughness);
+    vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
+    vec3 diffuse = pointLights[i].diffuse * radiance * diff * albedo * kD;
+    vec3 specular = pointLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
+    return (1.0 - shadow) * (diffuse + specular);
+}
+
+vec3 EvaluateSpotLight(int i, vec3 fragPos, vec3 normal, vec3 viewDir, vec3 albedo,
+                       float metallic, float roughness, vec3 f0Direct,
+                       float activeSpecularMask, bool receiveShadowFlag)
+{
+    vec3 toLight = spotLights[i].position - fragPos;
+    float dist = length(toLight);
+    if (spotLights[i].radius > 0.0 && dist > spotLights[i].radius) return vec3(0.0);
+    vec3 L = toLight / max(dist, 0.0001);
+    float theta = dot(L, normalize(-spotLights[i].direction));
+    float epsilon = max(spotLights[i].cutOff - spotLights[i].outerCutOff, 0.0001);
+    float spotIntensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
+    if (spotIntensity <= 0.0) return vec3(0.0);
+    vec3 H = normalize(viewDir + L);
+    float attenuation = 1.0 / (spotLights[i].constant + spotLights[i].linear * dist +
+                               spotLights[i].quadratic * (dist * dist));
+    float diff = max(dot(normal, L), 0.0);
+    float specPower = mix(128.0, 2.0, roughness);
+    float spec = pow(max(dot(normal, H), 0.0), specPower) * (1.0 - roughness);
+    float shadow = 0.0;
+    int shadowIndex = int(spotLights[i].shadowIndex);
+    if (light.u_ReceiveShadow != 0 && receiveShadowFlag && shadowIndex >= 0 && shadowIndex < 16)
+    {
+        vec4 fragPosLightSpace = light.lightSpaceMatricesSpot[shadowIndex] * vec4(fragPos, 1.0);
+        shadow = ShadowCalculationSpot(fragPosLightSpace, normal, L, shadowIndex);
+    }
+    vec3 F = fresnelSchlickRoughness(max(dot(H, viewDir), 0.0), f0Direct, roughness);
+    vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+    vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
+    vec3 diffuse = spotLights[i].diffuse * radiance * diff * albedo * kD;
+    vec3 specular = spotLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
+    return (1.0 - shadow) * (diffuse + specular);
+}
+
 void main()
 {             
     vec4 normalSample = texture(gNormal, TexCoords);
     vec3 rawNormal = normalSample.rgb;
     if (dot(rawNormal, rawNormal) <= 0.000001) discard;
 
-    // GBuffer position is authoritative; depth may intentionally stay unchanged for ignoreDepth overlays.
-    vec3 FragPos = texture(gPosition, TexCoords).xyz;
+    float depth = texture(gDepth, TexCoords).r;
+    if (depth >= 1.0) discard;
+    vec3 FragPos = ReconstructWorldPosition(TexCoords, depth);
     if (any(isnan(FragPos)) || any(isinf(FragPos))) discard;
 
     vec3 Normal = normalize(rawNormal);
@@ -141,12 +216,11 @@ void main()
     vec4 albedoSpecSample = texture(gAlbedoSpec, TexCoords);
     vec3 Albedo = albedoSpecSample.rgb;
     float FresnelBias = albedoSpecSample.a; // Unpacked from deferred_reflect.fs
-    uint EntityID = texture(gID, TexCoords).r;
-
     if (u_DebugMode == 1) { FragColor = vec4(FragPos, 1.0); return; }
     if (u_DebugMode == 2) { FragColor = vec4(Normal * 0.5 + 0.5, 1.0); return; }
     if (u_DebugMode == 3) { FragColor = vec4(Albedo, 1.0); return; }
     if (u_DebugMode == 4) { 
+       uint EntityID = texture(gID, TexCoords).r;
        float hue = float(EntityID % 100) / 100.0;
        FragColor = vec4(hue, 1.0 - hue, 0.5, 1.0); 
        return; 
@@ -159,9 +233,9 @@ void main()
     float Roughness = clamp(PBRParams.g, 0.04, 1.0);
     float Reflectivity = PBRParams.b;
     
-    // Unpacking: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 100.0
-    int pIdx = int(PBRParams.a) - 1;
-    float FresnelPower = fract(PBRParams.a) * 100.0;
+    int reflectionCode = int(round(PBRParams.a * 255.0));
+    int pIdx = reflectionCode / 16 - 1;
+    float FresnelPower = float(reflectionCode % 16);
 
     // Mask out specular lighting on pure matte surfaces (e.g. black decals, cracks)
     float activeSpecularMask = 1.0; 
@@ -196,68 +270,39 @@ void main()
         Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
     
-    for(int i = 0; i < light.nrPointLights; ++i)
+    if (u_UseTiledLights)
     {
-        vec3 toLight = pointLights[i].position - FragPos;
-        float dist = length(toLight);
-        if (pointLights[i].radius > 0.0 && dist > pointLights[i].radius) continue;
-        vec3 L = toLight / max(dist, 0.0001);
-        vec3 H = normalize(V + L);
-        float attenuation = 1.0 / (pointLights[i].constant + pointLights[i].linear * dist + pointLights[i].quadratic * (dist * dist));
-        
-        float diff = max(dot(Normal, L), 0.0);
-        float specPower = mix(128.0, 2.0, Roughness);
-        float spec = pow(max(dot(Normal, H), 0.0), specPower) * (1.0 - Roughness);
-        
-        float shadow = 0.0;
-        int sIdx = int(pointLights[i].shadowIndex);
-        if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
+        ivec2 tileCount = max(ivec2(u_LightTileCount), ivec2(1));
+        ivec2 tile = clamp(ivec2(gl_FragCoord.xy) / max(u_LightTileSize, 1), ivec2(0), tileCount - 1);
+        uvec2 tileRange = lightTileGrid[tile.y * tileCount.x + tile.x];
+        const uint SpotLightBit = 0x80000000u;
+        for (uint listIndex = tileRange.x; listIndex < tileRange.x + tileRange.y; ++listIndex)
         {
-            shadow = ShadowCalculationPoint(FragPos, pointLights[i].position, sIdx);
+            uint encodedIndex = lightTileIndices[listIndex];
+            if ((encodedIndex & SpotLightBit) != 0u)
+            {
+                int i = int(encodedIndex & ~SpotLightBit);
+                if (i < light.nrSpotLights)
+                    Lo += EvaluateSpotLight(i, FragPos, Normal, V, Albedo, Metallic, Roughness, F0Direct,
+                                            activeSpecularMask, receiveShadowFlag);
+            }
+            else
+            {
+                int i = int(encodedIndex);
+                if (i < light.nrPointLights)
+                    Lo += EvaluatePointLight(i, FragPos, Normal, V, Albedo, Metallic, Roughness, F0Direct,
+                                             activeSpecularMask, receiveShadowFlag);
+            }
         }
-
-        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
-        vec3 kD = (vec3(1.0) - F) * (1.0 - Metallic);
-        vec3 radiance = pointLights[i].color * pointLights[i].intensity * attenuation;
-        vec3 diffuse  = pointLights[i].diffuse * radiance * diff * Albedo * kD;
-        vec3 u_Specular = pointLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
-        
-        Lo += (1.0 - shadow) * (diffuse + u_Specular);
     }
-
-    for(int i = 0; i < light.nrSpotLights; ++i)
+    else
     {
-        vec3 toLight = spotLights[i].position - FragPos;
-        float dist = length(toLight);
-        if (spotLights[i].radius > 0.0 && dist > spotLights[i].radius) continue;
-        vec3 L = toLight / max(dist, 0.0001);
-        vec3 H = normalize(V + L);
-        float attenuation = 1.0 / (spotLights[i].constant + spotLights[i].linear * dist + spotLights[i].quadratic * (dist * dist));
-        
-        float theta = dot(L, normalize(-spotLights[i].direction));
-        float epsilon = max(spotLights[i].cutOff - spotLights[i].outerCutOff, 0.0001);
-        float spotIntensity = clamp((theta - spotLights[i].outerCutOff) / epsilon, 0.0, 1.0);
-        if (spotIntensity <= 0.0) continue;
-        
-        float diff = max(dot(Normal, L), 0.0);
-        float specPower = mix(128.0, 2.0, Roughness);
-        float spec = pow(max(dot(Normal, H), 0.0), specPower) * (1.0 - Roughness);
-        
-        float shadow = 0.0;
-        int sIdx = int(spotLights[i].shadowIndex);
-        if (light.u_ReceiveShadow != 0 && receiveShadowFlag && sIdx >= 0 && sIdx < 16)
-        {
-            vec4 fragPosLightSpace = light.lightSpaceMatricesSpot[sIdx] * vec4(FragPos, 1.0);
-            shadow = ShadowCalculationSpot(fragPosLightSpace, Normal, L, sIdx);
-        }
-
-        vec3 F = fresnelSchlickRoughness(max(dot(H, V), 0.0), F0Direct, Roughness);
-        vec3 kD = (vec3(1.0) - F) * (1.0 - Metallic);
-        vec3 radiance = spotLights[i].color * spotLights[i].intensity * attenuation * spotIntensity;
-        vec3 diffuse  = spotLights[i].diffuse * radiance * diff * Albedo * kD;
-        vec3 u_Specular = spotLights[i].u_Specular * radiance * spec * F * activeSpecularMask;
-        
-        Lo += (1.0 - shadow) * (diffuse + u_Specular);
+        for (int i = 0; i < light.nrPointLights; ++i)
+            Lo += EvaluatePointLight(i, FragPos, Normal, V, Albedo, Metallic, Roughness, F0Direct,
+                                     activeSpecularMask, receiveShadowFlag);
+        for (int i = 0; i < light.nrSpotLights; ++i)
+            Lo += EvaluateSpotLight(i, FragPos, Normal, V, Albedo, Metallic, Roughness, F0Direct,
+                                    activeSpecularMask, receiveShadowFlag);
     }
 
     vec3 emissive = texture(gEmissive, TexCoords).rgb;
@@ -265,7 +310,7 @@ void main()
     vec3 ambientDiffuse = Albedo * 0.15 * (1.0 - Metallic * 0.75);
     vec3 ambientSpecular = F0Direct * 0.15 * Metallic;
     if (u_HasLightProbe) {
-        ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity;
+        ambientDiffuse = EvaluateSH(Normal) * Albedo * u_LightProbeIntensity * u_LightProbeTint;
         ambientSpecular = vec3(0.0);
     }
 

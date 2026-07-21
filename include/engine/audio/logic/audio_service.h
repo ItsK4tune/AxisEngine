@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class AudioService
 {

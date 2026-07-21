@@ -4,33 +4,30 @@
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 
-IBufferManager* BulletDebugDrawer::s_BufferManager = nullptr;
-IDrawContext* BulletDebugDrawer::s_DrawContext = nullptr;
-
-void BulletDebugDrawer::SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext)
+void BulletDebugDrawer::SetManagers(IBufferManager* bufferManager, IDrawContext* drawContext)
 {
-    s_BufferManager = &bufferManager;
-    s_DrawContext = &drawContext;
+    m_BufferManager = bufferManager;
+    m_DrawContext = drawContext;
 }
 
 IBufferManager& BulletDebugDrawer::GetBufferManager()
 {
-    if (!s_BufferManager)
+    if (!m_BufferManager)
     {
         LOGGER_ERROR("BulletDebugDrawer") << "BufferManager not set!";
         throw std::runtime_error("BufferManager not set in BulletDebugDrawer");
     }
-    return *s_BufferManager;
+    return *m_BufferManager;
 }
 
 IDrawContext& BulletDebugDrawer::GetDrawContext()
 {
-    if (!s_DrawContext)
+    if (!m_DrawContext)
     {
         LOGGER_ERROR("BulletDebugDrawer") << "DrawContext not set!";
         throw std::runtime_error("DrawContext not set in BulletDebugDrawer");
     }
-    return *s_DrawContext;
+    return *m_DrawContext;
 }
 
 BulletDebugDrawer::BulletDebugDrawer()
@@ -40,18 +37,18 @@ BulletDebugDrawer::BulletDebugDrawer()
 
 BulletDebugDrawer::~BulletDebugDrawer()
 {
-    if (s_BufferManager)
+    if (m_BufferManager)
     {
         if (m_VAO)
-            s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+            m_BufferManager->DeleteVertexArrays(1, &m_VAO);
         if (m_VBO)
-            s_BufferManager->DeleteBuffers(1, &m_VBO);
+            m_BufferManager->DeleteBuffers(1, &m_VBO);
     }
 }
 
 void BulletDebugDrawer::Initialize()
 {
-    if (!s_BufferManager)
+    if (!m_BufferManager || m_VAO != 0)
         return;
     auto& bm = GetBufferManager();
 
@@ -74,7 +71,7 @@ void BulletDebugDrawer::Initialize()
 
 void BulletDebugDrawer::FrameStart()
 {
-    if (m_VAO == 0 && s_BufferManager)
+    if (m_VAO == 0 && m_BufferManager)
     {
         Initialize();
     }
@@ -82,8 +79,13 @@ void BulletDebugDrawer::FrameStart()
 
 void BulletDebugDrawer::Flush()
 {
-    if (m_Lines.empty() || !s_BufferManager || !s_DrawContext)
+    if (m_Lines.empty())
         return;
+    if (!m_BufferManager || !m_DrawContext)
+    {
+        m_Lines.clear();
+        return;
+    }
 
     auto& bm = GetBufferManager();
     auto& dc = GetDrawContext();
@@ -102,6 +104,8 @@ void BulletDebugDrawer::Flush()
 
 void BulletDebugDrawer::drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
 {
+    if (!m_BufferManager || !m_DrawContext)
+        return;
     m_Lines.push_back({BulletGLMHelpers::convert(from), BulletGLMHelpers::convert(color)});
     m_Lines.push_back({BulletGLMHelpers::convert(to), BulletGLMHelpers::convert(color)});
 }

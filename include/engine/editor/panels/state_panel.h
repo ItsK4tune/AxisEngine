@@ -8,9 +8,6 @@ struct Scene;
 class StatePanel : public IEditorPanel
 {
 public:
-    void Initialize() override
-    {
-    }
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
@@ -20,5 +17,11 @@ public:
     {
         return PanelGroup::Debug;
     }
+
+private:
+    float m_ScrollX = 0.0f;
+    float m_ScrollY = 0.0f;
+    float m_Zoom = 0.9f;
+    bool m_FirstFrame = true;
 };
 #endif

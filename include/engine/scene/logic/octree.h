@@ -5,6 +5,7 @@
 #include <scene/type/scene_types.h>
 #include <entt/entt.hpp>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 struct OctreeElement
@@ -54,6 +55,11 @@ public:
     void Rebuild(const std::vector<OctreeElement>& elements);
 
 private:
+    void RebuildFromEntries();
+    bool RootContains(const AABB& aabb) const;
+
     std::unique_ptr<OctreeNode> m_Root;
     AABB m_InitialBoundary;
+    AABB m_CurrentBoundary;
+    std::unordered_map<entt::entity, AABB> m_Entries;
 };

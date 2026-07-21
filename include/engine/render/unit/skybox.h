@@ -15,7 +15,9 @@ public:
     ~Skybox();
 
     void Draw(Shader& shader);
-    void LoadCubemap(const std::vector<std::string>& faces);
+    // Returns true only when all six source faces were loaded. The cubemap may
+    // still be rendered with explicit fallback faces when false is returned.
+    bool LoadCubemap(const std::vector<std::string>& faces);
     unsigned int GetTextureID() const
     {
         return m_TextureID;
@@ -31,6 +33,7 @@ public:
     }
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
+    static void ClearManagers();
 
     unsigned int GetIrradianceMap() const
     {

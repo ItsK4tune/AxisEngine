@@ -2,26 +2,27 @@
 
 ## 1. Application Configuration
 
-The AXIS Engine is configured via the `Config` block located at the top of your scene files (`.axs`). This allows per-scene configuration of graphics, physics, and window settings seamlessly applied via `ConfigLoader`.
+AXIS Engine application settings live in a standalone `axis_config` `.axs` file. Scene files use the separate
+`axis_scene` schema; putting a `Config` block inside a scene is not a supported override mechanism.
 
 ### `.axs` Configuration Structure
 
 ```yaml
-axis_scene:
-  Config:
+axis_config:
     WINDOW_WIDTH: 1920
     WINDOW_HEIGHT: 1080
     WINDOW_MODE: BORDERLESS_FULLSCREEN
-    WINDOW_MONITOR: 0
-    WINDOW_REFRESH_RATE: 60
+    MONITOR: 0
+    REFRESH_RATE: 60
     VSYNC: 1
     FPS: 120
     GRAPHICS_API: OPENGL
     PHYSICS_ENGINE: BULLET
     AUDIO_ENGINE: NULL
     SHADOWS: 1
-    CULL_FACE: 1 BACK
-    DEPTH_TEST: 1 LESS
+    CULL_FACE: 1
+    DEPTH_TEST: 1
+    STENCIL_TEST: 1
     RENDER_ORDER: 0
     ANTIALIASING: TAA
     FRUSTUM: 1
@@ -31,11 +32,15 @@ axis_scene:
     SHADOW_SIZE: 100.0
     SHADOW_FRUSTUM: 1
     SHADOW_DISTANCE: 100.0
-    FILTER_LAYER: -1
-    PHYSICS_MODE: 1
+    FILTER_LAYER: 4294967295
+    PHYSICS_MODE: BALANCED
     STRICT_ASSET_LOADING: 0
     AMBIENT_INTENSITY: 1.0
     UI_REFERENCE_SIZE: 1920 1080
+    OPT_RESOURCE_UPLOAD_BUDGET: 1
+    OPT_MAX_MODEL_UPLOADS_PER_FRAME: 2
+    OPT_MAX_TEXTURE_UPLOADS_PER_FRAME: 4
+    OPT_DISCARD_CPU_MESH_DATA_AFTER_UPLOAD: 0
 ```
 
 ### Comprehensive Configuration Guide
@@ -119,7 +124,13 @@ Configuration for the `IPhysicsWorld` abstraction. The current build provides th
 
 ## 🔊 5. Audio & Input
 
-- **`VOLUME`**: Global master volume (0.0 to 1.0).
+- **`VOLUME`**: Global master volume in percent (0 to 100).
+- **`AUDIO_CAPTURE_ENABLED`**: Starts the configured microphone endpoint during application initialization.
+- **`AUDIO_CAPTURE_DEVICE`**: Stable endpoint id; an empty value selects the system default.
+- **`AUDIO_CAPTURE_INPUT_VOLUME` / `AUDIO_CAPTURE_NOISE_GATE` / `AUDIO_CAPTURE_GAIN`**: Input pre-amplification, gate threshold, and post-gate voice gain.
+- **`AUDIO_CAPTURE_ATTACK_SECONDS` / `AUDIO_CAPTURE_RELEASE_SECONDS` / `AUDIO_CAPTURE_PEAK_DECAY_SECONDS`**: Level-envelope response.
+- **`AUDIO_CAPTURE_CALIBRATION_SECONDS`**: Ambient-noise calibration window.
+- **`AUDIO_CAPTURE_PULSE_THRESHOLD` / `AUDIO_CAPTURE_PULSE_COOLDOWN` / `AUDIO_CAPTURE_PULSE_DURATION`**: Pulse detection and lifetime controls.
 - **`MOUSE_SENSITIVITY`**: Global X/Y look speed.
 - **`MOUSE_INVERT_Y`**: Toggle vertical mouse axis inversion.
 
@@ -134,9 +145,41 @@ Directly selects the module implementation for each interface.
 | `GRAPHICS_API` | Core rendering implementation | `OPENGL` |
 | `PHYSICS_ENGINE` | Simulation implementation | `BULLET` |
 | `AUDIO_ENGINE` | Sound processing implementation | `NULL`, `IRRKLANG`, `FMOD` |
-| `RENDER_PATH` | Geometry processing strategy | `FORWARD`, `DEFERRED` |
 
-Unsupported backend values such as `VULKAN`, `DIRECTX`, `PHYSX`, or `OPENAL` are rejected by `ConfigLoader`/`AppBuilder` unless their provider is actually compiled into the build.
+Known serialized values such as `VULKAN`, `DIRECTX`, `PHYSX`, and `OPENAL` remain parseable for source compatibility. Runtime validation reports and replaces an unavailable backend when the application uses built-in providers; a matching custom `AppBuilder` factory preserves the requested enum and receives it unchanged. This release only offers OpenGL and Bullet through the CMake selectors. Unknown backend text is rejected while the current value is retained.
+
+## 7. Runtime optimization policy
+
+All of these values are available in the editor's **Runtime Optimizations** settings section and apply live through
+`ConfigChangedEvent::Optimization`:
+
+- `OPT_RESOURCE_HOT_RELOAD`, `OPT_RESOURCE_UPLOAD_BUDGET`, `OPT_MAX_MODEL_UPLOADS_PER_FRAME`,
+  `OPT_MAX_TEXTURE_UPLOADS_PER_FRAME`, `OPT_DISCARD_CPU_MESH_DATA_AFTER_UPLOAD`,
+  `OPT_COMPRESSED_TEXTURE_LOADING`
+- `OPT_STREAMING_UPDATE_THROTTLING`, `OPT_STREAMING_CHECK_INTERVAL`
+- `OPT_REFLECTION_CAPTURE_BUDGET`, `OPT_MAX_REFLECTION_PROBE_FACES_PER_FRAME`,
+  `OPT_MAX_PLANAR_REFLECTION_CAPTURES_PER_FRAME`
+- `OPT_SHADOW_PARALLEL_BUILD`, `OPT_SHADOW_PARALLEL_THRESHOLD`
+- `OPT_ANIMATION_PARALLEL_EVALUATION`, `OPT_ANIMATION_PARALLEL_THRESHOLD`
+- `OPT_NAVIGATION_SPATIAL_HASH`, `OPT_NAVIGATION_AGENT_CELL_SIZE`, `OPT_NAVIGATION_ASYNC_PATHFINDING`,
+  `OPT_NAVIGATION_MAX_PATH_REQUESTS_PER_FRAME`, `OPT_NAVMESH_REBUILD_BUDGET`,
+  `OPT_MAX_NAVMESH_REBUILDS_PER_FRAME`, `OPT_NAVIGATION_DIRTY_TILES`,
+  `OPT_NAVIGATION_NAVMESH_TILE_SIZE`, `OPT_NAVIGATION_MAX_DIRTY_TILES_PER_FRAME`
+- `OPT_NETWORK_BATCHING`, `OPT_NETWORK_MAX_EVENTS_PER_UPDATE`, `OPT_NETWORK_MAX_EVENT_PROCESSING_MS`,
+  `OPT_NETWORK_MAX_BYTES_PER_UPDATE`, `OPT_NETWORK_REPLICATION`, `OPT_NETWORK_REPLICATION_RATE_HZ`,
+  `OPT_NETWORK_INTEREST_RADIUS`
+- `OPT_PARTICLE_SPAWN_BUDGET`, `OPT_PARTICLE_MAX_SPAWN_PER_FRAME`, `OPT_PARTICLE_BATCHING`
+- `OPT_RENDER_STATE_CACHE`, `OPT_PERSISTENT_MAPPED_BUFFERS`, `OPT_TILED_LIGHT_CULLING`,
+  `OPT_TILED_LIGHT_TILE_SIZE`, `OPT_GBUFFER_ENTITY_ID`,
+  `OPT_PHYSICS_MESH_SHAPE_CACHE`, `OPT_UI_LAYOUT_CACHE`,
+  `OPT_VIDEO_ASYNC_DECODE`
+
+CPU mesh discard keeps positions and indices for physics, navigation, and editor previews, but removes normals/UVs and
+other interleaved render attributes. Explicit static batching must therefore run before the model upload when this
+option is enabled. It defaults off for compatibility.
+
+Correctness mechanisms such as immutable service/config snapshots, generation-safe entity indices, and nested job waits
+are intentionally not toggleable.
 
 ## 2. CMake Build System
 

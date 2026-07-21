@@ -1,9 +1,7 @@
 #include <ecs/logic/terrain_system.h>
 #include <core/logic/config_manager.h>
-#include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
-#include <core/type/event_types.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/logic/system_factory.h>
@@ -24,24 +22,15 @@
 #include <scene/logic/scene.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-REGISTER_SYSTEM(TerrainSystem)
 
 void TerrainSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<TerrainSystem>(this);
-    m_EventSubscriptions.Clear();
-    m_EventSubscriptions.Add(
-        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
-            {
-            }
-        }));
 }
 
 void TerrainSystem::Shutdown()
 {
-    m_EventSubscriptions.Clear();
     if (m_LastScene)
     {
         m_LastScene->GetRegistry().on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
@@ -61,7 +50,8 @@ void TerrainSystem::Update(Scene& scene, float dt)
     {
         if (m_LastScene)
         {
-            m_LastScene->GetRegistry().on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(this);
+            m_LastScene->GetRegistry().on_destroy<TerrainComponent>().disconnect<&TerrainSystem::OnTerrainDestroyed>(
+                this);
         }
         scene.GetRegistry().on_destroy<TerrainComponent>().connect<&TerrainSystem::OnTerrainDestroyed>(this);
         m_LastScene = &scene;
@@ -112,7 +102,9 @@ void TerrainSystem::Render(Scene& scene)
     culler.BuildFrustum(cam.projectionMatrix * cam.viewMatrix);
 
     auto* configMgr = sl.Resolve<ConfigManager>();
-    auto config = configMgr ? configMgr->GetConfig() : AppConfig{};
+    const auto configSnapshot = configMgr ? configMgr->GetConfigSnapshot() : nullptr;
+    const AppConfig fallbackConfig{};
+    const AppConfig& config = configSnapshot ? *configSnapshot : fallbackConfig;
     bool frustumCull = config.culling.frustumCullingEnabled;
     float distCullVal = config.culling.distanceCulling;
 
@@ -176,12 +168,24 @@ void TerrainSystem::Render(Scene& scene)
         glm::mat4 model = glm::translate(glm::mat4(1.0f), pos.value);
         actShader->setMat4("model", model);
         actShader->setMat4("u_Model", model);
-        actShader->setUInt("entityID", static_cast<unsigned int>(entity));
-        actShader->setUInt("u_EntityID", static_cast<unsigned int>(entity));
+        const auto entityId = static_cast<unsigned int>(entt::to_entity(entity));
+        actShader->setUInt("entityID", entityId);
+        actShader->setUInt("u_EntityID", entityId);
 
         actShader->setFloat("maxHeight", terrain.maxHeight);
         actShader->setVec2("terrainSize", glm::vec2(terrain.terrainSize.x, terrain.terrainSize.z));
         actShader->setFloat("textureScale", terrain.textureScale);
+        actShader->setInt("diffuseLayerCount", static_cast<int>(std::min<size_t>(terrain.diffuseLayers.size(), 4)));
+
+        const int normalLayerCount = static_cast<int>(std::min<size_t>(terrain.normalLayers.size(), 4));
+        actShader->setInt("normalLayerCount", normalLayerCount);
+        for (int i = 0; i < normalLayerCount; ++i)
+        {
+            const int unit = 22 + i;
+            tm.ActiveTexture(static_cast<TextureUnit>(unit));
+            tm.BindTexture(TextureType::Texture2D, terrain.normalLayers[static_cast<size_t>(i)]);
+            actShader->setInt(("normalLayer" + std::to_string(i)).c_str(), unit);
+        }
 
         tm.ActiveTexture(TextureUnit::Texture26);
         tm.BindTexture(TextureType::Texture2D, terrain.heightMap);
@@ -213,11 +217,11 @@ void TerrainSystem::Render(Scene& scene)
             }
 
             int lod = 0;
-            if (dist > 300.0f)
+            if (dist > terrain.lodDistances.z)
                 lod = 3;
-            else if (dist > 150.0f)
+            else if (dist > terrain.lodDistances.y)
                 lod = 2;
-            else if (dist > 75.0f)
+            else if (dist > terrain.lodDistances.x)
                 lod = 1;
 
             if (lod >= (int)data.lodEBOs.size())
@@ -330,9 +334,10 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
 
     if (!terrain.heightMapName.empty())
     {
-        auto tex = resources->GetTexture(terrain.heightMapName);
+        auto tex = resources->GetTextureAuto(terrain.heightMapName);
         if (tex && tex->pixelData)
         {
+            terrain.heightMap = tex->id;
             mapWidth = tex->width;
             mapHeight = tex->height;
             heights.reserve(mapWidth * mapHeight);
@@ -351,6 +356,24 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
     if (needsRetry)
     {
         return;
+    }
+
+    if (!terrain.splatMapName.empty())
+    {
+        if (auto texture = resources->GetTextureAuto(terrain.splatMapName))
+            terrain.splatMap = texture->id;
+    }
+    terrain.diffuseLayers.clear();
+    for (const std::string& name : terrain.diffuseLayerNames)
+    {
+        if (auto texture = resources->GetTextureAuto(name))
+            terrain.diffuseLayers.push_back(texture->id);
+    }
+    terrain.normalLayers.clear();
+    for (const std::string& name : terrain.normalLayerNames)
+    {
+        if (auto texture = resources->GetTextureAuto(name))
+            terrain.normalLayers.push_back(texture->id);
     }
 
     GenerateLODIndices(*data, terrain.chunkSize);
@@ -378,9 +401,6 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
 
     m_TerrainCache[entity] = std::move(data);
 
-    LOGGER_INFO("TerrainSystem") << "Checking physics generation for entity " << (uint32_t)entity
-                                 << ": generate=" << terrain.generatePhysics << ", mapName=" << terrain.heightMapName;
-
     glm::vec3 posVal(0.0f);
     if (m_LastScene)
     {
@@ -389,9 +409,6 @@ void TerrainSystem::BuildTerrain(entt::entity entity, TerrainComponent& terrain)
             posVal = posComp->value;
         }
     }
-    LOGGER_INFO("TerrainSystem") << "BuildTerrain posVal for entity " << (uint32_t)entity << " is (" << posVal.x << ", "
-                                 << posVal.y << ", " << posVal.z << ")";
-
     auto* gc = sl.Resolve<IGraphicsContext>();
     if (gc)
     {

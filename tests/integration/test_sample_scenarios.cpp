@@ -2,6 +2,8 @@
 #include "test_framework.h"
 #include "test_support.h"
 
+#include <audio/interface/i_audio_capture_service.h>
+#include <audio/logic/audio_capture_processor.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/localization_system.h>
 #include <ecs/logic/physics_system.h>
@@ -22,6 +24,7 @@
 #include <sample_state.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_serializer.h>
+#include <scene/logic/component_codec_registry.h>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -54,6 +57,79 @@ void SampleState::OnExit()
 
 namespace
 {
+class FakeAudioCaptureService final : public IAudioCaptureService
+{
+public:
+    bool Initialize(const AudioCaptureSettings& value) override
+    {
+        settings = value;
+        return true;
+    }
+    void Shutdown() override
+    {
+        capturing = false;
+    }
+    bool RefreshDevices() override
+    {
+        ++refreshCount;
+        return refreshResult;
+    }
+    std::vector<AudioCaptureDevice> GetDevices() const override
+    {
+        return devices;
+    }
+    AudioCaptureResult Start(const std::string& deviceId) override
+    {
+        ++startCount;
+        lastStartedDevice = deviceId;
+        if (startResult == AudioCaptureResult::Success)
+            capturing = true;
+        return startResult;
+    }
+    void Stop() override
+    {
+        ++stopCount;
+        capturing = false;
+    }
+    bool IsCapturing() const override
+    {
+        return capturing;
+    }
+    void Update(float) override
+    {
+    }
+    void BeginCalibration(float seconds) override
+    {
+        ++calibrationCount;
+        lastCalibrationSeconds = seconds;
+    }
+    void SetSettings(const AudioCaptureSettings& value) override
+    {
+        settings = AudioCaptureProcessor::SanitizeSettings(value);
+    }
+    AudioCaptureSettings GetSettings() const override
+    {
+        return settings;
+    }
+    AudioCaptureSnapshot GetSnapshot() const override
+    {
+        return snapshot;
+    }
+
+    AudioCaptureSettings settings;
+    AudioCaptureSnapshot snapshot;
+    std::vector<AudioCaptureDevice> devices;
+    AudioCaptureResult startResult = AudioCaptureResult::Success;
+    std::string lastStartedDevice;
+    int refreshCount = 0;
+    int startCount = 0;
+    int stopCount = 0;
+    int calibrationCount = 0;
+    float lastCalibrationSeconds = 0.0f;
+    bool refreshResult = true;
+    bool capturing = false;
+};
+
 class TestSampleState : public SampleState
 {
 public:
@@ -90,15 +166,26 @@ struct SampleScenarioFixture
 
         ServiceLocator::Instance().Register<Scene>(&scene);
         ServiceLocator::Instance().Register<ResourceManager>(&resources);
+        ServiceLocator::Instance().Register<IShaderLibrary>(&resources);
+        ServiceLocator::Instance().Register<ITextureLibrary>(&resources);
+        ServiceLocator::Instance().Register<IModelLibrary>(&resources);
+        ServiceLocator::Instance().Register<ISoundLibrary>(&resources);
+        ServiceLocator::Instance().Register<IFontLibrary>(&resources);
+        ServiceLocator::Instance().Register<ISkyboxLibrary>(&resources);
         ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
         ServiceLocator::Instance().Register<CollisionMatrix>(&collisionMatrix);
         ServiceLocator::Instance().Register<ConfigManager>(&configManager);
         ServiceLocator::Instance().Register<SystemManager>(&systems);
+        ServiceLocator::Instance().Register<ISystemRegistry>(&systems);
+        ServiceLocator::Instance().Register<IAudioCaptureService>(&audioCapture);
+        ServiceLocator::Instance().Register<IComponentCodecRegistry>(&componentCodecs);
 
         systems.RegisterSystem(std::make_unique<TransformSystem>());
         systems.RegisterSystem(std::make_unique<PhysicsSystem>());
         systems.RegisterSystem(std::make_unique<NavigationSystem>());
-        systems.RegisterSystem(std::make_unique<LocalizationSystem>());
+        auto localization = std::make_unique<LocalizationSystem>();
+        ServiceLocator::Instance().Register<ILocalizationService>(localization.get());
+        systems.RegisterSystem(std::move(localization));
 
         state.SetActiveScene(&scene);
     }
@@ -117,6 +204,8 @@ struct SampleScenarioFixture
     CollisionMatrix collisionMatrix;
     ConfigManager configManager;
     SystemManager systems;
+    FakeAudioCaptureService audioCapture;
+    ComponentCodecRegistry componentCodecs;
     TestSampleState state;
 };
 
@@ -264,6 +353,7 @@ AXIS_TEST_CASE("Sample Scenario 23 configures path criteria follower")
 {
     SampleScenarioFixture fixture;
     fixture.state.m_S23ObstacleCount = 0;
+    fixture.state.m_S23CrowdCount = 8;
     fixture.state.m_S23PathfindingCriteria = static_cast<int>(PathfindingCriteria::StayOnRoad);
 
     fixture.state.LoadScene23();
@@ -276,6 +366,8 @@ AXIS_TEST_CASE("Sample Scenario 23 configures path criteria follower")
     AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags.size() == 1);
     AXIS_CHECK(pathFollower.pathfindingOptions.preferredTags[0] == "road");
     AXIS_CHECK(!fixture.state.m_NavWaypoints.empty());
+    AXIS_CHECK(fixture.state.m_S23CrowdFollowers.size() == 8);
+    AXIS_CHECK(CountByPrefix(fixture.scene, "CrowdFollower_") == 8);
 }
 
 AXIS_TEST_CASE("Sample Scenario 25 scene save and reload roundtrip keeps base entities")
@@ -377,4 +469,72 @@ AXIS_TEST_CASE("Sample Scenario 31 applies 2D and 3D volume independently")
     AXIS_CHECK_NEAR(audio3D.volume, 90.0f, 0.0001f);
     AXIS_CHECK_NEAR(audio2D.volume, fixture.state.m_S31Volume2D, 0.0001f);
     AXIS_CHECK_NEAR(audio3D.volume, fixture.state.m_S31Volume3D, 0.0001f);
+}
+
+AXIS_TEST_CASE("Sample Scenario 33 reports an unavailable microphone without starting capture")
+{
+    SampleScenarioFixture fixture;
+
+    fixture.state.LoadScene33();
+
+    AXIS_CHECK(fixture.audioCapture.refreshCount == 1);
+    AXIS_CHECK(fixture.audioCapture.startCount == 0);
+    AXIS_CHECK(!fixture.state.m_S33DeviceDetected);
+    AXIS_CHECK(fixture.state.m_S33LastResult == AudioCaptureResult::DeviceNotFound);
+    AXIS_CHECK(fixture.state.m_S33VisualizerBars.size() == 32);
+}
+
+AXIS_TEST_CASE("Sample Scenario 33 detects starts and configures microphone capture")
+{
+    SampleScenarioFixture fixture;
+    fixture.audioCapture.devices = {{"mic-1", "Test Microphone", true}};
+    fixture.audioCapture.settings.inputVolume = 1.5f;
+    fixture.audioCapture.settings.noiseGate = 0.04f;
+
+    fixture.state.LoadScene33();
+
+    AXIS_CHECK(fixture.state.m_S33DeviceDetected);
+    AXIS_CHECK(fixture.audioCapture.startCount == 1);
+    AXIS_CHECK(fixture.audioCapture.capturing);
+    AXIS_CHECK(fixture.state.m_S33StartedCapture);
+    AXIS_CHECK_NEAR(fixture.state.m_S33InputVolume, 1.5f, 0.0001f);
+    AXIS_CHECK_NEAR(fixture.state.m_S33NoiseGate, 0.04f, 0.0001f);
+
+    fixture.state.m_S33InputVolume = 2.0f;
+    fixture.state.m_S33AttackSeconds = 0.02f;
+    fixture.state.ApplyScenario33CaptureSettings();
+    AXIS_CHECK_NEAR(fixture.audioCapture.settings.inputVolume, 2.0f, 0.0001f);
+    AXIS_CHECK_NEAR(fixture.audioCapture.settings.attackSeconds, 0.02f, 0.0001f);
+
+    fixture.state.StopScenario33Capture();
+    AXIS_CHECK(!fixture.audioCapture.capturing);
+    AXIS_CHECK(fixture.audioCapture.stopCount == 1);
+}
+
+AXIS_TEST_CASE("StreamingSystem requests and releases shared async residency by distance")
+{
+    SampleScenarioFixture fixture;
+    auto camera = EntityBuilder(fixture.scene, fixture.resources, "test")
+                      .WithName("StreamingCamera")
+                      .WithTransform(glm::vec3(0.0f))
+                      .WithCamera(60.0f, 0.1f, 100.0f, true)
+                      .Build();
+    auto streamed = EntityBuilder(fixture.scene, fixture.resources, "test")
+                        .WithName("StreamingTarget")
+                        .WithTransform(glm::vec3(5.0f, 0.0f, 0.0f))
+                        .WithMesh("", "")
+                        .WithStreaming("asset://objects/cube/cube.fbx", 10.0f, 20.0f, true)
+                        .Build();
+
+    StreamingSystem streaming;
+    streaming.Initialize();
+    streaming.Update(fixture.scene, 1.1f);
+    auto& state = fixture.scene.GetComponent<StreamingComponent>(streamed);
+    AXIS_CHECK(state.isRequested);
+
+    fixture.scene.GetComponent<PositionComponent>(camera).value = glm::vec3(100.0f, 0.0f, 0.0f);
+    streaming.Update(fixture.scene, 1.1f);
+    AXIS_CHECK(!state.isRequested);
+    AXIS_CHECK(!state.isResident);
+    streaming.Shutdown();
 }

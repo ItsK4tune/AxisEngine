@@ -1,6 +1,8 @@
 #include <ecs/logic/video_system.h>
+#include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+#include <core/type/app_config.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
@@ -11,7 +13,6 @@
 #include <memory>
 #include <string>
 
-REGISTER_SYSTEM(VideoSystem)
 
 void VideoSystem::Initialize()
 {
@@ -60,12 +61,13 @@ void VideoSystem::Update(Scene& scene, float dt)
                 video.decoder = std::make_shared<VideoDecoder>();
             }
 
-            if (video.decoder->Load(video.filePath))
+            if (video.decoder->Load(FileSystem::getPath(video.filePath)))
             {
                 video.isLoaded = true;
                 video.decoder->SetLoop(video.isLooping);
                 video.decoder->SetSpeed(video.speed);
                 video.decoder->SetMaxDecodeSteps(video.maxDecodes);
+                video.decoder->SetAsyncDecodeEnabled(m_AsyncDecodeEnabled);
 
                 if (scene.GetRegistry().all_of<UITransformComponent>(entity))
                 {
@@ -132,6 +134,19 @@ void VideoSystem::Update(Scene& scene, float dt)
                 mat.gpu.dirty = false;
             }
         }
+    }
+}
+
+void VideoSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    m_AsyncDecodeEnabled = config.videoAsyncDecodeEnabled;
+    if (!m_BoundScene)
+        return;
+    auto view = m_BoundScene->View<VideoPlayerComponent>();
+    for (auto entity : view)
+    {
+        if (auto& video = view.get<VideoPlayerComponent>(entity); video.decoder)
+            video.decoder->SetAsyncDecodeEnabled(m_AsyncDecodeEnabled);
     }
 }
 

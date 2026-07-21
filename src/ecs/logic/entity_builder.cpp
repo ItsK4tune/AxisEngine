@@ -17,6 +17,7 @@
 #include <ecs/interface/i_script_registry.h>
 #include <script/logic/scriptable.h>
 #include <core/logic/service_locator.h>
+#include <core/logic/logger.h>
 #include <scene/logic/scene_manager.h>
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
@@ -40,12 +41,11 @@ void ApplyUITransform(UITransformComponent& uiTransform, const glm::vec2& pos, c
 
 void MarkWorldDirty(Scene& scene, entt::entity entity)
 {
-    auto& world = scene.GetOrAddComponent<WorldTransformComponent>(entity);
-    world.isDirty = true;
+    scene.GetOrAddComponent<WorldTransformComponent>(entity);
+    scene.MarkTransformDirty(entity);
 }
 
-bool TryResolveWorldMatrix(Scene& scene, entt::entity entity, std::vector<entt::entity>& traversal,
-                           glm::mat4& result)
+bool TryResolveWorldMatrix(Scene& scene, entt::entity entity, std::vector<entt::entity>& traversal, glm::mat4& result)
 {
     auto& registry = scene.GetRegistry();
     if (!registry.valid(entity) || std::find(traversal.begin(), traversal.end(), entity) != traversal.end())
@@ -60,8 +60,7 @@ bool TryResolveWorldMatrix(Scene& scene, entt::entity entity, std::vector<entt::
     traversal.push_back(entity);
 
     glm::mat4 parentMatrix(1.0f);
-    if (auto* hierarchy = registry.try_get<HierarchyComponent>(entity);
-        hierarchy && hierarchy->parent != entt::null)
+    if (auto* hierarchy = registry.try_get<HierarchyComponent>(entity); hierarchy && hierarchy->parent != entt::null)
     {
         if (!registry.valid(hierarchy->parent))
         {
@@ -81,8 +80,8 @@ bool TryResolveWorldMatrix(Scene& scene, entt::entity entity, std::vector<entt::
         }
     }
 
-    const glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), position->value) *
-                                  glm::toMat4(rotation->value) * glm::scale(glm::mat4(1.0f), scale->value);
+    const glm::mat4 localMatrix = glm::translate(glm::mat4(1.0f), position->value) * glm::toMat4(rotation->value) *
+                                  glm::scale(glm::mat4(1.0f), scale->value);
     result = parentMatrix * localMatrix;
     traversal.pop_back();
     return true;
@@ -157,49 +156,55 @@ void BindMaterialTexture(MaterialComponent& mat, MaterialTextureSlot slot, const
 
 namespace Perlin
 {
-    inline float fade(float t) { return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f); }
-    inline float lerp(float t, float a, float b) { return a + t * (b - a); }
-    inline float grad(int hash, float x, float y)
-    {
-        int h = hash & 7;
-        float u = h < 4 ? x : y;
-        float v = h < 4 ? y : x;
-        return ((h & 1) ? -u : u) + ((h & 2) ? -2.0f * v : 2.0f * v);
-    }
-    
-    inline int hashCoords(int x, int y)
-    {
-        unsigned int h = x * 374761393 + y * 668265263;
-        h = (h ^ (h >> 13)) * 12741261;
-        return h ^ (h >> 16);
-    }
-
-    inline float Noise2D(float x, float y)
-    {
-        int ix = (int)std::floor(x);
-        int iy = (int)std::floor(y);
-        float fx = x - ix;
-        float fy = y - iy;
-
-        float u = fade(fx);
-        float v = fade(fy);
-
-        int h00 = hashCoords(ix, iy);
-        int h10 = hashCoords(ix + 1, iy);
-        int h01 = hashCoords(ix, iy + 1);
-        int h11 = hashCoords(ix + 1, iy + 1);
-
-        float n00 = grad(h00, fx, fy);
-        float n10 = grad(h10, fx - 1.0f, fy);
-        float n01 = grad(h01, fx, fy - 1.0f);
-        float n11 = grad(h11, fx - 1.0f, fy - 1.0f);
-
-        float x1 = lerp(u, n00, n10);
-        float x2 = lerp(u, n01, n11);
-
-        return (lerp(v, x1, x2) + 1.0f) * 0.5f; // [0, 1]
-    }
+inline float fade(float t)
+{
+    return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
 }
+inline float lerp(float t, float a, float b)
+{
+    return a + t * (b - a);
+}
+inline float grad(int hash, float x, float y)
+{
+    int h = hash & 7;
+    float u = h < 4 ? x : y;
+    float v = h < 4 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -2.0f * v : 2.0f * v);
+}
+
+inline int hashCoords(int x, int y)
+{
+    unsigned int h = x * 374761393 + y * 668265263;
+    h = (h ^ (h >> 13)) * 12741261;
+    return h ^ (h >> 16);
+}
+
+inline float Noise2D(float x, float y)
+{
+    int ix = (int)std::floor(x);
+    int iy = (int)std::floor(y);
+    float fx = x - ix;
+    float fy = y - iy;
+
+    float u = fade(fx);
+    float v = fade(fy);
+
+    int h00 = hashCoords(ix, iy);
+    int h10 = hashCoords(ix + 1, iy);
+    int h01 = hashCoords(ix, iy + 1);
+    int h11 = hashCoords(ix + 1, iy + 1);
+
+    float n00 = grad(h00, fx, fy);
+    float n10 = grad(h10, fx - 1.0f, fy);
+    float n01 = grad(h01, fx, fy - 1.0f);
+    float n11 = grad(h11, fx - 1.0f, fy - 1.0f);
+
+    float x1 = lerp(u, n00, n10);
+    float x2 = lerp(u, n01, n11);
+
+    return (lerp(v, x1, x2) + 1.0f) * 0.5f;  // [0, 1]
+}
+}  // namespace Perlin
 }  // namespace
 
 EntityBuilder::EntityBuilder(Scene& scene, ResourceManager& resources, const std::string& sceneName)
@@ -330,7 +335,7 @@ EntityBuilder& EntityBuilder::WithTransform(const glm::vec3& pos, const glm::vec
 {
     m_Scene.AddOrReplaceComponent<PositionComponent>(m_Entity, pos, pos);
     m_Scene.AddOrReplaceComponent<RotationComponent>(m_Entity, glm::quat(glm::radians(rot)),
-                                                           glm::quat(glm::radians(rot)));
+                                                     glm::quat(glm::radians(rot)));
     m_Scene.AddOrReplaceComponent<ScaleComponent>(m_Entity, scale, scale);
     MarkWorldDirty(m_Scene, m_Entity);
     return *this;
@@ -373,6 +378,7 @@ EntityBuilder& EntityBuilder::WithMesh(const std::string& modelName, const std::
     auto& res = m_Resources;
     auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.model = res.GetModel(modelName);
+    mesh.modelName = modelName;
     mesh.shader = res.GetShader(shaderName);
     mesh.shaderName = shaderName;
     return *this;
@@ -383,6 +389,7 @@ EntityBuilder& EntityBuilder::WithMeshAuto(const std::string& modelNameOrPath, c
 {
     auto& mesh = m_Scene.GetOrAddComponent<MeshRendererComponent>(m_Entity);
     mesh.model = m_Resources.GetModelAuto(modelNameOrPath, isStatic);
+    mesh.modelName = modelNameOrPath;
     mesh.shader = m_Resources.GetShader(shaderName);
     mesh.shaderName = shaderName;
     return *this;
@@ -454,11 +461,11 @@ EntityBuilder& EntityBuilder::WithMeshRenderOptions(bool castShadow, bool receiv
 }
 
 EntityBuilder& EntityBuilder::WithLOD(const std::vector<std::string>& modelNamesOrPaths,
-                                      const std::vector<float>& distances, bool distancesAreSquared,
-                                      bool isStaticModel)
+                                      const std::vector<float>& distances, bool distancesAreSquared, bool isStaticModel)
 {
     auto& lod = m_Scene.GetOrAddComponent<LODComponent>(m_Entity);
     lod.lodModels.clear();
+    lod.lodModelNames.clear();
     lod.lodDistancesSq.clear();
 
     const size_t pairCount = std::min(modelNamesOrPaths.size(), distances.size());
@@ -468,6 +475,7 @@ EntityBuilder& EntityBuilder::WithLOD(const std::vector<std::string>& modelNames
     for (size_t i = 0; i < pairCount; ++i)
     {
         lod.lodModels.push_back(m_Resources.GetModelAuto(modelNamesOrPaths[i], isStaticModel));
+        lod.lodModelNames.push_back(modelNamesOrPaths[i]);
 
         const float distance = glm::max(distances[i], 0.0f);
         lod.lodDistancesSq.push_back(distancesAreSquared ? distance : distance * distance);
@@ -476,11 +484,12 @@ EntityBuilder& EntityBuilder::WithLOD(const std::vector<std::string>& modelNames
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithLODModel(const std::string& modelNameOrPath, float distance,
-                                           bool distanceIsSquared, bool isStaticModel)
+EntityBuilder& EntityBuilder::WithLODModel(const std::string& modelNameOrPath, float distance, bool distanceIsSquared,
+                                           bool isStaticModel)
 {
     auto& lod = m_Scene.GetOrAddComponent<LODComponent>(m_Entity);
     lod.lodModels.push_back(m_Resources.GetModelAuto(modelNameOrPath, isStaticModel));
+    lod.lodModelNames.push_back(modelNameOrPath);
 
     const float clampedDistance = glm::max(distance, 0.0f);
     lod.lodDistancesSq.push_back(distanceIsSquared ? clampedDistance : clampedDistance * clampedDistance);
@@ -504,6 +513,8 @@ EntityBuilder& EntityBuilder::WithStreaming(const std::string& modelPath, float 
     streaming.unloadDistance = glm::max(unloadDistance, streaming.loadDistance);
     streaming.isStatic = isStatic;
     streaming.isRequested = false;
+    streaming.isResident = false;
+    streaming.state = StreamingState::Unloaded;
     return *this;
 }
 
@@ -559,7 +570,8 @@ EntityBuilder& EntityBuilder::WithRigidBody(std::shared_ptr<IRigidBody> body)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithRigidBody(float mass, bool isStatic, bool isTrigger, float linearDamping, float angularDamping)
+EntityBuilder& EntityBuilder::WithRigidBody(float mass, bool isStatic, bool isTrigger, float linearDamping,
+                                            float angularDamping)
 {
     auto& rb = m_Scene.GetOrAddComponent<RigidBodyComponent>(m_Entity);
     rb.mass = mass;
@@ -570,10 +582,13 @@ EntityBuilder& EntityBuilder::WithRigidBody(float mass, bool isStatic, bool isTr
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacterController> controller, float stepHeight, float maxSlope)
+EntityBuilder& EntityBuilder::WithCharacterController(std::shared_ptr<ICharacterController> controller,
+                                                      float stepHeight, float maxSlope, float radius, float height)
 {
     auto& cc = m_Scene.GetOrAddComponent<CharacterControllerComponent>(m_Entity);
     cc.controller = controller;
+    cc.radius = radius;
+    cc.height = height;
     cc.stepHeight = stepHeight;
     cc.maxSlope = maxSlope;
     return *this;
@@ -599,8 +614,8 @@ EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::v
 }
 
 EntityBuilder& EntityBuilder::WithUITransform(const glm::vec2& pos, const glm::vec2& size,
-                                              const glm::bvec2& positionIsPercent,
-                                              const glm::bvec2& sizeIsPercent, int zIndex)
+                                              const glm::bvec2& positionIsPercent, const glm::bvec2& sizeIsPercent,
+                                              int zIndex)
 {
     auto& uiTransform = m_Scene.GetOrAddComponent<UITransformComponent>(m_Entity);
     ApplyUITransform(uiTransform, pos, size, positionIsPercent, sizeIsPercent, zIndex);
@@ -690,7 +705,10 @@ EntityBuilder& EntityBuilder::WithUIText(const std::string& text, const std::str
     textComp.color = color;
 
     textComp.font = res.GetFont(fontName);
+    if (textComp.font)
+        textComp.fontSize = static_cast<int>(textComp.font->GetFontSize());
     textComp.shader = res.GetShader("textShader");
+    textComp.shaderName = "textShader";
 
     std::string uniqueModelName = "ui_text_model_" + std::to_string((uint32_t)m_Entity);
     if (!res.HasUIModel(uniqueModelName))
@@ -746,7 +764,8 @@ EntityBuilder& EntityBuilder::WithPostProcess(const PostProcessComponent& postPr
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithPostProcessEffect(const std::string& shaderName, int priority, int x, int y, int w, int h)
+EntityBuilder& EntityBuilder::WithPostProcessEffect(const std::string& shaderName, int priority, int x, int y, int w,
+                                                    int h, PostProcessInput inputs)
 {
     auto& pp = m_Scene.GetOrAddComponent<PostProcessComponent>(m_Entity);
     pp.enabled = true;
@@ -759,6 +778,7 @@ EntityBuilder& EntityBuilder::WithPostProcessEffect(const std::string& shaderNam
     effect.h = h;
     effect.enabled = true;
     effect.affectUI = false;
+    effect.inputs = inputs;
     pp.effects.push_back(effect);
     return *this;
 }
@@ -831,7 +851,8 @@ EntityBuilder& EntityBuilder::WithRigidShape(const RigidShapeComponent& shape)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithRigidShape(ShapeType type, const glm::vec3& size, float radius, float height, float friction, float restitution)
+EntityBuilder& EntityBuilder::WithRigidShape(ShapeType type, const glm::vec3& size, float radius, float height,
+                                             float friction, float restitution)
 {
     auto& shape = m_Scene.GetOrAddComponent<RigidShapeComponent>(m_Entity);
     shape.children.clear();
@@ -858,7 +879,8 @@ EntityBuilder& EntityBuilder::WithDecal(const DecalComponent& decal)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithDecal(uint32_t albedoMap, float opacity, float roughness, float metallic, int lightingMode, const glm::vec4& tintColor)
+EntityBuilder& EntityBuilder::WithDecal(uint32_t albedoMap, float opacity, float roughness, float metallic,
+                                        int lightingMode, const glm::vec4& tintColor)
 {
     auto& decal = m_Scene.GetOrAddComponent<DecalComponent>(m_Entity);
     decal.albedoMap = albedoMap;
@@ -876,9 +898,9 @@ EntityBuilder& EntityBuilder::WithAudioSource(const AudioSourceComponent& audioS
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithAudioSource(const std::string& filePath, bool playOnAwake, bool loop,
-                                              bool is3D, float volume, float pitch, float speed,
-                                              float minDistance, float maxDistance)
+EntityBuilder& EntityBuilder::WithAudioSource(const std::string& filePath, bool playOnAwake, bool loop, bool is3D,
+                                              float volume, float pitch, float speed, float minDistance,
+                                              float maxDistance)
 {
     auto& audio = m_Scene.GetOrAddComponent<AudioSourceComponent>(m_Entity);
     audio.filePath = filePath;
@@ -960,6 +982,7 @@ EntityBuilder& EntityBuilder::WithUIRenderer(const std::string& textureName, con
 
     renderer.color = color;
     renderer.shader = res.GetShader("uiShader");
+    renderer.shaderName = "uiShader";
 
     if (!res.GetUIModel(textureName))
     {
@@ -980,6 +1003,7 @@ EntityBuilder& EntityBuilder::WithUITexture(const std::string& textureNameOrPath
     auto texture = m_Resources.GetTextureAuto(textureNameOrPath);
     auto& renderer = m_Scene.GetOrAddComponent<UIRendererComponent>(m_Entity);
     renderer.texture = texture;
+    renderer.textureName = textureNameOrPath;
     if (renderer.model && texture)
         renderer.model->SetTexture(texture->id);
 
@@ -987,8 +1011,8 @@ EntityBuilder& EntityBuilder::WithUITexture(const std::string& textureNameOrPath
 }
 
 EntityBuilder& EntityBuilder::WithUITextureResource(const std::string& textureName, const std::string& path,
-                                                    const glm::vec4& color, const std::string& uiModelName,
-                                                    bool async, bool keepCpuData)
+                                                    const glm::vec4& color, const std::string& uiModelName, bool async,
+                                                    bool keepCpuData)
 {
     WithTextureResource(textureName, path, async, keepCpuData);
     return WithUITexture(textureName, color, uiModelName.empty() ? textureName : uiModelName);
@@ -1034,8 +1058,13 @@ EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
         {
             script.instance->OnDestroy();
         }
+        catch (const std::exception& error)
+        {
+            LOGGER_ERROR("EntityBuilder") << "Script OnDestroy failed: " << error.what();
+        }
         catch (...)
         {
+            LOGGER_ERROR("EntityBuilder") << "Script OnDestroy failed with an unknown exception";
         }
     }
     script.instance.reset();
@@ -1061,7 +1090,8 @@ EntityBuilder& EntityBuilder::WithScript(const std::string& scriptName)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithScriptable(const std::string& className, std::function<std::unique_ptr<IScriptable>()> instantiateFunc)
+EntityBuilder& EntityBuilder::WithScriptable(const std::string& className,
+                                             std::function<std::unique_ptr<IScriptable>()> instantiateFunc)
 {
     auto& script = m_Scene.GetOrAddComponent<ScriptComponent>(m_Entity);
     script.className = className;
@@ -1071,8 +1101,13 @@ EntityBuilder& EntityBuilder::WithScriptable(const std::string& className, std::
         {
             script.instance->OnDestroy();
         }
+        catch (const std::exception& error)
+        {
+            LOGGER_ERROR("EntityBuilder") << "Script OnDestroy failed: " << error.what();
+        }
         catch (...)
         {
+            LOGGER_ERROR("EntityBuilder") << "Script OnDestroy failed with an unknown exception";
         }
     }
     script.instance.reset();
@@ -1211,7 +1246,10 @@ EntityBuilder& EntityBuilder::WithParticleTextureResource(const std::string& tex
     return WithParticleTexture(textureName);
 }
 
-EntityBuilder& EntityBuilder::WithParticleEmitter(float spawnRate, float lifeTime, float startSize, float endSize, const glm::vec3& minVelocity, const glm::vec3& maxVelocity, const glm::vec4& startColor, const glm::vec4& endColor, int maxParticles)
+EntityBuilder& EntityBuilder::WithParticleEmitter(float spawnRate, float lifeTime, float startSize, float endSize,
+                                                  const glm::vec3& minVelocity, const glm::vec3& maxVelocity,
+                                                  const glm::vec4& startColor, const glm::vec4& endColor,
+                                                  int maxParticles)
 {
     auto& pe = m_Scene.GetOrAddComponent<ParticleEmitterComponent>(m_Entity);
     pe.isActive = true;
@@ -1223,7 +1261,8 @@ EntityBuilder& EntityBuilder::WithParticleEmitter(float spawnRate, float lifeTim
     pe.emitter.MaxVelocity = maxVelocity;
     pe.emitter.StartColor = startColor;
     pe.emitter.EndColor = endColor;
-    pe.emitter.Initialize(maxParticles);
+    pe.maxParticles = static_cast<unsigned int>(std::max(maxParticles, 1));
+    pe.emitter.Initialize(pe.maxParticles);
     return *this;
 }
 
@@ -1255,18 +1294,17 @@ EntityBuilder& EntityBuilder::WithPlayingVideo(const std::string& videoPath, boo
 }
 
 EntityBuilder& EntityBuilder::WithUIVideo(const std::string& videoPath, const std::string& uiModelName,
-                                          const glm::vec4& color, bool loop, float volume, int maxDecodes,
-                                          float speed)
+                                          const glm::vec4& color, bool loop, float volume, int maxDecodes, float speed)
 {
     WithUIRenderer(uiModelName, color);
     return WithPlayingVideo(videoPath, loop, volume, maxDecodes, speed);
 }
 
 EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float maxHeight, int resolution, int chunkSize,
-                                           float textureScale, const std::string& heightMapName,
-                                           const std::string& splatMapName,
-                                           const std::vector<std::string>& diffuseLayerNames,
-                                           bool generatePhysics, bool castShadows)
+                                          float textureScale, const std::string& heightMapName,
+                                          const std::string& splatMapName,
+                                          const std::vector<std::string>& diffuseLayerNames, bool generatePhysics,
+                                          bool castShadows)
 {
     auto& terrain = m_Scene.GetOrAddComponent<TerrainComponent>(m_Entity);
     terrain.terrainSize = terrainSize;
@@ -1285,6 +1323,8 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
         terrain.heightMap = heightTex->id;
     }
     terrain.heightMapName = heightMapName;
+    terrain.splatMapName = splatMapName;
+    terrain.diffuseLayerNames = diffuseLayerNames;
 
     if (!splatMapName.empty())
     {
@@ -1308,7 +1348,8 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float maxHeight, bool isWalkable, bool generatePhysics)
+EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float maxHeight, bool isWalkable,
+                                          bool generatePhysics)
 {
     auto& terrain = m_Scene.GetOrAddComponent<TerrainComponent>(m_Entity);
     terrain.terrainSize = terrainSize;
@@ -1320,35 +1361,42 @@ EntityBuilder& EntityBuilder::WithTerrain(const glm::vec3& terrainSize, float ma
 }
 
 Entity EntityBuilder::SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
-                                  const std::string& fragmentPath, const glm::vec3& pos,
-                                  const glm::vec3& scale)
+                                  const std::string& fragmentPath, const glm::vec3& pos, const glm::vec3& scale)
 {
     Entity e = EntityBuilder(scene, res, sceneName)
-        .WithName("ProceduralObject")
-        .WithTransform(pos, glm::vec3(0.0f, rand() % 360, 0.0f), scale)
-        .Build();
-        
+                   .WithName("ProceduralObject")
+                   .WithTransform(pos, glm::vec3(0.0f, rand() % 360, 0.0f), scale)
+                   .Build();
+
     auto& frag = scene.AddComponent<FragmentComponent>(e);
     frag.path = fragmentPath;
     frag.instantiated = false;
-    
+
     return e;
 }
 
 void EntityBuilder::ScatterObjects(Scene& scene, ResourceManager& res, const std::string& sceneName,
                                    const std::string& fragmentPath, const PlacementRule& rule,
-                                   const std::vector<float>& heights, int width, int height,
-                                   float terrainWidth, float terrainLength, float terrainHeight,
-                                   float waterLevel, float randomOffsetX, float randomOffsetZ,
-                                   int attempts, const glm::vec3& scale)
+                                   const std::vector<float>& heights, int width, int height, float terrainWidth,
+                                   float terrainLength, float terrainHeight, float waterLevel, float randomOffsetX,
+                                   float randomOffsetZ, int attempts, const glm::vec3& scale)
 {
+    if (width <= 0 || height <= 0 || terrainWidth <= 0.0f || terrainLength <= 0.0f ||
+        heights.size() < static_cast<size_t>(width) * static_cast<size_t>(height) || attempts <= 0)
+    {
+        LOGGER_WARN("EntityBuilder") << "Ignoring invalid terrain scatter parameters";
+        return;
+    }
+
+    const int maxGridX = width - 1;
+    const int maxGridZ = height - 1;
     auto getTerrainHeight = [&](float wx, float wz) -> float {
         float localX = wx - (-terrainWidth * 0.5f);
         float localZ = wz - (-terrainLength * 0.5f);
-        float gridXf = (localX / terrainWidth) * 256.0f;
-        float gridZf = (localZ / terrainLength) * 256.0f;
-        int gx = (std::max)(0, (std::min)(256, (int)std::round(gridXf)));
-        int gz = (std::max)(0, (std::min)(256, (int)std::round(gridZf)));
+        float gridXf = (localX / terrainWidth) * static_cast<float>(maxGridX);
+        float gridZf = (localZ / terrainLength) * static_cast<float>(maxGridZ);
+        int gx = std::clamp(static_cast<int>(std::round(gridXf)), 0, maxGridX);
+        int gz = std::clamp(static_cast<int>(std::round(gridZf)), 0, maxGridZ);
         return heights[gz * width + gx] * terrainHeight;
     };
 
@@ -1373,17 +1421,21 @@ void EntityBuilder::ScatterObjects(Scene& scene, ResourceManager& res, const std
 
         float localX = rx - (-terrainWidth * 0.5f);
         float localZ = rz - (-terrainLength * 0.5f);
-        float gridX = (localX / terrainWidth) * 256.0f;
-        float gridZ = (localZ / terrainLength) * 256.0f;
+        float gridX = (localX / terrainWidth) * static_cast<float>(maxGridX);
+        float gridZ = (localZ / terrainLength) * static_cast<float>(maxGridZ);
 
-        float riverNoise = Perlin::Noise2D(gridX * 0.008f + randomOffsetX + 500.0f, gridZ * 0.008f + randomOffsetZ + 500.0f);
+        float riverNoise =
+            Perlin::Noise2D(gridX * 0.008f + randomOffsetX + 500.0f, gridZ * 0.008f + randomOffsetZ + 500.0f);
         float riverFactor = std::abs(riverNoise - 0.5f);
         bool nearWater = (riverFactor < 0.08f) || (h < (waterLevel + 0.06f) * terrainHeight);
 
         float weight = 1.0f;
-        if (nearWater) weight *= rule.waterWeight;
-        if (h > 0.62f * terrainHeight || slope > 0.25f) weight *= rule.mountainWeight;
-        if (h >= (waterLevel + 0.05f) * terrainHeight && h < 0.55f * terrainHeight && slope < 0.12f) weight *= rule.plainsWeight;
+        if (nearWater)
+            weight *= rule.waterWeight;
+        if (h > 0.62f * terrainHeight || slope > 0.25f)
+            weight *= rule.mountainWeight;
+        if (h >= (waterLevel + 0.05f) * terrainHeight && h < 0.55f * terrainHeight && slope < 0.12f)
+            weight *= rule.plainsWeight;
 
         if ((rand() % 100) < (weight * rule.baseProbability))
         {
@@ -1408,7 +1460,8 @@ EntityBuilder& EntityBuilder::WithNavMesh(const NavMeshComponent& navMesh)
     return *this;
 }
 
-EntityBuilder& EntityBuilder::WithNavigationGrid(int width, int height, float cellSize, const glm::vec3& origin, bool allowDiagonal)
+EntityBuilder& EntityBuilder::WithNavigationGrid(int width, int height, float cellSize, const glm::vec3& origin,
+                                                 bool allowDiagonal)
 {
     auto& grid = m_Scene.GetOrAddComponent<NavigationGridComponent>(m_Entity);
     grid.width = width;
@@ -1459,6 +1512,7 @@ EntityBuilder& EntityBuilder::WithSkybox(const std::string& skyboxName, const st
 {
     auto& sky = m_Scene.GetOrAddComponent<SkyboxRenderComponent>(m_Entity);
     sky.skybox = m_Resources.GetSkybox(skyboxName);
+    sky.skyboxName = skyboxName;
     sky.shader = m_Resources.GetShader(shaderName);
     sky.shaderName = shaderName;
     sky.isPrimary = isPrimary;

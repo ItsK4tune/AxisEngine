@@ -11,7 +11,6 @@
 #include <sstream>
 #include <string>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/app/application.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
@@ -30,9 +29,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-GizmoEditorModule::GizmoEditorModule()
-{
-}
 GizmoEditorModule::~GizmoEditorModule()
 {
     if (m_SceneUnloadedSubId != -1)
@@ -48,22 +44,43 @@ void GizmoEditorModule::Initialize()
         [this](const SceneUnloadedEvent&) { ClearSceneLabels(); });
 }
 
+void GizmoEditorModule::Shutdown()
+{
+    if (m_SceneUnloadedSubId != -1)
+    {
+        EventManager::Instance().Unsubscribe<SceneUnloadedEvent>(m_SceneUnloadedSubId);
+        m_SceneUnloadedSubId = -1;
+    }
+
+    auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (graphics)
+    {
+        auto& buffers = graphics->GetBufferManager();
+        if (m_LineVBO != 0)
+            buffers.DeleteBuffer(m_LineVBO);
+        if (m_LineVAO != 0)
+            buffers.DeleteVertexArray(m_LineVAO);
+    }
+    m_LineVBO = 0;
+    m_LineVAO = 0;
+}
+
 #include <core/logic/config_manager.h>
 
 bool GizmoEditorModule::IsEntityNamesEnabled() const
 {
     auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    return cm ? cm->GetConfig().debug.entityNames : false;
+    return cm ? cm->GetConfigSnapshot()->debug.entityNames : false;
 }
 bool GizmoEditorModule::IsTransformGizmosEnabled() const
 {
     auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    return cm ? cm->GetConfig().debug.gizmos : false;
+    return cm ? cm->GetConfigSnapshot()->debug.gizmos : false;
 }
 bool GizmoEditorModule::IsLightGizmosEnabled() const
 {
     auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    return cm ? cm->GetConfig().debug.lightGizmos : false;
+    return cm ? cm->GetConfigSnapshot()->debug.lightGizmos : false;
 }
 
 void GizmoEditorModule::ToggleEntityNames()
@@ -227,10 +244,6 @@ void GizmoEditorModule::Render(Scene& scene)
     bm.BindVertexArray(0);
 }
 
-void GizmoEditorModule::ProcessInput(KeyboardManager& keyboard)
-{
-}
-
 void GizmoEditorModule::ClearSceneLabels()
 {
     if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
@@ -280,8 +293,9 @@ void GizmoEditorModule::UpdateDebugLabels(Scene& scene)
     float referenceHeight = 1080.0f;
     if (auto* cm = sl.Resolve<ConfigManager>())
     {
-        referenceWidth = (std::max)(1.0f, cm->GetConfig().uiReferenceWidth);
-        referenceHeight = (std::max)(1.0f, cm->GetConfig().uiReferenceHeight);
+        const auto config = cm->GetConfigSnapshot();
+        referenceWidth = (std::max)(1.0f, config->render.uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, config->render.uiReferenceHeight);
     }
 
     float scaleFactor = std::min((float)width / referenceWidth, (float)height / referenceHeight);
@@ -505,8 +519,9 @@ void GizmoEditorModule::UpdateLightLabels(Scene& scene)
     float referenceHeight = 1080.0f;
     if (auto* cm = sl.Resolve<ConfigManager>())
     {
-        referenceWidth = (std::max)(1.0f, cm->GetConfig().uiReferenceWidth);
-        referenceHeight = (std::max)(1.0f, cm->GetConfig().uiReferenceHeight);
+        const auto config = cm->GetConfigSnapshot();
+        referenceWidth = (std::max)(1.0f, config->render.uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, config->render.uiReferenceHeight);
     }
 
     float scaleFactor = std::min((float)width / referenceWidth, (float)height / referenceHeight);

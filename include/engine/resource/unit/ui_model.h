@@ -2,13 +2,13 @@
 
 #include <resource/unit/shader.h>
 #include <glm/glm.hpp>
+#include <cstddef>
 #include <vector>
 
 class IBufferManager;
 class IDrawContext;
 class ITextureManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 enum class UIType
 {
@@ -36,9 +36,11 @@ public:
     }
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
+    static void ClearManagers();
 
 private:
     unsigned int VAO = 0, VBO = 0;
+    size_t m_DynamicCapacityBytes = 0;
     UIType m_Type;
     unsigned int m_TextureID = 0;
 

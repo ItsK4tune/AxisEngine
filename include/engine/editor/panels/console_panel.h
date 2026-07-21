@@ -20,6 +20,8 @@ class ConsolePanel : public IEditorPanel
 public:
     static ConsolePanel* s_Instance;
 
+    ~ConsolePanel() override;
+
     void Initialize() override;
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override

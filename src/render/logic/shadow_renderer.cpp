@@ -1,7 +1,6 @@
 #include <render/logic/shadow_renderer.h>
 #include <algorithm>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/config_manager.h>
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
@@ -80,8 +79,8 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
     if (m_ShadowMode == 0 || !m_EnableShadows)
         return;
 
-    auto config = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
-    LightingMode lightingMode = config.lightingMode;
+    const auto config = ServiceLocator::Instance().Require<ConfigManager>().GetConfigSnapshot();
+    LightingMode lightingMode = config->lightingMode;
 
     Shader* shaderDir = m_Shadow.GetShaderDir();
     Shader* shaderPoint = m_Shadow.GetShaderPoint();
@@ -94,7 +93,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
     std::vector<const RenderLight*> shadowCastingPointLights;
     std::vector<const RenderLight*> shadowCastingSpotLights;
 
-    for (const auto& light : sceneData.lights)
+    for (const auto& light : sceneData.GetLights())
     {
         if (!light.castShadows)
             continue;
@@ -125,8 +124,44 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         }
     });
     JobSystem::JobCounter counter(0);
+    auto dispatchRanges = [this, &counter](size_t totalItems, auto buildRange) {
+        if (totalItems == 0)
+        {
+            m_ThreadQueues.clear();
+            return;
+        }
 
-    const auto& shadowQueue = sceneData.shadowQueue;
+        const uint32_t availableWorkers = (std::max)(1u, JobSystem::Instance().GetThreadCount());
+        const uint32_t rangeCount = !m_ParallelBuildEnabled || totalItems < m_ParallelBuildThreshold
+                                        ? 1u
+                                        : (std::min)(availableWorkers, static_cast<uint32_t>(totalItems));
+        const size_t chunkSize = (totalItems + rangeCount - 1) / rangeCount;
+        m_ThreadQueues.resize(rangeCount);
+        for (auto& queue : m_ThreadQueues)
+            queue.Clear();
+
+        if (rangeCount == 1)
+        {
+            buildRange(0, totalItems, m_ThreadQueues[0]);
+            return;
+        }
+
+        for (uint32_t index = 0; index < rangeCount; ++index)
+        {
+            const size_t begin = index * chunkSize;
+            if (begin >= totalItems)
+                break;
+            const size_t end = (std::min)(begin + chunkSize, totalItems);
+            JobSystem::Instance().Execute(
+                [begin, end, &queue = m_ThreadQueues[index], buildRange]() mutable {
+                    buildRange(begin, end, queue);
+                },
+                &counter);
+        }
+        JobSystem::Instance().Wait(&counter);
+    };
+
+    const auto& shadowQueue = sceneData.GetShadowQueue();
 
     // Directional Lights
     int numDirShadows = (m_ShadowMode == 2)
@@ -158,22 +193,10 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
         if (m_ShadowFrustumCullingEnabled)
             lightFrustum.Update(m_LightSpaceMatrixDir[lightIdx]);
 
-        size_t totalItems = shadowQueue.size();
-        uint32_t numThreads = JobSystem::Instance().GetThreadCount();
-        size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-        m_ThreadQueues.resize(numThreads);
-        for (auto& tq : m_ThreadQueues) tq.Clear();
-
-        for (size_t i = 0; i < numThreads; ++i)
-        {
-            size_t startIdx = i * chunkSize;
-            if (startIdx >= totalItems)
-                break;
-            size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-
-            JobSystem::Instance().Execute(
-                [this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderDir, lightIdx,
-                 lightFrustum, camPos, lightingMode]() {
+        dispatchRanges(
+            shadowQueue.size(),
+            [this, &shadowQueue, shaderDir, lightIdx, lightFrustum, camPos, lightingMode](
+                size_t startIdx, size_t endIdx, CommandQueue& threadQueue) {
                     threadQueue.Submit([shaderDir, this, lightIdx]() {
                         shaderDir->use();
                         shaderDir->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixDir[lightIdx]);
@@ -207,10 +230,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                             });
                         }
                     }
-                },
-                &counter);
-        }
-        JobSystem::Instance().Wait(&counter);
+                });
         ExecuteAndClear(m_MainQueue);
         ExecuteAndClear(m_ThreadQueues);
 
@@ -257,21 +277,10 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                 m_Shadow.GetDrawContext().Clear(BufferBit::Depth);
             });
 
-            size_t totalItems = shadowQueue.size();
-            uint32_t numThreads = JobSystem::Instance().GetThreadCount();
-            size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-            m_ThreadQueues.resize(numThreads);
-            for (auto& tq : m_ThreadQueues) tq.Clear();
-
-            for (size_t i = 0; i < numThreads; ++i)
-            {
-                size_t startIdx = i * chunkSize;
-                if (startIdx >= totalItems)
-                    break;
-                size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute(
-                    [this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderPoint,
-                     shadowTransforms, farP, lightPos, camPos, lightingMode, pIdx]() {
+            dispatchRanges(
+                shadowQueue.size(),
+                [this, &shadowQueue, shaderPoint, shadowTransforms, farP, lightPos, camPos, lightingMode, pIdx](
+                    size_t startIdx, size_t endIdx, CommandQueue& threadQueue) {
                         threadQueue.Submit([shaderPoint, shadowTransforms, farP, lightPos, pIdx]() {
                             shaderPoint->use();
                             for (int k = 0; k < 6; ++k)
@@ -312,10 +321,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                                 });
                             }
                         }
-                    },
-                    &counter);
-            }
-            JobSystem::Instance().Wait(&counter);
+                    });
             ExecuteAndClear(m_MainQueue);
             ExecuteAndClear(m_ThreadQueues);
 
@@ -361,21 +367,10 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
             if (m_ShadowFrustumCullingEnabled)
                 lightFrustum.Update(m_LightSpaceMatrixSpot[sIdx]);
 
-            size_t totalItems = shadowQueue.size();
-            uint32_t numThreads = JobSystem::Instance().GetThreadCount();
-            size_t chunkSize = (totalItems + numThreads - 1) / numThreads;
-            m_ThreadQueues.resize(numThreads);
-            for (auto& tq : m_ThreadQueues) tq.Clear();
-
-            for (size_t i = 0; i < numThreads; ++i)
-            {
-                size_t startIdx = i * chunkSize;
-                if (startIdx >= totalItems)
-                    break;
-                size_t endIdx = std::min(startIdx + chunkSize, totalItems);
-                JobSystem::Instance().Execute(
-                    [this, &shadowQueue, startIdx, endIdx, &threadQueue = m_ThreadQueues[i], shaderSpot, sIdx,
-                     lightFrustum, lightPos, farPSq, lightingMode]() {
+            dispatchRanges(
+                shadowQueue.size(),
+                [this, &shadowQueue, shaderSpot, sIdx, lightFrustum, lightPos, farPSq, lightingMode](
+                    size_t startIdx, size_t endIdx, CommandQueue& threadQueue) {
                         threadQueue.Submit([shaderSpot, this, sIdx]() {
                             shaderSpot->use();
                             shaderSpot->setMat4("u_LightSpaceMatrix", m_LightSpaceMatrixSpot[sIdx]);
@@ -406,10 +401,7 @@ void ShadowRenderer::PerformShadowPass(const RenderSceneData& sceneData)
                                 });
                             }
                         }
-                    },
-                    &counter);
-            }
-            JobSystem::Instance().Wait(&counter);
+                    });
             ExecuteAndClear(m_MainQueue);
             ExecuteAndClear(m_ThreadQueues);
 

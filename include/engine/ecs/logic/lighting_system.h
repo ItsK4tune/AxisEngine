@@ -2,14 +2,17 @@
 
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_lighting_service.h>
+#include <core/interface/i_optimization_configurable.h>
 #include <render/logic/light_renderer.h>
 #include <memory>
 
-class LightingSystem : public IRenderSystem, public IECSSystem, public ILightingService
+class LightingSystem : public IRenderSystem,
+                       public IECSSystem,
+                       public ILightingService,
+                       public IOptimizationConfigurable
 {
 public:
     void Initialize() override;
-    void Shutdown() override;
 
     bool IsEnabled() const override
     {
@@ -36,9 +39,9 @@ public:
         return SystemRequirement::Graphics;
     }
     void Render(Scene& scene) override;
-    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void RenderDeferredLighting(Scene& scene, int width, int height) override;
     void UploadLightData(const RenderSceneData& sceneData, Shader* shader = nullptr) override;
+    void ApplyOptimizationConfig(const OptimizationConfig& config) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -52,4 +55,5 @@ private:
     class IGeometryService* m_GeoService = nullptr;
     class IShadowService* m_ShadowService = nullptr;
     class IRenderService* m_RenderService = nullptr;
+
 };

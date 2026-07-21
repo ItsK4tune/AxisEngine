@@ -4,16 +4,24 @@
 #include <render/type/graphics_types.h>
 #include <resource/unit/shader.h>
 #include <glm/glm.hpp>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 class IBufferManager;
 class IDrawContext;
 class ITextureManager;
+class TransientBufferRing;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 #define MAX_BONE_INFLUENCE 4
+
+struct MeshInstanceData
+{
+    glm::mat4 model{1.0f};
+    uint32_t entityId = 0;
+};
 
 class Mesh
 {
@@ -31,14 +39,27 @@ public:
     Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStride, bool isSkinned,
          std::vector<unsigned int> indices, std::vector<Texture> textures, bool setupGPU = true);
     ~Mesh();
+    Mesh(const Mesh&) = delete;
+    Mesh& operator=(const Mesh&) = delete;
+    Mesh(Mesh&& other) noexcept;
+    Mesh& operator=(Mesh&& other) noexcept;
     void setupMesh();
     void Draw(Shader& shader, bool bindTextures = true);
-    void DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures = true);
+    void DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& instances, bool bindTextures = true);
 
     bool IsInitialized() const
     {
         return m_Initialized;
     }
+
+    bool HasCpuVertexData() const
+    {
+        return !m_VertexData.empty();
+    }
+    glm::vec3 GetPosition(size_t vertexIndex) const;
+    // Retains a compact position stream for collision/nav/editor inspection,
+    // then releases the full interleaved render vertex stream.
+    void ReleaseCpuVertexData();
 
     static void SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw);
     static IBufferManager& GetBufferManager()
@@ -58,8 +79,12 @@ private:
     unsigned int VBO, EBO, instanceVBO;
     bool m_Initialized = false;
     size_t m_InstanceBufferCapacity = 0;
+    std::unique_ptr<TransientBufferRing> m_InstanceUpload;
+    std::vector<glm::vec3> m_CompactPositions;
 
     static IBufferManager* s_BufferManager;
     static ITextureManager* s_TextureManager;
     static IDrawContext* s_DrawContext;
+
+    void ReleaseGpuResources() noexcept;
 };

@@ -7,6 +7,10 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/light_components.h>
+#include <ecs/unit/light_probe_components.h>
+#include <ecs/unit/network_components.h>
+#include <ecs/unit/post_process_component.h>
+#include <ecs/unit/reflection_components.h>
 #include <ecs/unit/script_component.h>
 
 #include <navigation/unit/navmesh_component.h>

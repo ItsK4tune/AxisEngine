@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class Animator
 {
@@ -39,8 +38,6 @@ public:
     {
         m_UpdateRate = updatesPerSecond;
     }
-
-    void SetIdentityMatrices(int boneCount);
 
     float GetDuration() const
     {

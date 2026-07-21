@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class Model
 {
@@ -30,7 +29,7 @@ public:
     AABB aabb;
 
     void Draw(Shader& shader, bool bindTextures = true);
-    void DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures = true);
+    void DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& instances, bool bindTextures = true);
 
     std::unordered_map<std::string, BoneInfo>& GetBoneInfoMap();
     int& GetBoneCount();
@@ -50,6 +49,11 @@ public:
     }
 
     void UploadToGPU();
+    // Transfers a fully decoded CPU model into this published handle. This is
+    // intentionally called on the resource/main thread so async workers never
+    // mutate a Model that the renderer can already observe.
+    void AdoptCpuData(Model&& decoded);
+    void ReleaseCpuMeshData();
     bool IsReadyToRender() const
     {
         return m_ReadyToRender;

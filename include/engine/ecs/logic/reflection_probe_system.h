@@ -2,23 +2,22 @@
 
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
-#include <ecs/interface/i_update_system.h>
+#include <core/interface/i_optimization_configurable.h>
 #include <render/interface/i_graphics_context.h>
 #include <resource/unit/shader.h>
 #include <memory>
+#include <algorithm>
 #include <vector>
 
-class ReflectionProbeSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
+class ReflectionProbeSystem : public IRenderSystem, public IECSSystem, public IOptimizationConfigurable
 {
 public:
     void Initialize() override;
     void Shutdown() override;
-    void Update(Scene& scene, float dt) override;
+    void Reset() override;
+    void ApplyOptimizationConfig(const OptimizationConfig& config) override;
 
     // IRenderSystem implementation
-    void Render(Scene& scene) override
-    {
-    }
     void RenderCapturePass(Scene& scene, int width, int height) override;
 
     bool IsEnabled() const override
@@ -28,6 +27,11 @@ public:
     void SetEnabled(bool enable) override
     {
         m_Enabled = enable;
+    }
+    void SetCaptureBudget(bool enabled, size_t maxFacesPerFrame)
+    {
+        m_CaptureBudgetEnabled = enabled;
+        m_MaxFacesPerFrame = (std::max)(size_t{1}, maxFacesPerFrame);
     }
     int GetPriority() const override
     {
@@ -39,7 +43,7 @@ public:
     }
     SystemCategory GetCategory() const override
     {
-        return SystemCategory::Update | SystemCategory::RenderCapture;
+        return SystemCategory::RenderCapture;
     }
     SystemRequirement GetRequirements() const override
     {
@@ -47,11 +51,15 @@ public:
     }
 
 private:
-    void CaptureProbe(Scene& scene, entt::entity entity, int faceIndex);
+    bool CaptureProbe(Scene& scene, entt::entity entity, int faceIndex, int viewportWidth, int viewportHeight);
     unsigned int CreateCubemap(int resolution);
 
     bool m_Enabled = true;
     uint32_t m_CaptureFBO = 0;
     uint32_t m_DepthRB = 0;
-    std::shared_ptr<Shader> m_ProbeShader;
+    int m_DepthResolution = 0;
+    size_t m_NextProbeIndex = 0;
+    size_t m_MaxFacesPerFrame = 2;
+    bool m_CaptureBudgetEnabled = true;
+    std::vector<entt::entity> m_Candidates;
 };

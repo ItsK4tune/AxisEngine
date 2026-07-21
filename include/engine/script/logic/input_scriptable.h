@@ -3,6 +3,8 @@
 #include <script/logic/scriptable.h>
 #include <script/type/script_binding.h>
 #include <functional>
+#include <algorithm>
+#include <utility>
 #include <vector>
 
 class InputScriptable : public virtual Scriptable
@@ -50,7 +52,19 @@ public:
 
     void BindKey(int key, InputEvent event, std::function<void()> callback)
     {
-        m_KeyBindings.push_back({key, event, callback});
+        if (callback)
+            m_KeyBindings.push_back({key, event, std::move(callback)});
+    }
+
+    void UnbindKey(int key, InputEvent event)
+    {
+        std::erase_if(m_KeyBindings,
+                      [key, event](const KeyBinding& binding) { return binding.key == key && binding.event == event; });
+    }
+
+    void ClearKeyBindings()
+    {
+        m_KeyBindings.clear();
     }
 
     bool IsHovered() const

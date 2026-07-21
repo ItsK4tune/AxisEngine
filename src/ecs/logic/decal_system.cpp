@@ -26,8 +26,8 @@
 #include <resource/unit/shader.h>
 #include <scene/logic/scene.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include <algorithm>
 
-REGISTER_SYSTEM(DecalSystem)
 
 void DecalSystem::Initialize()
 {
@@ -61,6 +61,21 @@ void DecalSystem::Initialize()
     }
 }
 
+void DecalSystem::Shutdown()
+{
+    if (m_BoundScene)
+        m_BoundScene->GetRegistry().on_construct<DecalComponent>().disconnect<&DecalSystem::OnDecalConstruct>(this);
+    m_BoundScene = nullptr;
+    if (m_GraphicsContext && m_TagMapTexture != 0)
+        m_GraphicsContext->GetTextureManager().DeleteTextures(1, &m_TagMapTexture);
+    m_TagMapTexture = 0;
+    m_TagBuffer.clear();
+    m_TagBitMap.clear();
+    m_GraphicsContext = nullptr;
+    m_GeoService = nullptr;
+    m_RenderService = nullptr;
+}
+
 void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity)
 {
     auto& decal = registry.get<DecalComponent>(entity);
@@ -72,13 +87,16 @@ void DecalSystem::OnDecalConstruct(entt::registry& registry, entt::entity entity
 
 void DecalSystem::Update(Scene& scene, float dt)
 {
-    static bool logUpdate = false;
-    if (!logUpdate)
+    if (m_BoundScene != &scene)
     {
-        LOGGER_INFO("DecalSystem") << "DecalSystem::Update called for the first time.";
-        logUpdate = true;
+        if (m_BoundScene)
+            m_BoundScene->GetRegistry().on_construct<DecalComponent>().disconnect<&DecalSystem::OnDecalConstruct>(this);
+        m_BoundScene = &scene;
+        auto& registry = scene.GetRegistry();
+        registry.on_construct<DecalComponent>().connect<&DecalSystem::OnDecalConstruct>(this);
+        auto existing = registry.view<DecalComponent>();
+        for (auto entity : existing) OnDecalConstruct(registry, entity);
     }
-    m_IsRenderedThisFrame = false;
     if (!m_Enabled)
         return;
 
@@ -111,8 +129,6 @@ void DecalSystem::RenderAlphaPass(Scene& scene, int width, int height, float alp
 {
     if (!m_Enabled)
         return;
-    m_ScreenWidth = width;
-    m_ScreenHeight = height;
 
     auto& sl = ServiceLocator::Instance();
     if (!m_GeoService)
@@ -141,12 +157,6 @@ void DecalSystem::Render(Scene& scene)
 
 void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
 {
-    static bool logEntry = false;
-    if (!logEntry)
-    {
-        LOGGER_INFO("DecalSystem") << "DecalSystem::RenderDecals called for the first time.";
-        logEntry = true;
-    }
     if (!m_Enabled)
         return;
 
@@ -160,27 +170,11 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
 
     auto* geoSys = m_GeoService;
     if (isDeferred && !geoSys)
-    {
-        static bool logGeo = false;
-        if (!logGeo)
-        {
-            LOGGER_ERROR("DecalSystem") << "GeoService not found!";
-            logGeo = true;
-        }
         return;
-    }
 
     auto camEntity = scene.GetActiveCamera();
     if (camEntity == entt::null)
-    {
-        static bool logCam = false;
-        if (!logCam)
-        {
-            LOGGER_WARN("DecalSystem") << "No active camera found!";
-            logCam = true;
-        }
         return;
-    }
     auto& cam = scene.GetComponent<CameraComponent>(camEntity);
 
     if (!m_GraphicsContext)
@@ -198,9 +192,6 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
     // Safety check for viewport
     if (width <= 0 || height <= 0)
         return;
-    m_ScreenWidth = width;
-    m_ScreenHeight = height;
-
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();
     if (!shader)
         return;
@@ -229,10 +220,6 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         tm.BindTexture(TextureType::Texture1D, m_TagMapTexture);
         shader->setInt("u_TagMap", 2);
 
-        tm.ActiveTexture(TextureUnit::Texture4);
-        tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferPosition());
-        shader->setInt("u_GPosition", 4);
-
         tm.ActiveTexture(TextureUnit::Texture5);
         tm.BindTexture(TextureType::Texture2D, geoSys->GetGBufferNormal());
         shader->setInt("u_GNormalTex", 5);
@@ -241,9 +228,11 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         sm.Enable(ServerCapability::CullFace);
         sm.SetDepthFunc(CompareFunc::Always);
         sm.Enable(ServerCapability::Blend);
-        sm.SetBlendFunc(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha);
+        // Deferred MRT alpha channels carry surface metadata (Fresnel, receive-shadow and
+        // reflection-probe flags). Blend only RGB and preserve those destination values.
+        sm.SetBlendFuncSeparate(BlendFactor::SrcAlpha, BlendFactor::OneMinusSrcAlpha, BlendFactor::Zero,
+                                BlendFactor::One);
         sm.Disable(ServerCapability::DepthTest);
-        sm.SetDepthMask(false);
         sm.SetDepthMask(false);
         sm.Enable(ServerCapability::CullFace);
     }
@@ -277,7 +266,7 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         if (lightingService && rs)
         {
             RenderSceneData sceneData;
-            sceneData.lights = rs->GetRenderQueueObj().GetLights();
+            sceneData.lightView = &rs->GetRenderQueueObj().GetLights();
             sceneData.cameraPosition = rs->GetCameraPosition();
             sceneData.viewMatrix = rs->GetViewMatrix();
             sceneData.projMatrix = rs->GetProjectionMatrix();
@@ -287,8 +276,6 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         }
     }
 
-    if (isDeferred)
-        shader->setUInt("u_AllowedTagsMask", 0xFFFFFFFF);
     shader->setVec4("u_TintColor", glm::vec4(1.0f));
     shader->setFloat("u_Roughness", 1.0f);
     shader->setFloat("u_Metallic", 0.0f);
@@ -350,17 +337,18 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
             continue;
         activeShader->use();
 
-        // Re-set common uniforms for custom shader
-        if (!decal.customShader.empty())
+        // Uniform locations are program-specific, so custom shaders must receive
+        // the complete deferred input contract after switching programs.
+        activeShader->setMat4("u_View", cam.viewMatrix);
+        activeShader->setMat4("u_Projection", cam.projectionMatrix);
+        if (isDeferred)
         {
-            activeShader->setMat4("u_View", cam.viewMatrix);
-            activeShader->setMat4("u_Projection", cam.projectionMatrix);
-            if (isDeferred)
-                activeShader->setUInt("u_AllowedTagsMask", 0xFFFFFFFF);
-            activeShader->setVec4("u_TintColor", decal.tintColor);
-            activeShader->setFloat("u_Roughness", decal.roughness);
-            activeShader->setFloat("u_Metallic", decal.metallic);
-            activeShader->setFloat("u_Reflectivity", decal.reflectivity);
+            activeShader->setInt("u_GDepth", 0);
+            activeShader->setInt("u_GID", 1);
+            activeShader->setInt("u_TagMap", 2);
+            activeShader->setInt("u_GNormalTex", 5);
+            const uint32_t allowedTags = decal.targetTags.empty() ? 0xFFFFFFFFu : GetBitmask(decal.targetTags);
+            activeShader->setUInt("u_AllowedTagsMask", allowedTags);
         }
 
         auto* rotComp = scene.TryGetComponent<RotationComponent>(entity);
@@ -385,6 +373,12 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
         activeShader->setFloat("u_Metallic", decal.metallic);
         activeShader->setFloat("u_Reflectivity", decal.reflectivity);
         activeShader->setInt("u_LightingMode", decal.lightingMode);
+
+        if (decal.albedoMap == 0 && !decal.albedoTexture.empty())
+        {
+            if (auto texture = res->GetTextureAuto(decal.albedoTexture))
+                decal.albedoMap = texture->id;
+        }
 
         if (isDeferred)
         {
@@ -417,26 +411,6 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
     sm.SetCullFace(CullMode::Back);
 }
 
-uint32_t DecalSystem::LoadDecalTexture(const std::string& path)
-{
-    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
-    if (!resources)
-        return 0;
-    auto tex = resources->GetTexture(path);
-    if (!tex)
-    {
-        resources->LoadTexture(path, path, false);
-        tex = resources->GetTexture(path);
-    }
-    return tex ? tex->id : 0;
-}
-
-void DecalSystem::FlushDecals(Scene& scene)
-{
-    auto view = scene.View<DecalComponent>();
-    scene.Destroy(view.begin(), view.end());
-}
-
 std::vector<entt::id_type> DecalSystem::GetReadComponents() const
 {
     return {entt::type_id<DecalComponent>().hash(), entt::type_id<PositionComponent>().hash(),
@@ -456,7 +430,12 @@ uint32_t DecalSystem::GetTagBit(const std::string& tag)
     if (it != m_TagBitMap.end())
         return it->second;
 
-    uint32_t bit = 1 << m_TagBitMap.size();
+    if (m_TagBitMap.size() >= 31)
+    {
+        LOGGER_WARN("DecalSystem") << "Too many decal tags; tag '" << tag << "' cannot be represented.";
+        return 0;
+    }
+    uint32_t bit = 1u << (m_TagBitMap.size() + 1u);
     m_TagBitMap[tag] = bit;
     return bit;
 }
@@ -476,26 +455,21 @@ void DecalSystem::UpdateTagMap(Scene& scene)
     if (m_TagMapTexture == 0)
         m_TagMapTexture = tm.GenTexture();
 
-    uint32_t maxEnt = 10000;
-    if (m_TagBuffer.size() < maxEnt)
-        m_TagBuffer.resize(maxEnt, 0);
-    else
-        std::fill(m_TagBuffer.begin(), m_TagBuffer.end(), 0);
-
     auto view = scene.View<InfoComponent>();
+    uint32_t maxEntityId = 0;
+    for (auto entity : view) maxEntityId = std::max(maxEntityId, static_cast<uint32_t>(entt::to_entity(entity)));
+    m_TagBuffer.assign(static_cast<size_t>(maxEntityId) + 1u, 0u);
+
     for (auto entity : view)
     {
-        uint32_t id = static_cast<uint32_t>(entity) & 0xFFFF;
-        if (id < maxEnt)
-        {
-            auto& info = view.get<InfoComponent>(entity);
-            m_TagBuffer[id] = GetTagBit(info.tag);
-        }
+        const uint32_t id = static_cast<uint32_t>(entt::to_entity(entity));
+        auto& info = view.get<InfoComponent>(entity);
+        m_TagBuffer[id] = GetTagBit(info.tag);
     }
 
     tm.BindTexture(TextureType::Texture1D, m_TagMapTexture);
-    tm.TexImage1D(TextureType::Texture1D, 0, InternalFormat::R32UI, maxEnt, 0, TextureFormat::Red_Integer,
-                  DataType::UnsignedInt, m_TagBuffer.data());
+    tm.TexImage1D(TextureType::Texture1D, 0, InternalFormat::R32UI, static_cast<int>(m_TagBuffer.size()), 0,
+                  TextureFormat::Red_Integer, DataType::UnsignedInt, m_TagBuffer.data());
     tm.TexParameteri(TextureType::Texture1D, TextureParameter::MinFilter, (int)TextureFilter::Nearest);
     tm.TexParameteri(TextureType::Texture1D, TextureParameter::MagFilter, (int)TextureFilter::Nearest);
 }

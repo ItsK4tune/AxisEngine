@@ -12,15 +12,22 @@ PhysicsTransformSync::PhysicsTransformSync(Scene& scene, IPhysicsWorld& physics)
 {
 }
 
+PhysicsTransformSync::~PhysicsTransformSync()
+{
+    m_Scene.GetRegistry().on_destroy<RigidBodyComponent>().disconnect<&PhysicsTransformSync::OnRigidBodyDestroyed>(
+        this);
+}
+
 void PhysicsTransformSync::Initialize()
 {
     m_simulationQuery.Update(m_Scene.GetRegistry());
     m_LastSyncedVersions.reserve(m_simulationQuery.GetEntities().size());
+    m_Scene.GetRegistry().on_destroy<RigidBodyComponent>().connect<&PhysicsTransformSync::OnRigidBodyDestroyed>(this);
 }
 
-void PhysicsTransformSync::OnComponentChanged(entt::registry& registry, entt::entity entity)
+void PhysicsTransformSync::OnRigidBodyDestroyed(entt::registry&, entt::entity entity)
 {
-    m_simulationQuery.MarkDirty();
+    m_LastSyncedVersions.erase(entity);
 }
 
 void PhysicsTransformSync::SyncToPhysics()
@@ -174,128 +181,24 @@ void PhysicsTransformSync::SyncFromPhysics()
                     glm::vec3 scaledRt = scl->value * Rt;
                     pos->value = Pt - (rot->value * scaledRt);
 
-                    glm::mat4 newLocalMtx = glm::translate(glm::mat4(1.0f), pos->value) *
-                                            glm::mat4_cast(rot->value) * glm::scale(glm::mat4(1.0f), scl->value);
+                    glm::mat4 newLocalMtx = glm::translate(glm::mat4(1.0f), pos->value) * glm::mat4_cast(rot->value) *
+                                            glm::scale(glm::mat4(1.0f), scl->value);
                     world->worldMatrix = newLocalMtx;
                 }
             }
 
             world->isDirty = false;
             world->version++;
+            m_Scene.MarkOctreeEntityDirty(entity);
             m_LastSyncedVersions[entity] = world->version;
 
             if (hier)
             {
                 for (auto child : hier->children)
                 {
-                    if (auto* cWorld = m_Scene.TryGetComponent<WorldTransformComponent>(child))
-                    {
-                        cWorld->isDirty = true;
-                    }
+                    m_Scene.MarkTransformDirty(child);
                 }
             }
         }
     }
-}
-
-void PhysicsTransformSync::SyncTransformToPhysics(entt::entity entity)
-{
-    if (!m_Scene.IsValid(entity))
-        return;
-
-    auto* rb = m_Scene.TryGetComponent<RigidBodyComponent>(entity);
-    auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
-
-    if (!rb || !rb->body || !world)
-        return;
-
-    glm::mat4 syncMtx = world->worldMatrix;
-    if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
-    {
-        if (mesh->model)
-        {
-            syncMtx *= mesh->model->GetRootTransform();
-        }
-    }
-
-    glm::vec3 worldPos = glm::vec3(syncMtx[3]);
-    glm::mat3 m3(syncMtx);
-    m3[0] = glm::normalize(m3[0]);
-    m3[1] = glm::normalize(m3[1]);
-    m3[2] = glm::normalize(m3[2]);
-    glm::quat worldRot = glm::quat_cast(m3);
-
-    rb->body->SetWorldTransform(worldPos, worldRot);
-    rb->body->SetLinearVelocity(glm::vec3(0, 0, 0));
-    rb->body->SetAngularVelocity(glm::vec3(0, 0, 0));
-    rb->body->Activate();
-}
-
-void PhysicsTransformSync::SyncPhysicsToTransform(entt::entity entity)
-{
-    if (!m_Scene.IsValid(entity))
-        return;
-
-    auto* rb = m_Scene.TryGetComponent<RigidBodyComponent>(entity);
-    auto* pos = m_Scene.TryGetComponent<PositionComponent>(entity);
-    auto* rot = m_Scene.TryGetComponent<RotationComponent>(entity);
-    auto* hier = m_Scene.TryGetComponent<HierarchyComponent>(entity);
-    auto* world = m_Scene.TryGetComponent<WorldTransformComponent>(entity);
-
-    if (!rb || !rb->body || !pos || !rot || !world)
-        return;
-    if (rb->body->IsStatic())
-        return;
-
-    glm::vec3 worldPos;
-    glm::quat worldRot;
-    rb->body->GetWorldTransform(worldPos, worldRot);
-
-    glm::mat4 rootMtx = glm::mat4(1.0f);
-    if (auto* mesh = m_Scene.TryGetComponent<MeshRendererComponent>(entity))
-    {
-        if (mesh->model)
-        {
-            rootMtx = mesh->model->GetRootTransform();
-        }
-    }
-
-    bool hasParent = (hier && hier->parent != entt::null);
-    glm::mat4 rootMtxInv = glm::inverse(rootMtx);
-
-    if (hasParent && rb->isParentMatter)
-    {
-        if (auto* parentWorld = m_Scene.TryGetComponent<WorldTransformComponent>(hier->parent))
-        {
-            glm::mat4 physMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
-            glm::mat4 entityMtx = physMtx * rootMtxInv;
-            glm::mat4 localMtx = glm::inverse(parentWorld->worldMatrix) * entityMtx;
-
-            glm::vec3 s, t, skew;
-            glm::quat r;
-            glm::vec4 perspective;
-            if (glm::decompose(localMtx, s, r, t, skew, perspective))
-            {
-                rot->value = r;
-                pos->value = t;
-            }
-        }
-    }
-    else
-    {
-        glm::mat4 physMtx = glm::translate(glm::mat4(1.0f), worldPos) * glm::mat4_cast(worldRot);
-        glm::mat4 entityMtx = physMtx * rootMtxInv;
-
-        glm::vec3 s, t, skew;
-        glm::quat r;
-        glm::vec4 perspective;
-        if (glm::decompose(entityMtx, s, r, t, skew, perspective))
-        {
-            rot->value = r;
-            pos->value = t;
-        }
-    }
-
-    world->isDirty = true;
-    m_LastSyncedVersions[entity] = world->version;
 }

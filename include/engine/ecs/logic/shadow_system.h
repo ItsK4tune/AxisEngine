@@ -1,13 +1,14 @@
 #pragma once
 
 #include <core/logic/event_manager.h>
+#include <core/interface/i_optimization_configurable.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <render/logic/shadow_renderer.h>
 #include <memory>
 
-class ShadowSystem : public IRenderSystem, public IECSSystem, public IShadowService
+class ShadowSystem : public IRenderSystem, public IECSSystem, public IShadowService, public IOptimizationConfigurable
 {
 public:
     void Initialize() override;
@@ -36,6 +37,7 @@ public:
 
     void Render(Scene& scene) override;
     void PrepareShadowLights(Scene& scene) override;
+    void ApplyOptimizationConfig(const OptimizationConfig& config) override;
 
     Shadow& GetShadow()
     {

@@ -16,5 +16,5 @@ struct RenderViewParams
     int height = 600;
     uint32_t cullingMask = 0xFFFFFFFF;
     bool isCapturingProbe = false;
-    entt::entity excludeEntity = (entt::entity)0xFFFFFFFF;
+    entt::entity excludeEntity = entt::null;
 };

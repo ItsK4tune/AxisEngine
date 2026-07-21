@@ -19,9 +19,7 @@ class DecalSystem : public IUpdateSystem, public IRenderSystem, public IECSSyste
 {
 public:
     void Initialize() override;
-    void Shutdown() override
-    {
-    }
+    void Shutdown() override;
 
     bool IsEnabled() const override
     {
@@ -41,7 +39,7 @@ public:
     }
     SystemCategory GetCategory() const override
     {
-        return SystemCategory::RenderMain | SystemCategory::Update;
+        return SystemCategory::RenderMain | SystemCategory::RenderAlpha | SystemCategory::Update;
     }
     SystemRequirement GetRequirements() const override
     {
@@ -50,15 +48,6 @@ public:
     void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override;
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
-
-    uint32_t LoadDecalTexture(const std::string& path);
-    void FlushDecals(Scene& scene);
-
-    void SetAllowedTags(const std::vector<std::string>& tags)
-    {
-        m_AllowedTags = tags;
-    }
-    uint32_t GetTagBit(const std::string& tag);
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -69,21 +58,18 @@ private:
     std::shared_ptr<Shader> m_DecalShader;
     std::shared_ptr<Shader> m_ForwardShader;
 
-    std::vector<std::string> m_AllowedTags;
     std::map<std::string, uint32_t> m_TagBitMap;
     unsigned int m_TagMapTexture = 0;
     std::vector<uint32_t> m_TagBuffer;
     uint32_t m_NextOrder = 1;
-    bool m_NextOrderIsReset = false;
-    bool m_IsRenderedThisFrame = false;
+    Scene* m_BoundScene = nullptr;
 
     class IGeometryService* m_GeoService = nullptr;
     class IRenderService* m_RenderService = nullptr;
     class IGraphicsContext* m_GraphicsContext = nullptr;
-    int m_ScreenWidth = 800;
-    int m_ScreenHeight = 600;
 
     void RenderDecals(Scene& scene, bool isDeferred);
     void UpdateTagMap(Scene& scene);
+    uint32_t GetTagBit(const std::string& tag);
     uint32_t GetBitmask(const std::vector<std::string>& tags);
 };

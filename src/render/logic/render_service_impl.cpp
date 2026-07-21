@@ -1,10 +1,12 @@
 #include <render/logic/render_service_impl.h>
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
+#include <core/logic/runtime_profiler.h>
 #include <core/type/event_types.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
+#include <ecs/unit/light_probe_components.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/reflection_components.h>
@@ -14,11 +16,12 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <iterator>
+#include <limits>
 #include <string>
 #include <thread>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
@@ -32,6 +35,7 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/render_core.h>
+#include <render/type/shader_abi.h>
 #include <resource/logic/resource_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/norm.hpp>
@@ -107,6 +111,7 @@ void RenderServiceImpl::Initialize()
 
     auto& sl = ServiceLocator::Instance();
     sl.Register<IRenderService>(this);
+    sl.Register<IRenderRuntimeControl>(this);
     sl.Register<ICameraService>(this);
     sl.Register<IRenderStateService>(this);
     sl.Register<IRenderQueueService>(this);
@@ -123,15 +128,15 @@ void RenderServiceImpl::Initialize()
     auto config = m_ConfigManager->GetConfig();
     auto* shaderLib = sl.Resolve<ResourceManager>();
 
-    this->SetInstanceBatching(config.instanceBatchingEnabled);
-    this->SetFrustumCulling(config.frustumCullingEnabled);
-    this->SetOcclusionCulling(config.occlusionCullingEnabled);
-    this->SetDistanceCulling(config.distanceCulling);
-    this->SetAntiAliasingMode((AntiAliasingMode)config.antialiasing);
-    this->SetRenderOrderEnabled(config.renderOrderEnabled);
-    this->SetFilterLayerMask(config.filterLayerMask);
-    this->SetFaceCulling(config.cullFaceEnabled);
-    this->SetDepthTest(config.depthTestEnabled);
+    this->SetInstanceBatching(config.culling.instanceBatchingEnabled);
+    this->SetFrustumCulling(config.culling.frustumCullingEnabled);
+    this->SetOcclusionCulling(config.culling.occlusionCullingEnabled);
+    this->SetDistanceCulling(config.culling.distanceCulling);
+    this->SetAntiAliasingMode((AntiAliasingMode)config.graphics.antialiasing);
+    this->SetRenderOrderEnabled(config.culling.renderOrderEnabled);
+    this->SetFilterLayerMask(config.culling.filterLayerMask);
+    this->SetFaceCulling(config.culling.cullFaceEnabled);
+    this->SetDepthTest(config.culling.depthTestEnabled);
 
     if (!m_Context)
     {
@@ -144,19 +149,20 @@ void RenderServiceImpl::Initialize()
 
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::Window | ConfigChangedEvent::All)))
+            if (!HasConfigChanged(e, ConfigChangedEvent::Graphics | ConfigChangedEvent::Window |
+                                         ConfigChangedEvent::Culling))
                 return;
 
             const AppConfig& cfg = e.config;
-            this->SetInstanceBatching(cfg.instanceBatchingEnabled);
-            this->SetFrustumCulling(cfg.frustumCullingEnabled);
-            this->SetOcclusionCulling(cfg.occlusionCullingEnabled);
-            this->SetDistanceCulling(cfg.distanceCulling);
-            this->SetAntiAliasingMode((AntiAliasingMode)cfg.antialiasing);
-            this->SetRenderOrderEnabled(cfg.renderOrderEnabled);
-            this->SetFilterLayerMask(cfg.filterLayerMask);
-            this->SetFaceCulling(cfg.cullFaceEnabled);
-            this->SetDepthTest(cfg.depthTestEnabled);
+            this->SetInstanceBatching(cfg.culling.instanceBatchingEnabled);
+            this->SetFrustumCulling(cfg.culling.frustumCullingEnabled);
+            this->SetOcclusionCulling(cfg.culling.occlusionCullingEnabled);
+            this->SetDistanceCulling(cfg.culling.distanceCulling);
+            this->SetAntiAliasingMode((AntiAliasingMode)cfg.graphics.antialiasing);
+            this->SetRenderOrderEnabled(cfg.culling.renderOrderEnabled);
+            this->SetFilterLayerMask(cfg.culling.filterLayerMask);
+            this->SetFaceCulling(cfg.culling.cullFaceEnabled);
+            this->SetDepthTest(cfg.culling.depthTestEnabled);
         }));
 
     m_RenderCore = std::make_unique<RenderCore>();
@@ -179,9 +185,9 @@ void RenderServiceImpl::Initialize()
         bm.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
         bm.BufferData(BufferType::UniformBuffer, sizeof(GPUGlobalData), nullptr, BufferUsage::DynamicDraw);
 
-        bm.BindBufferBase(BufferType::UniformBuffer, 20, m_CameraUBO->Get());
-        bm.BindBufferBase(BufferType::UniformBuffer, 21, m_GlobalLightUBO->Get());
-        bm.BindBufferBase(BufferType::UniformBuffer, 22, m_GlobalDataUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, ShaderABI::CameraUBOBinding, m_CameraUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, ShaderABI::LightUBOBinding, m_GlobalLightUBO->Get());
+        bm.BindBufferBase(BufferType::UniformBuffer, ShaderABI::GlobalUBOBinding, m_GlobalDataUBO->Get());
 
         if (shaderLib)
         {
@@ -279,6 +285,81 @@ void RenderServiceImpl::BuildRenderQueues(Scene& scene, float alpha, int width, 
     params.height = height;
     params.cullingMask = cam.cullingMask;
     BuildRenderQueuesWithCamera(scene, params);
+}
+
+void RenderServiceImpl::PushRenderViewContext()
+{
+    if (m_RenderViewContextDepth == m_RenderViewContexts.size())
+        m_RenderViewContexts.push_back(std::make_unique<RenderViewContext>());
+
+    auto& saved = *m_RenderViewContexts[m_RenderViewContextDepth++];
+    saved.queue.Swap(m_RenderQueueObj);
+    saved.cameraState = m_CameraState;
+    saved.globalState = m_GlobalState;
+    saved.globalData = m_GlobalData;
+    saved.renderedCount = m_RenderedCount;
+    saved.lastWidth = m_LastWidth;
+    saved.lastHeight = m_LastHeight;
+    saved.lastAlpha = m_LastAlpha;
+    saved.queuesBuilt = m_QueuesBuilt;
+    saved.isCapturingProbe = m_IsCapturingProbe;
+    saved.planarReflectionCount = m_PlanarReflectionCount;
+    for (size_t i = 0; i < m_PlanarReflectionCache.size(); ++i)
+    {
+        saved.planarTextureIDs[i] = m_PlanarReflectionCache[i].textureID;
+        saved.planarNormals[i] = m_PlanarReflectionCache[i].normal;
+    }
+    m_RenderQueueObj.Clear();
+}
+
+bool RenderServiceImpl::PopRenderViewContext()
+{
+    if (m_RenderViewContextDepth == 0)
+        return false;
+
+    auto& saved = *m_RenderViewContexts[--m_RenderViewContextDepth];
+    m_RenderQueueObj.Swap(saved.queue);
+    m_CameraState = saved.cameraState;
+    m_GlobalState = saved.globalState;
+    m_GlobalData = saved.globalData;
+    m_RenderedCount = saved.renderedCount;
+    m_LastWidth = saved.lastWidth;
+    m_LastHeight = saved.lastHeight;
+    m_LastAlpha = saved.lastAlpha;
+    m_QueuesBuilt = saved.queuesBuilt;
+    m_IsCapturingProbe = saved.isCapturingProbe;
+    m_PlanarReflectionCount = saved.planarReflectionCount;
+    for (size_t i = 0; i < m_PlanarReflectionCache.size(); ++i)
+    {
+        m_PlanarReflectionCache[i].textureID = saved.planarTextureIDs[i];
+        m_PlanarReflectionCache[i].normal = saved.planarNormals[i];
+    }
+    UploadCurrentViewState();
+    return true;
+}
+
+void RenderServiceImpl::UploadCurrentViewState()
+{
+    if (!m_Context || !m_CameraUBO || !m_GlobalDataUBO)
+        return;
+
+    GPUCameraData camera{};
+    std::memcpy(camera.projection, &m_GlobalState.jitteredProjection[0][0], 16 * sizeof(float));
+    std::memcpy(camera.view, &m_CameraState.viewMatrix[0][0], 16 * sizeof(float));
+    std::memcpy(camera.viewPos, &m_CameraState.position[0], 3 * sizeof(float));
+    camera.viewPos[3] = 1.0f;
+    const glm::mat4 inverseProjection = glm::inverse(m_GlobalState.jitteredProjection);
+    const glm::mat4 inverseView = glm::inverse(m_CameraState.viewMatrix);
+    const glm::mat4 inverseStableProjection = glm::inverse(m_CameraState.projectionMatrix);
+    std::memcpy(camera.invProjection, &inverseProjection[0][0], 16 * sizeof(float));
+    std::memcpy(camera.invView, &inverseView[0][0], 16 * sizeof(float));
+    std::memcpy(camera.stableProjection, &m_CameraState.projectionMatrix[0][0], 16 * sizeof(float));
+    std::memcpy(camera.invStableProjection, &inverseStableProjection[0][0], 16 * sizeof(float));
+    UploadCameraUBO(camera);
+
+    auto& buffers = m_Context->GetBufferManager();
+    buffers.BindBuffer(BufferType::UniformBuffer, m_GlobalDataUBO->Get());
+    buffers.BufferSubData(BufferType::UniformBuffer, 0, sizeof(GPUGlobalData), &m_GlobalData);
 }
 
 void RenderServiceImpl::BeginFrame(const RenderViewParams& params)
@@ -387,6 +468,10 @@ void RenderServiceImpl::BeginFrame(const RenderViewParams& params)
 
 void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderViewParams& params)
 {
+    const auto queueBuildStart = std::chrono::steady_clock::now();
+    auto& profiler = RuntimeProfiler::Instance();
+    profiler.AddQueueBuild();
+    const auto config = m_ConfigManager ? m_ConfigManager->GetConfigSnapshot() : nullptr;
     m_IsCapturingProbe = params.isCapturingProbe;
     float lodFactor = params.lodFactor;
     m_LastWidth = params.width;
@@ -405,25 +490,72 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
     m_RenderQueueObj.Clear();
     m_RenderedCount = 0;
 
-    std::vector<ProbeData> probes;
     auto probeView = scene.View<PositionComponent, ReflectionProbeComponent>();
-    probes.reserve(probeView.size_hint());
+    m_ProbeCache.clear();
+    m_ProbeCache.reserve(probeView.size_hint());
     for (auto entity : probeView)
     {
         auto& pos = probeView.get<PositionComponent>(entity);
         auto& probe = probeView.get<ReflectionProbeComponent>(entity);
-        probes.push_back({&probe, pos.value, entity});
+        probe.lastGpuIndex = -1;
+        m_ProbeCache.push_back({&probe, pos.value, entity});
     }
 
-    std::unordered_map<std::string, const ProbeData*> probesByTarget;
-    probesByTarget.reserve(probes.size() * 2);
-    for (const auto& probe : probes)
+    // Select the exact four probes used by both queue items and deferred
+    // lighting before either pass consumes lastGpuIndex.
+    const ProbeData* selectedProbes[4] = {};
+    size_t selectedProbeCount = 0;
+    float largestVolume = -1.0f;
+    for (const auto& probe : m_ProbeCache)
+    {
+        const glm::vec3 extent = probe.component->boxMax - probe.component->boxMin;
+        const float volume = extent.x * extent.y * extent.z;
+        if (volume > largestVolume)
+        {
+            largestVolume = volume;
+            selectedProbes[0] = &probe;
+        }
+    }
+    if (selectedProbes[0])
+        selectedProbeCount = 1;
+    while (selectedProbeCount < 4)
+    {
+        const ProbeData* nearest = nullptr;
+        float nearestDistanceSq = (std::numeric_limits<float>::max)();
+        for (const auto& candidate : m_ProbeCache)
+        {
+            bool alreadySelected = false;
+            for (size_t index = 0; index < selectedProbeCount; ++index)
+                alreadySelected = alreadySelected || selectedProbes[index] == &candidate;
+            if (alreadySelected)
+                continue;
+            const float distanceSq = glm::distance2(candidate.position, params.cameraPos);
+            if (distanceSq < nearestDistanceSq)
+            {
+                nearest = &candidate;
+                nearestDistanceSq = distanceSq;
+            }
+        }
+        if (!nearest)
+            break;
+        selectedProbes[selectedProbeCount++] = nearest;
+    }
+    for (size_t index = 0; index < selectedProbeCount; ++index)
+        selectedProbes[index]->component->lastGpuIndex = static_cast<int>(index);
+    for (const auto& probe : m_ProbeCache)
+        m_RenderQueueObj.AddReflectionProbe(
+            {probe.component, probe.position, static_cast<uint32_t>(entt::to_entity(probe.entity)),
+             probe.component->lastGpuIndex});
+
+    m_ProbeTargetsCache.clear();
+    m_ProbeTargetsCache.reserve(m_ProbeCache.size() * 2);
+    for (const auto& probe : m_ProbeCache)
     {
         auto* info = scene.TryGetComponent<InfoComponent>(probe.entity);
         if (!info)
             continue;
 
-        probesByTarget.emplace(info->name, &probe);
+        m_ProbeTargetsCache.emplace(info->name, &probe);
         if (!info->tag.empty())
         {
             std::string taggedKey;
@@ -431,35 +563,119 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             taggedKey.append(info->name);
             taggedKey.push_back(':');
             taggedKey.append(info->tag);
-            probesByTarget.emplace(std::move(taggedKey), &probe);
+            m_ProbeTargetsCache.emplace(std::move(taggedKey), &probe);
         }
     }
 
     auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
+    auto& registry = scene.GetRegistry();
 
     const size_t entityCount = renderView.size_hint();
     const bool useOctree = m_Flags.frustumCullingEnabled && scene.GetOctree() && (entityCount >= 3000);
 
     if (useOctree && scene.IsOctreeDirty())
     {
-        std::vector<OctreeElement> octreeElements;
-        octreeElements.reserve(entityCount);
-        for (auto entity : renderView)
+        const bool fullRebuild = scene.ConsumeOctreeChanges(m_DirtyOctreeEntities) || m_OctreeEntryStates.empty();
+        if (fullRebuild)
         {
-            auto& info = renderView.get<InfoComponent>(entity);
-            if (!info.isActive)
-                continue;
-            auto& renderer = renderView.get<MeshRendererComponent>(entity);
-            if (!renderer.model)
-                continue;
-            auto& world = renderView.get<WorldTransformComponent>(entity);
-            const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
-            glm::mat4 modelMatrix = useCurrentWorldMatrix ? world.worldMatrix : world.GetInterpolated(lodFactor);
-            AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
-            octreeElements.push_back({entity, worldAABB});
+            m_OctreeSeenEntities.clear();
+            m_OctreeSeenEntities.reserve(entityCount);
+            for (auto entity : renderView)
+            {
+                auto& info = renderView.get<InfoComponent>(entity);
+                auto& renderer = renderView.get<MeshRendererComponent>(entity);
+                if (!info.isActive || !renderer.model)
+                {
+                    if (m_OctreeEntryStates.erase(entity) > 0)
+                        scene.GetOctree()->Remove(entity);
+                    continue;
+                }
+                auto& world = renderView.get<WorldTransformComponent>(entity);
+                m_OctreeSeenEntities.insert(entity);
+                const auto cached = m_OctreeEntryStates.find(entity);
+                if (cached != m_OctreeEntryStates.end() && cached->second.worldVersion == world.version &&
+                    cached->second.model == renderer.model.get())
+                    continue;
+
+                // Spatial indices always track the authoritative transform.
+                // Interpolation is a presentation concern and must not make the
+                // octree stale when alpha changes without another dirty event.
+                AABB worldAABB = renderer.model->aabb.Transform(world.worldMatrix);
+                scene.GetOctree()->Insert(entity, worldAABB);
+                m_OctreeEntryStates[entity] = {world.version, renderer.model.get(), worldAABB};
+            }
+
+            for (auto state = m_OctreeEntryStates.begin(); state != m_OctreeEntryStates.end();)
+            {
+                if (!m_OctreeSeenEntities.contains(state->first))
+                {
+                    scene.GetOctree()->Remove(state->first);
+                    state = m_OctreeEntryStates.erase(state);
+                }
+                else
+                {
+                    ++state;
+                }
+            }
         }
-        scene.GetOctree()->Rebuild(octreeElements);
-        scene.SetOctreeDirty(false);
+        else
+        {
+            for (const entt::entity entity : m_DirtyOctreeEntities)
+            {
+                if (!registry.valid(entity) ||
+                    !registry.all_of<WorldTransformComponent, MeshRendererComponent, InfoComponent>(entity))
+                {
+                    if (m_OctreeEntryStates.erase(entity) > 0)
+                        scene.GetOctree()->Remove(entity);
+                    continue;
+                }
+
+                const auto& info = registry.get<InfoComponent>(entity);
+                const auto& renderer = registry.get<MeshRendererComponent>(entity);
+                if (!info.isActive || !renderer.model)
+                {
+                    if (m_OctreeEntryStates.erase(entity) > 0)
+                        scene.GetOctree()->Remove(entity);
+                    continue;
+                }
+
+                const auto& world = registry.get<WorldTransformComponent>(entity);
+                AABB worldAABB = renderer.model->aabb.Transform(world.worldMatrix);
+                scene.GetOctree()->Insert(entity, worldAABB);
+                m_OctreeEntryStates[entity] = {world.version, renderer.model.get(), worldAABB};
+            }
+        }
+    }
+
+    m_PlanarReflectionCount = 0;
+    if (!m_IsCapturingProbe)
+    {
+        auto planarView = scene.View<PlanarReflectionComponent>();
+        for (auto planarEntity : planarView)
+        {
+            const auto& reflection = planarView.get<PlanarReflectionComponent>(planarEntity);
+            if (!reflection.reflectionTextureID || !reflection.isRendered)
+                continue;
+            m_PlanarReflectionCache[static_cast<size_t>(m_PlanarReflectionCount++)] =
+                {reflection.reflectionTextureID, reflection.normal};
+            m_RenderQueueObj.AddPlanarReflection({reflection.reflectionTextureID, reflection.normal});
+            if (m_PlanarReflectionCount == static_cast<int>(m_PlanarReflectionCache.size()))
+                break;
+        }
+    }
+
+    auto lightProbeView = scene.View<PositionComponent, LightProbeComponent>();
+    for (auto lightProbeEntity : lightProbeView)
+    {
+        const auto& position = lightProbeView.get<PositionComponent>(lightProbeEntity);
+        const auto& component = lightProbeView.get<LightProbeComponent>(lightProbeEntity);
+        RenderLightProbe snapshot;
+        std::copy(std::begin(component.sh), std::end(component.sh), std::begin(snapshot.coefficients));
+        snapshot.position = position.value;
+        snapshot.tint = component.tint;
+        snapshot.intensity = component.intensity;
+        snapshot.radius = component.radius;
+        m_RenderQueueObj.AddLightProbe(snapshot);
     }
 
     if (useOctree)
@@ -469,27 +685,29 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         m_ShadowEntitiesCache.clear();
         float shadowDistance = 100.0f;
-        if (m_ConfigManager)
-        {
-            shadowDistance = m_ConfigManager->GetConfig().shadowDistanceCulling;
-        }
+        if (config)
+            shadowDistance = config->shadow.shadowDistanceCulling;
         if (shadowDistance <= 0.0f)
         {
             shadowDistance = 1000.0f;
         }
         AABB shadowArea(params.cameraPos - glm::vec3(shadowDistance), params.cameraPos + glm::vec3(shadowDistance));
         scene.GetOctree()->Query(shadowArea, m_ShadowEntitiesCache);
+        if (entityCount > m_CameraEntitiesCache.size())
+            profiler.AddCulledEntities(entityCount - m_CameraEntitiesCache.size());
 
         size_t maxEntityIndex = 0;
         for (auto entity : m_CameraEntitiesCache)
         {
-            size_t idx = static_cast<size_t>(entity);
-            if (idx > maxEntityIndex) maxEntityIndex = idx;
+            size_t idx = static_cast<size_t>(entt::to_entity(entity));
+            if (idx > maxEntityIndex)
+                maxEntityIndex = idx;
         }
         for (auto entity : m_ShadowEntitiesCache)
         {
-            size_t idx = static_cast<size_t>(entity);
-            if (idx > maxEntityIndex) maxEntityIndex = idx;
+            size_t idx = static_cast<size_t>(entt::to_entity(entity));
+            if (idx > maxEntityIndex)
+                maxEntityIndex = idx;
         }
 
         if (maxEntityIndex >= m_CameraVisitedGenerations.size())
@@ -514,13 +732,13 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
 
         for (auto entity : m_CameraEntitiesCache)
         {
-            size_t idx = static_cast<size_t>(entity);
+            size_t idx = static_cast<size_t>(entt::to_entity(entity));
             m_CameraVisitedGenerations[idx] = m_CurrentFrameGeneration;
             m_CandidatesCache.push_back(entity);
         }
         for (auto entity : m_ShadowEntitiesCache)
         {
-            size_t idx = static_cast<size_t>(entity);
+            size_t idx = static_cast<size_t>(entt::to_entity(entity));
             m_ShadowVisitedGenerations[idx] = m_CurrentFrameGeneration;
             if (m_CameraVisitedGenerations[idx] != m_CurrentFrameGeneration)
             {
@@ -528,17 +746,19 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
             }
         }
 
-        std::sort(m_CandidatesCache.begin(), m_CandidatesCache.end());
-
-        BuildRenderQueuesWithOctreeHelper(scene, params, lodFactor, probes, probesByTarget, m_CurrentFrameGeneration);
+        BuildRenderQueuesFromCandidates(scene, params, lodFactor, m_ProbeCache, m_ProbeTargetsCache, true,
+                                        m_CurrentFrameGeneration);
     }
     else
     {
-        BuildRenderQueuesLinearHelper(scene, params, lodFactor, probes, probesByTarget);
+        m_CandidatesCache.clear();
+        m_CandidatesCache.reserve(entityCount);
+        for (entt::entity entity : renderView)
+            m_CandidatesCache.push_back(entity);
+        BuildRenderQueuesFromCandidates(scene, params, lodFactor, m_ProbeCache, m_ProbeTargetsCache, false, 0);
     }
 
-    const float ambientIntensity =
-        m_ConfigManager ? (std::max)(0.0f, m_ConfigManager->GetConfig().ambientIntensity) : 1.0f;
+    const float ambientIntensity = config ? (std::max)(0.0f, config->render.ambientIntensity) : 1.0f;
 
     auto dirView = scene.View<DirectionalLightComponent, InfoComponent>();
     for (auto entity : dirView)
@@ -637,7 +857,7 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         m_RenderQueueObj.AddLight(std::move(rl));
     }
 
-    m_RenderQueueObj.Sort();
+    m_RenderQueueObj.Sort(m_Flags.instanceBatchingEnabled);
 
     m_IBLState.irradianceMap = 0;
     m_IBLState.prefilterMap = 0;
@@ -655,24 +875,19 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
     }
 
-    static bool firstFrame = true;
-    if (firstFrame && !m_IsCapturingProbe)
-    {
-        LOGGER_INFO("RenderSystem") << "BuildRenderQueues: Opaque="
-                                    << (int)(m_RenderQueueObj.GetDeferredOpaqueQueue().size() +
-                                             m_RenderQueueObj.GetForwardOpaqueQueue().size())
-                                    << ", DepthOverlay=" << (int)m_RenderQueueObj.GetDepthOverlayQueue().size()
-                                    << ", Transparent=" << (int)m_RenderQueueObj.GetTransparentQueue().size();
-        firstFrame = false;
-    }
-
     m_QueuesBuilt = true;
     m_LastAlpha = lodFactor;
     m_LastWidth = params.width;
     m_LastHeight = params.height;
+    profiler.AddPassTime(
+        ProfiledRenderPass::QueueBuild,
+        std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - queueBuildStart).count());
 }
 
-void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget, uint32_t cameraGen)
+void RenderServiceImpl::BuildRenderQueuesFromCandidates(
+    Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes,
+    const std::unordered_map<std::string, const ProbeData*>& probesByTarget, bool candidatesFromOctree,
+    uint32_t cameraGen)
 {
     auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
     auto& registry = scene.GetRegistry();
@@ -681,6 +896,9 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
     {
         if (entity == params.excludeEntity)
             continue;
+        if (!registry.valid(entity) ||
+            !registry.all_of<WorldTransformComponent, MeshRendererComponent, InfoComponent>(entity))
+            continue;
 
         auto& info = renderView.get<InfoComponent>(entity);
         if (!info.isActive)
@@ -708,14 +926,33 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
             continue;
 
         const bool depthOverlay = renderer.ignoreDepth;
-        const bool castsSceneShadow = renderer.castShadow && !depthOverlay && (m_ShadowVisitedGenerations[static_cast<size_t>(entity)] == cameraGen);
+        const size_t entityIndex = static_cast<size_t>(entt::to_entity(entity));
+        const bool castsSceneShadow =
+            renderer.castShadow && !depthOverlay &&
+            (!candidatesFromOctree || m_ShadowVisitedGenerations[entityIndex] == cameraGen);
 
         float distSqResult = glm::length2(params.cameraPos - glm::vec3(modelMatrix[3]));
-        bool visibleToCamera = (m_CameraVisitedGenerations[static_cast<size_t>(entity)] == cameraGen);
-        if (visibleToCamera && !depthOverlay && m_Flags.distanceCullingSq > 0.0f && distSqResult > m_Flags.distanceCullingSq)
+        bool visibleToCamera = !candidatesFromOctree || m_CameraVisitedGenerations[entityIndex] == cameraGen;
+        if (visibleToCamera && !depthOverlay && m_Flags.distanceCullingSq > 0.0f &&
+            distSqResult > m_Flags.distanceCullingSq)
             visibleToCamera = false;
 
-        AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
+        AABB worldAABB;
+        if (candidatesFromOctree)
+        {
+            const auto cachedBounds = m_OctreeEntryStates.find(entity);
+            worldAABB = cachedBounds != m_OctreeEntryStates.end()
+                            ? cachedBounds->second.worldAABB
+                            : renderer.model->aabb.Transform(modelMatrix);
+        }
+        else
+        {
+            worldAABB = renderer.model->aabb.Transform(modelMatrix);
+        }
+
+        if (!candidatesFromOctree && visibleToCamera && m_Flags.frustumCullingEnabled &&
+            !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
+            visibleToCamera = false;
 
         if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
             continue;
@@ -760,39 +997,9 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
         auto* reflection = registry.try_get<ReflectiveComponent>(entity);
 
         uint64_t materialBatchKey = HashMaterialForBatch(material);
-        uint64_t key = 0;
-        uint64_t sId = itemShader ? itemShader->getID() : 0;
-        if (renderer.ignoreDepth)
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t invertedOrder = (uint64_t)(255 - glm::clamp(renderer.order, 0, 255));
-            uint64_t o = invertedOrder << 48;
-            uint64_t e = (uint64_t)((uint32_t)entity) & 0x0000FFFFFFFFFFFFULL;
-            key = l | o | e;
-        }
-        else if (!isTransparent)
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
-            uint64_t s = (uint64_t)(sId & 0xFFFF) << 32;
-            uint64_t m = (materialBatchKey & 0xFFFF) << 16;
-            uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
-            uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;
-            key = l | o | s | m | mod | d;
-        }
-        else
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
-            float invDepth = 1000000.0f - distSqResult;
-            if (invDepth < 0)
-                invDepth = 0;
-            uint64_t d = (uint64_t)(invDepth) & 0x0000FFFFFFFFFFFFULL;
-            key = l | o | d;
-        }
 
         RenderItem item;
-        item.entityId = (uint32_t)entity;
+        item.entityId = static_cast<uint32_t>(entt::to_entity(entity));
         item.model = activeModel;
         item.shader = itemShader;
         item.material = material;
@@ -841,239 +1048,6 @@ void RenderServiceImpl::BuildRenderQueuesWithOctreeHelper(Scene& scene, const Re
         item.renderOrder = renderer.order;
         item.distanceSq = distSqResult;
         item.isTransparent = isTransparent;
-        item.sortKey = key;
-        item.castShadow = renderer.castShadow;
-        item.receiveShadow = renderer.receiveShadow;
-        item.ignoreDepth = renderer.ignoreDepth;
-        item.renderMode = renderer.renderMode;
-
-        item.tintColor = renderer.color;
-        bool hasAnimation = false;
-        if (auto* anim = registry.try_get<AnimationComponent>(entity))
-        {
-            if (anim->animator)
-            {
-                hasAnimation = true;
-                item.hasAnimation = true;
-                item.boneMatrices = &anim->animator->GetFinalBoneMatrices();
-            }
-        }
-
-        bool hasPhysic = false;
-        bool isStaticPhysic = true;
-        if (auto* rb = registry.try_get<RigidBodyComponent>(entity))
-        {
-            hasPhysic = true;
-            if (rb->body)
-            {
-                isStaticPhysic = rb->body->IsStatic() && !rb->body->IsKinematic();
-            }
-        }
-
-        item.isStatic = (!hasAnimation) && (!hasPhysic || (hasPhysic && isStaticPhysic));
-        const bool addToCameraQueues = visibleToCamera && (visibleByOcclusion || depthOverlay);
-        if (addToCameraQueues)
-        {
-            if (isTransparent)
-            {
-                m_RenderQueueObj.AddTransparent(item);
-            }
-            else
-            {
-                if (renderer.ignoreDepth)
-                {
-                    m_RenderQueueObj.AddDepthOverlay(item);
-                }
-                else if (renderer.renderMode == RenderMode::ForceForward)
-                {
-                    m_RenderQueueObj.AddForwardOpaque(item);
-                }
-                else
-                {
-                    m_RenderQueueObj.AddDeferredOpaque(item);
-                }
-            }
-        }
-        if (castsSceneShadow)
-            m_RenderQueueObj.AddShadow(item);
-    }
-}
-
-void RenderServiceImpl::BuildRenderQueuesLinearHelper(Scene& scene, const RenderViewParams& params, float lodFactor, const std::vector<ProbeData>& probes, const std::unordered_map<std::string, const ProbeData*>& probesByTarget)
-{
-    auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
-    auto& registry = scene.GetRegistry();
-
-    for (auto entity : renderView)
-    {
-        if (entity == params.excludeEntity)
-            continue;
-
-        auto& info = renderView.get<InfoComponent>(entity);
-        if (!info.isActive)
-            continue;
-
-        uint32_t layer = info.layer;
-        if (m_Flags.filterLayerMask != 0xFFFFFFFF)
-        {
-            if (layer >= 32 || (m_Flags.filterLayerMask & (1 << layer)) == 0)
-                continue;
-        }
-
-        if (params.cullingMask != 0xFFFFFFFF)
-        {
-            if (layer >= 32 || (params.cullingMask & (1 << layer)) == 0)
-                continue;
-        }
-
-        auto& world = renderView.get<WorldTransformComponent>(entity);
-        const bool useCurrentWorldMatrix = lodFactor >= 0.9999f;
-        glm::mat4 modelMatrix = useCurrentWorldMatrix ? world.worldMatrix : world.GetInterpolated(lodFactor);
-
-        auto& renderer = renderView.get<MeshRendererComponent>(entity);
-        if (!renderer.model)
-            continue;
-
-        const bool depthOverlay = renderer.ignoreDepth;
-        const bool castsSceneShadow = renderer.castShadow && !depthOverlay;
-
-        float distSqResult = glm::length2(params.cameraPos - glm::vec3(modelMatrix[3]));
-        bool visibleToCamera = true;
-        if (!depthOverlay && m_Flags.distanceCullingSq > 0.0f && distSqResult > m_Flags.distanceCullingSq)
-            visibleToCamera = false;
-
-        AABB worldAABB = renderer.model->aabb.Transform(modelMatrix);
-
-        if (m_IsCapturingProbe && worldAABB.Contains(params.cameraPos))
-            continue;
-
-        if (m_Flags.frustumCullingEnabled && !m_FrustumCuller.IsVisible(worldAABB.minBound, worldAABB.maxBound))
-        {
-            visibleToCamera = false;
-        }
-
-        if (!visibleToCamera && !castsSceneShadow && !depthOverlay)
-            continue;
-
-        Model* activeModel = renderer.model.get();
-        Shader* itemShader = renderer.shader.lock().get();
-
-        if (auto* lod = registry.try_get<LODComponent>(entity))
-        {
-            for (int j = 0; j < (int)lod->lodDistancesSq.size(); ++j)
-            {
-                if (distSqResult > lod->lodDistancesSq[j] && j < (int)lod->lodModels.size() && lod->lodModels[j])
-                {
-                    activeModel = lod->lodModels[j].get();
-                }
-                else
-                    break;
-            }
-        }
-
-        bool visibleByOcclusion = true;
-        if (m_Flags.occlusionCullingEnabled)
-        {
-            if (auto* occ = registry.try_get<OcclusionComponent>(entity))
-            {
-                if (!occ->isVisible)
-                    visibleByOcclusion = false;
-            }
-        }
-
-        if (!visibleByOcclusion && !castsSceneShadow && !depthOverlay)
-            continue;
-
-        bool isTransparent = false;
-        auto* material = registry.try_get<MaterialComponent>(entity);
-        if (material && material->desc.opacity < 1.0f)
-            isTransparent = true;
-
-        auto* reflection = registry.try_get<ReflectiveComponent>(entity);
-
-        uint64_t materialBatchKey = HashMaterialForBatch(material);
-        uint64_t key = 0;
-        uint64_t sId = itemShader ? itemShader->getID() : 0;
-        if (renderer.ignoreDepth)
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t invertedOrder = (uint64_t)(255 - glm::clamp(renderer.order, 0, 255));
-            uint64_t o = invertedOrder << 48;
-            uint64_t e = (uint64_t)((uint32_t)entity) & 0x0000FFFFFFFFFFFFULL;
-            key = l | o | e;
-        }
-        else if (!isTransparent)
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
-            uint64_t s = (uint64_t)(sId & 0xFFFF) << 32;
-            uint64_t m = (materialBatchKey & 0xFFFF) << 16;
-            uint64_t mod = (uint64_t)((uintptr_t)activeModel & 0xFF) << 8;
-            uint64_t d = (uint64_t)(glm::clamp(distSqResult * 0.1f, 0.0f, 255.0f)) & 0xFF;
-            key = l | o | s | m | mod | d;
-        }
-        else
-        {
-            uint64_t l = (uint64_t)(layer & 0xFF) << 56;
-            uint64_t o = (uint64_t)(renderer.order & 0xFF) << 48;
-            float invDepth = 1000000.0f - distSqResult;
-            if (invDepth < 0)
-                invDepth = 0;
-            uint64_t d = (uint64_t)(invDepth) & 0x0000FFFFFFFFFFFFULL;
-            key = l | o | d;
-        }
-
-        RenderItem item;
-        item.entityId = (uint32_t)entity;
-        item.model = activeModel;
-        item.shader = itemShader;
-        item.material = material;
-        item.materialBatchKey = materialBatchKey;
-        item.reflection = (reflection && reflection->enabled) ? reflection : nullptr;
-
-        if (item.reflection)
-        {
-            bool probeFound = false;
-
-            if (!item.reflection->targetProbe.empty())
-            {
-                auto it = probesByTarget.find(item.reflection->targetProbe);
-                if (it != probesByTarget.end())
-                {
-                    item.probe = it->second->component;
-                    item.probePos = it->second->position;
-                    probeFound = true;
-                }
-            }
-
-            if (!probeFound)
-            {
-                float minProbeDistSq = 1e30f;
-                for (const auto& p : probes)
-                {
-                    float d = glm::distance2(glm::vec3(modelMatrix[3]), p.position);
-                    if (d < minProbeDistSq)
-                    {
-                        minProbeDistSq = d;
-                        item.probe = p.component;
-                        item.probePos = p.position;
-                        probeFound = true;
-                    }
-                }
-            }
-
-            item.reflectionIntensity = 1.0f;
-            if (item.probe)
-                item.probeIndex = item.probe->lastGpuIndex;
-        }
-
-        item.worldMatrix = modelMatrix;
-        item.worldAABB = worldAABB;
-        item.layer = layer;
-        item.renderOrder = renderer.order;
-        item.distanceSq = distSqResult;
-        item.isTransparent = isTransparent;
-        item.sortKey = key;
         item.castShadow = renderer.castShadow;
         item.receiveShadow = renderer.receiveShadow;
         item.ignoreDepth = renderer.ignoreDepth;
@@ -1169,41 +1143,22 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
     if (targetIsForwardPass)
     {
-        sceneData.lights = m_RenderQueueObj.GetLights();
+        sceneData.lightView = &m_RenderQueueObj.GetLights();
         if (auto* lightingService = ServiceLocator::Instance().Resolve<ILightingService>())
             lightingService->UploadLightData(sceneData);
     }
 
     m_RenderedCount += (int)queue.size();
 
-    struct PlanarEntry
-    {
-        unsigned int textureID;
-        glm::vec3 normal;
-    };
-    PlanarEntry planarEntries[4];
-    int planarCount = 0;
+    const auto& planarEntries = m_PlanarReflectionCache;
+    const int planarCount = m_IsCapturingProbe ? 0 : m_PlanarReflectionCount;
     char planarTexNames[4][48];
     char planarNormNames[4][48];
 
-    if (!m_IsCapturingProbe)
+    for (int planarIndex = 0; planarIndex < planarCount; ++planarIndex)
     {
-        auto& scene = ServiceLocator::Instance().Require<Scene>();
-        auto planarView = scene.View<PlanarReflectionComponent>();
-        for (auto planarEntity : planarView)
-        {
-            auto& prc = planarView.get<PlanarReflectionComponent>(planarEntity);
-            if (prc.reflectionTextureID && prc.isRendered)
-            {
-                planarEntries[planarCount] = {prc.reflectionTextureID, prc.normal};
-                snprintf(planarTexNames[planarCount], sizeof(planarTexNames[0]), "u_PlanarReflections[%d]",
-                         planarCount);
-                snprintf(planarNormNames[planarCount], sizeof(planarNormNames[0]), "u_PlanarNormals[%d]", planarCount);
-                planarCount++;
-                if (planarCount >= 4)
-                    break;
-            }
-        }
+        snprintf(planarTexNames[planarIndex], sizeof(planarTexNames[0]), "u_PlanarReflections[%d]", planarIndex);
+        snprintf(planarNormNames[planarIndex], sizeof(planarNormNames[0]), "u_PlanarNormals[%d]", planarIndex);
     }
 
     glm::vec2 screenSize((float)m_LastWidth, (float)m_LastHeight);
@@ -1214,10 +1169,9 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
     unsigned int lastProbeCubemap = 0;
 
     int lastRenderOrder = -9999;
-    std::vector<glm::mat4> instanceMatrices;
-    instanceMatrices.reserve(1024);
-
-
+    auto& instanceData = m_InstanceDataScratch;
+    if (instanceData.capacity() < 1024)
+        instanceData.reserve(1024);
 
     for (size_t itemIndex = 0; itemIndex < queue.size(); ++itemIndex)
     {
@@ -1401,8 +1355,8 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         size_t batchCount = 1;
         if (canInstanceWith(item))
         {
-            instanceMatrices.clear();
-            instanceMatrices.push_back(mtx);
+            instanceData.clear();
+            instanceData.push_back({mtx, item.entityId});
             for (size_t nextIndex = itemIndex + 1; nextIndex < queue.size(); ++nextIndex)
             {
                 const auto& next = queue[nextIndex];
@@ -1411,7 +1365,7 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
                 glm::mat4 nextMtx = next.worldMatrix;
                 nextMtx *= next.model->GetRootTransform();
-                instanceMatrices.push_back(nextMtx);
+                instanceData.push_back({nextMtx, next.entityId});
                 ++batchCount;
             }
         }
@@ -1427,7 +1381,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
         if (batchCount > 1)
         {
-
             if (ignoreDepthForDraw)
             {
                 rsm.Enable(ServerCapability::DepthTest);
@@ -1435,14 +1388,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             }
 
             shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", true);
-            shader->setUInt_Fast(shader->m_Loc_u_EntityID, "u_EntityID", 0);
-            model->DrawInstanced(*shader, instanceMatrices, !matBound);
+            model->DrawInstanced(*shader, instanceData, !matBound);
+            RuntimeProfiler::Instance().AddInstancedBatch();
             shader->setBool_Fast(shader->m_Loc_u_IsInstanced, "u_IsInstanced", false);
             itemIndex += batchCount - 1;
         }
         else
         {
-
             if (ignoreDepthForDraw)
             {
                 rsm.Enable(ServerCapability::DepthTest);
@@ -1451,6 +1403,15 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
 
             model->Draw(*shader, !matBound);
         }
+
+        uint64_t trianglesPerInstance = 0;
+        for (const auto& mesh : model->meshes)
+        {
+            trianglesPerInstance += mesh.indices.empty() ? static_cast<uint64_t>(mesh.m_VertexCount / 3)
+                                                         : static_cast<uint64_t>(mesh.indices.size() / 3);
+        }
+        RuntimeProfiler::Instance().AddDrawCalls(model->meshes.size());
+        RuntimeProfiler::Instance().AddTriangles(trianglesPerInstance * batchCount);
 
         if (ignoreDepthForDraw)
         {
@@ -1559,6 +1520,8 @@ void RenderServiceImpl::FlushCommands()
         {
             dc.DrawArrays(Primitive::Triangles, 0, cmd.count);
         }
+        RuntimeProfiler::Instance().AddDrawCalls();
+        RuntimeProfiler::Instance().AddTriangles(static_cast<uint64_t>(cmd.count / 3u));
     }
 
     m_RenderCommandBuffer.Clear();

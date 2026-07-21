@@ -41,7 +41,6 @@ axis_scene:
     SHADOW_RESOLUTION: 2048
     JOB_THREADS: -1
     LOG_LEVEL: VERBOSE
-    RENDER_PATH: DEFERRED
     PHYSICS_MODE: BALANCED
 ```
 
@@ -102,7 +101,7 @@ axis_scene:
 ## 5. Scene Best Practices
 
 1.  **Unique Names**: Entity names should be unique within their scene context to avoid lookup ambiguity.
-2.  **Modular Configs**: Use the `Config:` block to set backend-specific modes (e.g., `RENDER_PATH: DEFERRED`) to optimize per-scene complexity.
+2.  **Modular Configs**: Keep runtime configuration in `axis_config`; scene files should describe resources and entities.
 3.  **Layer Filtering**: Use `Layer` bitmasks to isolate entities for specific camera views or physics queries.
 
 ---

@@ -17,6 +17,7 @@ class Scriptable : public EngineAccessor, public IScriptable
 {
 public:
     Entity GetEntity() { return Entity(m_Entity, &GetScene()); }
+    void MarkTransformDirty() { GetScene().MarkTransformDirty(m_Entity); }
 
     virtual ~Scriptable()
     {

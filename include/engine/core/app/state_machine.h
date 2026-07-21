@@ -69,7 +69,6 @@ class StateMachine
 public:
     StateMachine();
 
-    void Initialize();
     void Shutdown();
 
     void PushState(std::unique_ptr<State> state);
@@ -112,6 +111,7 @@ public:
     void Update(float dt);
     void FixedUpdate(float fixedDt);
     void Render();
+    void RenderDebug();
 
 private:
     void PushStateInternal(std::unique_ptr<State> state, bool recordTransition);

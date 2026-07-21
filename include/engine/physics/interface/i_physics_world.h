@@ -10,6 +10,8 @@ class ICharacterController;
 class ICollisionShape;
 class IConstraint;
 class IRigidBody;
+class IBufferManager;
+class IDrawContext;
 
 struct CollisionInfo
 {
@@ -19,7 +21,6 @@ struct CollisionInfo
     CollisionEventType type;
 };
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class IPhysicsWorld
 {
@@ -46,6 +47,9 @@ public:
     virtual void RemoveConstraint(std::shared_ptr<IConstraint> constraint) = 0;
 
     virtual void DebugDraw() = 0;
+    virtual void SetDebugRenderContext(IBufferManager*, IDrawContext*)
+    {
+    }
 
     virtual RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist,
                            entt::entity ignore = entt::null) = 0;

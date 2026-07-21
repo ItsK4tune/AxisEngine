@@ -13,8 +13,6 @@
 #include <ecs/unit/physics_components.h>
 #include <ecs/unit/reflection_components.h>
 #include <ecs/unit/render_components.h>
-#include <engine/ecs/unit/light_probe_components.h>
-#include <engine/ecs/unit/reflection_components.h>
 #include <platform/logic/io_handler.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -31,9 +29,10 @@
 #include <resource/logic/shader_manager.h>
 #include <scene/logic/scene.h>
 #include <algorithm>
+#include <limits>
 #include <string>
+#include <glm/gtx/norm.hpp>
 
-REGISTER_SYSTEM(LightingSystem)
 
 void LightingSystem::Initialize()
 {
@@ -60,10 +59,6 @@ void LightingSystem::Initialize()
     m_DeferredLightShader = resources->GetShader("deferred_light");
 }
 
-void LightingSystem::Shutdown()
-{
-}
-
 void LightingSystem::Render(Scene& scene)
 {
     if (!m_Enabled)
@@ -86,11 +81,6 @@ void LightingSystem::Render(Scene& scene)
     int height = io ? io->GetMonitorManager().GetHeight() : 600;
 
     RenderDeferredLighting(scene, width, height);
-}
-
-void LightingSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
-{
-    // LightingSystem doesn't have alpha geometry - no-op
 }
 
 void LightingSystem::UploadLightData(const RenderSceneData& sceneData, Shader* shader)
@@ -139,19 +129,18 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     rsm.Disable(ServerCapability::Blend);
 
     RenderSceneData sceneData;
-    sceneData.lights = rs->GetRenderQueueObj().GetLights();
+    sceneData.lightView = &rs->GetRenderQueueObj().GetLights();
     sceneData.cameraPosition = rs->GetCameraPosition();
     sceneData.viewMatrix = rs->GetViewMatrix();
     sceneData.projMatrix = rs->GetProjectionMatrix();
     sceneData.nearPlane = rs->GetNearPlane();
     sceneData.farPlane = rs->GetFarPlane();
+    sceneData.viewportWidth = width;
+    sceneData.viewportHeight = height;
 
     m_LightRenderer.UploadLightData(sceneData, m_DeferredLightShader.get());
     m_DeferredLightShader->use();
-
-    tm.ActiveTexture(TextureUnit::Texture0);
-    tm.BindTexture(TextureType::Texture2D, gBuffer.GetPositionTexture());
-    m_DeferredLightShader->setInt("gPosition", 0);
+    m_LightRenderer.ConfigureDeferredShader(*m_DeferredLightShader);
 
     tm.ActiveTexture(TextureUnit::Texture1);
     tm.BindTexture(TextureType::Texture2D, gBuffer.GetNormalTexture());
@@ -193,70 +182,25 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         }
     }
 
-    // 1. Collect probes into fixed-size buffer (max 4 GPU slots)
-    static constexpr int MAX_PROBES = 32;  // reasonable upper bound for scene probes
-    struct ProbeEntry
-    {
-        entt::entity entity;
-        float distSq;
-        glm::vec3 pos;
-        float volume;
-    };
-    ProbeEntry allProbes[MAX_PROBES];
-    int numProbes = 0;
-    auto reflectionView = scene.View<PositionComponent, ReflectionProbeComponent>();
+    // Queue construction already snapshots probes; consume it here instead of
+    // scanning the ECS a second time during deferred lighting.
+    const auto& reflectionProbes = rs->GetRenderQueueObj().GetReflectionProbes();
     glm::vec3 camPos = rs->GetCameraPosition();
 
-    ProbeEntry globalProbe = {entt::null, 0.0f, glm::vec3(0.0f), -1.0f};
-
-    for (auto entity : reflectionView)
-    {
-        if (numProbes >= MAX_PROBES)
-            break;
-        auto& pos = reflectionView.get<PositionComponent>(entity).value;
-        auto& pr = reflectionView.get<ReflectionProbeComponent>(entity);
-        pr.lastGpuIndex = -1;
-        float vol = (pr.boxMax.x - pr.boxMin.x) * (pr.boxMax.y - pr.boxMin.y) * (pr.boxMax.z - pr.boxMin.z);
-
-        allProbes[numProbes] = {entity, glm::distance2(pos, camPos), pos, vol};
-
-        if (vol > globalProbe.volume)
-        {
-            globalProbe = allProbes[numProbes];
-        }
-        numProbes++;
-    }
-
-    // 2. Build final list: [0] is Global, [1-3] are closest locals
-    ProbeEntry finalProbes[4];
     int probeCount = 0;
-    if (globalProbe.entity != entt::null)
-    {
-        finalProbes[probeCount++] = globalProbe;
-    }
-    // Simple insertion of 3 nearest non-global probes (avoid sort for tiny N)
-    // Sort all probes by distance (closest first)
-    std::sort(allProbes, allProbes + numProbes,
-              [](const ProbeEntry& a, const ProbeEntry& b) { return a.distSq < b.distSq; });
-
-    // Add up to 3 closest non-global probes
-    for (int i = 0; i < numProbes && probeCount < 4; ++i)
-    {
-        if (allProbes[i].entity != globalProbe.entity)
-        {
-            finalProbes[probeCount++] = allProbes[i];
-        }
-    }
+    for (const auto& renderProbe : reflectionProbes)
+        if (renderProbe.gpuIndex >= 0)
+            probeCount = (std::max)(probeCount, renderProbe.gpuIndex + 1);
 
     m_DeferredLightShader->setInt("u_ProbeCount", probeCount);
 
-    for (int i = 0; i < probeCount; ++i)
+    for (const auto& renderProbe : reflectionProbes)
     {
-        auto entity = finalProbes[i].entity;
-        auto& probe = reflectionView.get<ReflectionProbeComponent>(entity);
-        auto& pos = finalProbes[i].pos;
-
-        probe.lastGpuIndex = i;  // Mark GPU slot for Per-Object assignment logic
+        const int i = renderProbe.gpuIndex;
+        if (i < 0 || i >= 4 || !renderProbe.component)
+            continue;
+        auto& probe = *renderProbe.component;
+        const auto& pos = renderProbe.position;
 
         tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture15) + i));
         tm.BindTexture(TextureType::TextureCubeMap, probe.cubemapID);
@@ -271,26 +215,25 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     }
 
     // Bind nearest light probe
-    auto lpView = scene.View<PositionComponent, LightProbeComponent>();
-    entt::entity nearestLP = entt::null;
+    const auto& lightProbes = rs->GetRenderQueueObj().GetLightProbes();
+    const RenderLightProbe* nearestLP = nullptr;
     float minDistanceSq = std::numeric_limits<float>::max();
 
-    for (auto entity : lpView)
+    for (const auto& probe : lightProbes)
     {
-        auto& pos = lpView.get<PositionComponent>(entity).value;
-        float distSq = glm::distance2(pos, camPos);
+        float distSq = glm::distance2(probe.position, camPos);
         if (distSq < minDistanceSq)
         {
             minDistanceSq = distSq;
-            nearestLP = entity;
+            nearestLP = &probe;
         }
     }
 
-    if (nearestLP != entt::null)
+    if (nearestLP)
     {
-        auto& lp = lpView.get<LightProbeComponent>(nearestLP);
-        m_DeferredLightShader->setVec3Array("u_SH", &lp.sh[0], 9);
-        m_DeferredLightShader->setFloat("u_LightProbeIntensity", lp.intensity);
+        m_DeferredLightShader->setVec3Array("u_SH", nearestLP->coefficients, 9);
+        m_DeferredLightShader->setFloat("u_LightProbeIntensity", nearestLP->intensity);
+        m_DeferredLightShader->setVec3("u_LightProbeTint", nearestLP->tint);
         m_DeferredLightShader->setBool("u_HasLightProbe", true);
     }
     else
@@ -298,23 +241,8 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         m_DeferredLightShader->setBool("u_HasLightProbe", false);
     }
 
-    auto planarView = scene.View<PlanarReflectionComponent>();
-    int planarCount = 0;
-    std::vector<uint32_t> planarTextures;
-    std::vector<glm::vec3> planarNormals;
-
-    for (auto entity : planarView)
-    {
-        auto& prc = planarView.get<PlanarReflectionComponent>(entity);
-        if (prc.reflectionTextureID && prc.isRendered)
-        {
-            planarTextures.push_back(prc.reflectionTextureID);
-            planarNormals.push_back(prc.normal);
-            planarCount++;
-            if (planarCount >= 4)
-                break;
-        }
-    }
+    const auto& planarReflections = rs->GetRenderQueueObj().GetPlanarReflections();
+    const int planarCount = static_cast<int>((std::min)(planarReflections.size(), size_t{4}));
 
     m_DeferredLightShader->setInt("u_PlanarCount", planarCount);
     if (planarCount > 0)
@@ -322,12 +250,12 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
         for (int i = 0; i < planarCount; ++i)
         {
             tm.ActiveTexture(static_cast<TextureUnit>(static_cast<int>(TextureUnit::Texture19) + i));
-            tm.BindTexture(TextureType::Texture2D, planarTextures[i]);
+            tm.BindTexture(TextureType::Texture2D, planarReflections[static_cast<size_t>(i)].textureId);
 
             std::string texBase = "u_PlanarReflections[" + std::to_string(i) + "]";
             std::string normBase = "u_PlanarNormals[" + std::to_string(i) + "]";
             m_DeferredLightShader->setInt(texBase, 19 + i);
-            m_DeferredLightShader->setVec3(normBase, planarNormals[i]);
+            m_DeferredLightShader->setVec3(normBase, planarReflections[static_cast<size_t>(i)].normal);
         }
     }
 
@@ -362,7 +290,8 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
 
     rsm.SetDepthMask(true);
     auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    if (cm && !cm->GetConfig().culling.depthTestEnabled)
+    const auto config = cm ? cm->GetConfigSnapshot() : nullptr;
+    if (config && !config->culling.depthTestEnabled)
     {
         rsm.Disable(ServerCapability::DepthTest);
     }
@@ -370,6 +299,11 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     {
         rsm.Enable(ServerCapability::DepthTest);
     }
+}
+
+void LightingSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    m_LightRenderer.SetTiledLightCulling(config.tiledLightCullingEnabled, config.tiledLightTileSize);
 }
 
 std::vector<entt::id_type> LightingSystem::GetReadComponents() const

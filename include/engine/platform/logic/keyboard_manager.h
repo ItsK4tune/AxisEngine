@@ -20,6 +20,6 @@ private:
     void SetWindow(IWindow* window);
 
     IWindow* m_Window = nullptr;
-    std::unordered_map<Key, bool> m_CurrentState;
-    std::unordered_map<Key, bool> m_PreviousState;
+    mutable std::unordered_map<Key, bool> m_CurrentState;
+    mutable std::unordered_map<Key, bool> m_PreviousState;
 };

@@ -13,7 +13,6 @@ public:
 private:
     void FocusOnEntity(entt::entity entity);
 
-    float m_MouseSensitivity = 0.1f;
     float m_BaseMoveSpeed = 35.0f;
     float m_PanSpeed = 0.02f;
     float m_ZoomSpeed = 0.5f;

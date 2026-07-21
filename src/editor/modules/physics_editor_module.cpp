@@ -15,9 +15,9 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <resource/logic/resource_manager.h>
+#include <scene/logic/scene.h>
 #include <iostream>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/event_manager.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
@@ -27,19 +27,19 @@
 #include <render/interface/i_render_state_manager.h>
 #include <glm/glm.hpp>
 
-PhysicsEditorModule::PhysicsEditorModule()
+void PhysicsEditorModule::Shutdown()
 {
-}
-PhysicsEditorModule::~PhysicsEditorModule()
-{
-}
-
-void PhysicsEditorModule::Initialize()
-{
-}
-
-void PhysicsEditorModule::OnUpdate(float dt)
-{
+    auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (graphics)
+    {
+        auto& buffers = graphics->GetBufferManager();
+        if (m_LineVBO != 0)
+            buffers.DeleteBuffer(m_LineVBO);
+        if (m_LineVAO != 0)
+            buffers.DeleteVertexArray(m_LineVAO);
+    }
+    m_LineVBO = 0;
+    m_LineVAO = 0;
 }
 
 void PhysicsEditorModule::Render(Scene& scene)
@@ -91,9 +91,7 @@ void PhysicsEditorModule::Render(Scene& scene)
     auto* camPosComp = scene.TryGetComponent<PositionComponent>(camEntity);
     glm::vec3 camPos = camPosComp ? camPosComp->value : glm::vec3(0.0f);
 
-    float aspect = (float)width / (float)height;
-    if (aspect <= 0.0f)
-        aspect = 1.0f;
+    const float aspect = width > 0 && height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
     glm::mat4 proj = glm::perspective(glm::radians(cam.fov), aspect, cam.nearPlane, cam.farPlane);
 
     auto& camRot = scene.GetComponent<RotationComponent>(camEntity);
@@ -189,26 +187,26 @@ void PhysicsEditorModule::Render(Scene& scene)
             if (tSnap < 0.1f)
                 tSnap = 0.1f;  // Safety clamp
 
-            float extent = 5000.0f; // Looks infinite
+            float extent = 5000.0f;  // Looks infinite
             float minorExtent = 200.0f;
-            
+
             float minorStep = tSnap;
             float majorStep = tSnap * 10.0f;
             if (majorStep < 10.0f)
                 majorStep = 10.0f;
 
             glm::vec3 gridColorMajor(0.20f, 0.20f, 0.20f);
-            glm::vec3 gridColorMinor(0.08f, 0.08f, 0.08f); // Fainter minor lines
-            glm::vec3 axisColorX(0.7f, 0.2f, 0.2f);  // Red for X-axis
-            glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f);  // Blue for Z-axis
-            glm::vec3 axisColorY(0.2f, 0.7f, 0.2f);  // Green for Y-axis
+            glm::vec3 gridColorMinor(0.08f, 0.08f, 0.08f);  // Fainter minor lines
+            glm::vec3 axisColorX(0.7f, 0.2f, 0.2f);         // Red for X-axis
+            glm::vec3 axisColorZ(0.2f, 0.2f, 0.7f);         // Blue for Z-axis
+            glm::vec3 axisColorY(0.2f, 0.7f, 0.2f);         // Green for Y-axis
 
             // 1. Draw horizontal XZ Major Grid (extent = 5000)
             int halfMajorLines = static_cast<int>(extent / majorStep);
             for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
             {
                 float val = i * majorStep;
-                
+
                 // Lines parallel to Z
                 glm::vec3 startZ(val, 0.0f, -extent);
                 glm::vec3 endZ(val, 0.0f, extent);
@@ -234,7 +232,7 @@ void PhysicsEditorModule::Render(Scene& scene)
                 // Lines parallel to Z
                 glm::vec3 startZ(x, 0.0f, snapZ - minorExtent);
                 glm::vec3 endZ(x, 0.0f, snapZ + minorExtent);
-                if (std::abs(x) > 0.001f) // Skip axis lines
+                if (std::abs(x) > 0.001f)  // Skip axis lines
                     addLine(startZ, endZ, gridColorMinor);
 
                 // Lines parallel to X
@@ -248,7 +246,7 @@ void PhysicsEditorModule::Render(Scene& scene)
             for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
             {
                 float val = i * majorStep;
-                
+
                 // Vertical lines (parallel to Y)
                 glm::vec3 startY(val, -extent, 0.0f);
                 glm::vec3 endY(val, extent, 0.0f);
@@ -266,7 +264,7 @@ void PhysicsEditorModule::Render(Scene& scene)
             for (int i = -halfMajorLines; i <= halfMajorLines; ++i)
             {
                 float val = i * majorStep;
-                
+
                 // Vertical lines (parallel to Y)
                 glm::vec3 startY(0.0f, -extent, val);
                 glm::vec3 endY(0.0f, extent, val);
@@ -283,8 +281,7 @@ void PhysicsEditorModule::Render(Scene& scene)
     }
 
     // Draw Rotation, Scale, and Translation visual indicators for Selected Entity
-    if (SceneHierarchyPanel::s_SelectedEntity != entt::null &&
-        scene.IsValid(SceneHierarchyPanel::s_SelectedEntity))
+    if (SceneHierarchyPanel::s_SelectedEntity != entt::null && scene.IsValid(SceneHierarchyPanel::s_SelectedEntity))
     {
         glm::vec3 pos(0.0f);
         if (auto* tr = scene.TryGetComponent<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
@@ -303,7 +300,8 @@ void PhysicsEditorModule::Render(Scene& scene)
             float indicatorScale = 1.0f;
             if (auto* s = scene.TryGetComponent<ScaleComponent>(SceneHierarchyPanel::s_SelectedEntity))
             {
-                indicatorScale = glm::max(0.5f, glm::max(s->value.x, glm::max(s->value.y, s->value.z)));
+                indicatorScale =
+                    (glm::max)(0.5f, (glm::max)(s->value.x, (glm::max)(s->value.y, s->value.z)));
             }
 
             // Helper to draw pitch/yaw/roll circles

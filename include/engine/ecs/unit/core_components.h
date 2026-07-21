@@ -73,7 +73,6 @@ struct CameraComponent
     }
 };
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct PositionComponent
 {

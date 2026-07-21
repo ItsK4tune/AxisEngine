@@ -4,6 +4,7 @@
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/type/graphics_types.h>
+#include <algorithm>
 #include <iostream>
 
 IBufferManager* UIModel::s_BufferManager = nullptr;
@@ -15,6 +16,13 @@ void UIModel::SetManagers(IBufferManager& bufferManager, ITextureManager& textur
     s_BufferManager = &bufferManager;
     s_TextureManager = &textureManager;
     s_DrawContext = &drawContext;
+}
+
+void UIModel::ClearManagers()
+{
+    s_BufferManager = nullptr;
+    s_TextureManager = nullptr;
+    s_DrawContext = nullptr;
 }
 
 IBufferManager& UIModel::GetBufferManager()
@@ -112,6 +120,7 @@ void UIModel::InitDynamic()
     bm.BindBuffer(BufferType::ArrayBuffer, VBO);
 
     bm.BufferData(BufferType::ArrayBuffer, sizeof(float) * 6 * 4, NULL, BufferUsage::DynamicDraw);
+    m_DynamicCapacityBytes = sizeof(float) * 6 * 4;
 
     bm.EnableVertexAttribArray(0);
     bm.VertexAttribPointer(0, 4, DataType::Float, false, 4 * sizeof(float), 0);
@@ -153,6 +162,9 @@ void UIModel::DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec
     auto& dc = GetDrawContext();
     auto& bm = GetBufferManager();
 
+    const size_t requiredBytes = vertices.size() * sizeof(float);
+    if (requiredBytes == 0)
+        return;
     shader.setVec4("u_TextColor", color);
 
     tm.ActiveTexture(TextureUnit::Texture0);
@@ -161,9 +173,16 @@ void UIModel::DrawDynamic(Shader& shader, unsigned int textureID, const glm::vec
     bm.BindVertexArray(VAO);
     bm.BindBuffer(BufferType::ArrayBuffer, VBO);
 
-    bm.BufferSubData(BufferType::ArrayBuffer, 0, vertices.size() * sizeof(float), vertices.data());
+    if (requiredBytes > m_DynamicCapacityBytes)
+    {
+        m_DynamicCapacityBytes = (std::max)(m_DynamicCapacityBytes, sizeof(float) * 6 * 4);
+        while (m_DynamicCapacityBytes < requiredBytes)
+            m_DynamicCapacityBytes *= 2;
+        bm.BufferData(BufferType::ArrayBuffer, m_DynamicCapacityBytes, nullptr, BufferUsage::DynamicDraw);
+    }
+    bm.BufferSubData(BufferType::ArrayBuffer, 0, requiredBytes, vertices.data());
 
-    dc.DrawArrays(Primitive::Triangles, 0, 6);
+    dc.DrawArrays(Primitive::Triangles, 0, static_cast<unsigned int>(vertices.size() / 4));
 
     bm.BindVertexArray(0);
     tm.BindTexture(TextureType::Texture2D, 0);

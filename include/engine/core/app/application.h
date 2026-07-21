@@ -1,24 +1,28 @@
 #pragma once
 
-#include <core/app/runtime_core.h>
-#include <core/logic/config_loader.h>
-#include <core/logic/time_service.h>
-#include <platform/interface/i_window.h>
-#include <script/logic/script_registry.h>
-#include <functional>
+#include <core/app/app_builder.h>
+#include <core/app/state_machine.h>
+#include <core/interface/i_application_lifecycle.h>
+#include <ecs/interface/i_script_registry.h>
+#include <ecs/interface/i_system_registry.h>
+#include <ecs/interface/i_scriptable.h>
 #include <memory>
 #include <string>
 #include <vector>
 
 struct Scene;
+struct AppConfig;
 class StateMachine;
+class RuntimeCore;
 class IGraphicsContext;
 class IPhysicsWorld;
-class Application
+
+class Application : public IApplicationLifecycle
 {
 public:
     Application();
-    ~Application();
+    explicit Application(AppBuilder providers);
+    virtual ~Application();
 
     bool Initialize();
     bool Initialize(const AppConfig& config);
@@ -28,6 +32,9 @@ public:
     {
     }
     virtual void RegisterUserScripts()
+    {
+    }
+    virtual void RegisterUserSystems(ISystemRegistry&)
     {
     }
 
@@ -41,18 +48,20 @@ public:
     template <typename T, typename... Args>
     void PushState(Args&&... args)
     {
-        GetRuntimeCore().PushState(std::make_unique<T>(std::forward<Args>(args)...));
+        GetStateMachine().PushState(std::make_unique<T>(std::forward<Args>(args)...));
     }
 
     Scene& GetScene();
-    RuntimeCore& GetRuntimeCore();
-    StateMachine& GetStateMachine();
-
     AppConfig GetConfig() const;
-
-    ScriptRegistry* GetScriptRegistry();
+    ApplicationLifecycle GetLifecycle() const override;
+    ApplicationProviderCapabilities GetProviderCapabilities() const;
 
 private:
+    static void HandleQuitSignal(int signal);
+    RuntimeCore& GetRuntimeCore();
+    StateMachine& GetStateMachine();
+    IScriptRegistry* GetScriptRegistry();
+
     struct Impl;
     std::unique_ptr<Impl> m_Impl;
 };
@@ -62,7 +71,7 @@ inline void Application::RegisterScript(const std::string& name)
 {
     if (auto* reg = GetScriptRegistry())
     {
-        reg->Register<T>(name);
+        reg->RegisterFactory(name, []() -> std::unique_ptr<IScriptable> { return std::make_unique<T>(); });
     }
 }
 
@@ -77,14 +86,3 @@ inline void Application::RegisterStateTransition(const std::string& label, State
 {
     GetStateMachine().RegisterTransition<From, To>(label, kind);
 }
-
-class IAudioEngine;
-
-class AppBuilder
-{
-public:
-    static std::unique_ptr<IGraphicsContext> CreateGraphicsContext(const AppConfig& config);
-    static std::unique_ptr<IAudioEngine> CreateAudioEngine(const AppConfig& config);
-    static std::unique_ptr<IPhysicsWorld> CreatePhysicsWorld(const AppConfig& config);
-    static std::unique_ptr<IWindow> MakeWindow();
-};

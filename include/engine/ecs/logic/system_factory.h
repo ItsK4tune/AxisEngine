@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -12,16 +13,13 @@ class SystemFactory
 public:
     using Creator = std::function<std::unique_ptr<IBaseSystem>()>;
 
-    static void Register(const std::string& name, Creator creator);
     static std::unique_ptr<IBaseSystem> Create(const std::string& name);
     static std::vector<std::unique_ptr<IBaseSystem>> CreateAll();
+    static std::vector<std::string> GetRegisteredNames();
 
 private:
+    static void RegisterDefault(const std::string& name, Creator creator);
+    static void EnsureBuiltInSystemsRegistered();
     static std::map<std::string, Creator>& GetRegistry();
+    static std::mutex& GetMutex();
 };
-
-#define REGISTER_SYSTEM(SystemType)                                                            \
-    static bool SystemType##_Registered = []() {                                               \
-        SystemFactory::Register(#SystemType, []() { return std::make_unique<SystemType>(); }); \
-        return true;                                                                           \
-    }();

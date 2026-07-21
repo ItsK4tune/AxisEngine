@@ -1,14 +1,17 @@
 #pragma once
 
-#include <core/logic/localization_system.h>
-#include <core/logic/logger.h>
-#include <core/logic/service_locator.h>
+#include <core/interface/i_base_system.h>
+#include <core/interface/i_localization_service.h>
+#include <ecs/interface/i_system_registry.h>
 #include <platform/interface/cursor_mode.h>
-#include <ecs/logic/system_manager.h>
 #include <render/type/graphics_types.h>
-#include <string>
-#include <vector>
 #include <functional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <typeindex>
+#include <typeinfo>
+#include <vector>
 
 struct Scene;
 class Entity;
@@ -20,9 +23,9 @@ class InputManager;
 class KeyboardManager;
 class MouseManager;
 class RuntimeCore;
-class SystemManager;
 struct SceneRecord;
 struct AppConfig;
+struct DataNode;
 
 class EngineAccessor
 {
@@ -32,25 +35,27 @@ public:
     template <typename T>
     T& Get() const
     {
-        return ServiceLocator::Instance().Require<T>();
+        if (auto* service = Resolve<T>())
+            return *service;
+        throw std::runtime_error(std::string("Engine service not registered: ") + typeid(T).name());
     }
 
     template <typename T>
     T* Resolve() const
     {
-        return ServiceLocator::Instance().Resolve<T>();
+        return static_cast<T*>(ResolveService(std::type_index(typeid(T))));
     }
 
     template <typename T>
     bool Has() const
     {
-        return ServiceLocator::Instance().Has<T>();
+        return Resolve<T>() != nullptr;
     }
 
     template <typename T>
     T& GetSystem() const
     {
-        auto* sys = Get<SystemManager>().GetSystem<T>();
+        auto* sys = dynamic_cast<T*>(ResolveSystem(std::type_index(typeid(T))));
         if (!sys)
             throw std::runtime_error("System not found: " + std::string(typeid(T).name()));
         return *sys;
@@ -60,8 +65,10 @@ public:
     void LoadScene(const std::string& path, bool persistent = false);
     void QueueLoadScene(const std::string& path, bool persistent = false);
     void UnloadScene(const std::string& path);
+    void QueueUnloadScene(const std::string& path);
     void UnloadScene(const SceneRecord* rec);
     void ChangeScene(const std::string& path);
+    void QueueChangeScene(const std::string& path);
     void PopScene();
     void QueuePopScene();
     bool IsSceneLoaded(const std::string& path);
@@ -73,6 +80,10 @@ public:
     bool SaveInputBindings(const std::string& path);
     bool LoadDataNodes(const std::string& path);
     bool SaveDataNodes(const std::string& path);
+    void SetDataNode(const std::string& key, const DataNode& data);
+    DataNode GetDataNode(const std::string& key) const;
+    bool HasDataNode(const std::string& key) const;
+    void RemoveDataNode(const std::string& key);
     bool LoadConfig(const std::string& path);
     bool SaveConfig(const std::string& path);
     bool GetAction(const std::string& name) const;
@@ -88,14 +99,18 @@ public:
     template <typename... Args>
     std::string GetTranslation(const std::string& key, Args... args) const
     {
-        if (auto* loc = Resolve<LocalizationSystem>())
+        if (auto* loc = Resolve<ILocalizationService>())
         {
-            return loc->GetFormat(key, args...);
+            std::vector<std::string> values;
+            values.reserve(sizeof...(Args));
+            (values.push_back(ToString(args)), ...);
+            return loc->Format(key, values);
         }
         return "[MISSING: " + key + "]";
     }
 
     void EnableSystem(const std::string& systemName, bool enable);
+    void EnableSystem(SystemId systemId, bool enable);
     void EnablePhysics(bool enable)
     {
         EnableSystem("PhysicsSystem", enable);
@@ -150,9 +165,11 @@ public:
     void SetPhysicsSolverIterations(int iterations);
     void IgnoreTagCollision(const std::string& tag1, const std::string& tag2);
     void ForcePhysicsUpdate(float dt);
-    void CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::vec3& axisA, const glm::vec3& axisB);
+    void CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB,
+                               const glm::vec3& axisA, const glm::vec3& axisB);
     void CreatePointToPointConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB);
-    void CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::quat& rotA, const glm::quat& rotB);
+    void CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB,
+                               const glm::quat& rotA, const glm::quat& rotB);
 
     // High-level Rendering / Stencil API
     void ClearStencilBuffer();
@@ -164,18 +181,22 @@ public:
     void SetDepthFunc(CompareFunc func);
     void SetColorWriteMask(bool r, bool g, bool b, bool a);
     void SetDepthWriteMask(bool enable);
-    void ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius, float exposure, float gamma, int tonemappingMode);
+    void ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius, float exposure,
+                                 float gamma, int tonemappingMode);
 
     void GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView, glm::mat4& outProj, float& outNear, float& outFar);
-    void SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane);
-    void DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform, const glm::vec4& color, float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
+    void SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane,
+                              float farPlane);
+    void DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform,
+                        const glm::vec4& color, float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f);
 
     // High-level ECS Queries
     std::vector<Entity> GetEntitiesWithName(const std::string& name) const;
     std::vector<Entity> GetEntitiesWithNamePrefix(const std::string& prefix) const;
     std::vector<Entity> GetCameraEntities() const;
     size_t GetEntityCount() const;
-    void UpdateNavMeshHeightsAndTags(std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier);
+    void UpdateNavMeshHeightsAndTags(
+        std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier);
 
     void SetActiveScene(Scene* scene)
     {
@@ -184,4 +205,16 @@ public:
 
 protected:
     Scene* m_ActiveScene = nullptr;
+
+private:
+    template <typename T>
+    static std::string ToString(const T& value)
+    {
+        std::ostringstream stream;
+        stream << value;
+        return stream.str();
+    }
+
+    void* ResolveService(std::type_index type) const;
+    IBaseSystem* ResolveSystem(std::type_index type) const;
 };

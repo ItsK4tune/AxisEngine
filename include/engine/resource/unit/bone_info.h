@@ -2,7 +2,6 @@
 
 #include <glm/glm.hpp>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct BoneInfo
 {

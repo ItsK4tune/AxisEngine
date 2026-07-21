@@ -5,10 +5,11 @@
 #include <ecs/unit/physics_components.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <iostream>
+#include <cstdint>
 #include <sstream>
 #include <string>
 
-void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics)
+void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld* physics)
 {
     LoaderUtils::ValidateKeys(
         node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes"},
@@ -22,8 +23,8 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
         std::stringstream ss(node.GetChildValue("Size"));
         ss >> rs.size.x >> rs.size.y >> rs.size.z;
     }
-    rs.radius = std::stof(node.GetChildValue("Radius", "0.5"));
-    rs.height = std::stof(node.GetChildValue("Height", "1.0"));
+    rs.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "0.5"));
+    rs.height = LoaderUtils::SafeStof(node.GetChildValue("Height", "1.0"));
 
     if (!node.GetChildValue("Offset").empty())
     {
@@ -38,8 +39,8 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
         rs.rotation = glm::quat(glm::radians(glm::vec3(rx, ry, rz)));
     }
 
-    rs.friction = std::stof(node.GetChildValue("Friction", "0.5"));
-    rs.restitution = std::stof(node.GetChildValue("Restitution", "0.0"));
+    rs.friction = LoaderUtils::SafeStof(node.GetChildValue("Friction", "0.5"));
+    rs.restitution = LoaderUtils::SafeStof(node.GetChildValue("Restitution", "0.0"));
 
     if (auto* shapesNode = const_cast<YAMLNode*>(&node)->GetChild("Shapes"))
     {
@@ -61,22 +62,22 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
             std::stringstream szSS(shapeNode.GetChildValue("Size", "1 1 1"));
             szSS >> child.size.x >> child.size.y >> child.size.z;
 
-            child.radius = std::stof(shapeNode.GetChildValue("Radius", "0.5"));
-            child.height = std::stof(shapeNode.GetChildValue("Height", "1.0"));
+            child.radius = LoaderUtils::SafeStof(shapeNode.GetChildValue("Radius", "0.5"));
+            child.height = LoaderUtils::SafeStof(shapeNode.GetChildValue("Height", "1.0"));
 
             rs.children.push_back(child);
         }
     }
 }
 
-void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld& physics)
+void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld* physics)
 {
     LoaderUtils::ValidateKeys(node, {"Mass",           "BodyType",       "LinearFactor",   "AngularFactor",
                                      "LinearDamping",  "AngularDamping", "LinearVelocity", "AngularVelocity",
                                      "AttachToParent", "ParentMatter",   "ChildrenMatter", "CollisionEnabled",
-                                     "Type",           "Size",           "Radius",         "Height",
-                                     "Offset",         "Rotation",       "Restitution",    "Friction",
-                                     "Shapes"},
+                                     "IsTrigger",      "Type",           "Size",           "Radius",
+                                     "Height",         "Offset",         "Rotation",       "Restitution",
+                                     "Friction",       "Shapes"},
                               "RigidBody");
 
     // Check if we are loading the "unified" legacy format or just the dynamic part
@@ -87,7 +88,7 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
     }
 
     auto& rb = scene.GetOrAddComponent<RigidBodyComponent>(entity);
-    rb.mass = std::stof(node.GetChildValue("Mass", "1.0"));
+    rb.mass = LoaderUtils::SafeStof(node.GetChildValue("Mass", "1.0"));
 
     std::string bodyType = node.GetChildValue("BodyType", "UNKNOWN");
     if (bodyType == "STATIC")
@@ -120,13 +121,14 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
         ss >> rb.angularFactor.x >> rb.angularFactor.y >> rb.angularFactor.z;
     }
 
-    rb.linearDamping = std::stof(node.GetChildValue("LinearDamping", "0.0"));
-    rb.angularDamping = std::stof(node.GetChildValue("AngularDamping", "0.0"));
+    rb.linearDamping = LoaderUtils::SafeStof(node.GetChildValue("LinearDamping", "0.0"));
+    rb.angularDamping = LoaderUtils::SafeStof(node.GetChildValue("AngularDamping", "0.0"));
 
     rb.isAttachedToParent = node.GetChildValue("AttachToParent", "false") == "true";
     rb.isParentMatter = node.GetChildValue("ParentMatter", "false") == "true";
     rb.isChildrenMatter = node.GetChildValue("ChildrenMatter", "false") == "true";
     rb.isCollisionEnabled = node.GetChildValue("CollisionEnabled", "true") == "true";
+    rb.isTrigger = node.GetChildValue("IsTrigger", "false") == "true" || node.GetChildValue("IsTrigger", "0") == "1";
 
     // Initial velocities if any
     glm::vec3 linVel(0.0f), angVel(0.0f);
@@ -149,35 +151,40 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
         rb.body->Activate(true);
     }
 
-    // We don't create the IRigidBody here anymore because it requires a Shape.
-    // The PhysicsSystem will handle IRigidBody creation when RigidShape and RigidBody are both present.
-    // Or if it's legacy, we could do it, but let's centralize it in the System for consistency.
+    // Body creation belongs to PhysicsSystem once shape and body components
+    // are both present; loaders only construct deterministic authoring data.
 }
 
 void PhysicsLoader::LoadCharacterController(Scene& scene, entt::entity entity, const YAMLNode& node,
-                                            IPhysicsWorld& physics)
+                                            IPhysicsWorld* physics)
 {
     LoaderUtils::ValidateKeys(node, {"Radius", "Height", "StepHeight", "MaxSlope"}, "CharacterController");
 
-    float radius = std::stof(node.GetChildValue("Radius", "0.5"));
-    float height = std::stof(node.GetChildValue("Height", "1.0"));
-    float stepHeight = std::stof(node.GetChildValue("StepHeight", "0.35"));
-    float maxSlope = std::stof(node.GetChildValue("MaxSlope", "45.0"));
+    float radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "0.5"));
+    float height = LoaderUtils::SafeStof(node.GetChildValue("Height", "1.0"));
+    float stepHeight = LoaderUtils::SafeStof(node.GetChildValue("StepHeight", "0.35"));
+    float maxSlope = LoaderUtils::SafeStof(node.GetChildValue("MaxSlope", "45.0"));
 
     auto& pos = scene.GetComponent<PositionComponent>(entity);
     auto& rot = scene.GetComponent<RotationComponent>(entity);
 
     auto& cc = scene.AddComponent<CharacterControllerComponent>(entity);
+    cc.radius = radius;
+    cc.height = height;
     cc.stepHeight = stepHeight;
     cc.maxSlope = maxSlope;
 
-    auto shape = physics.CreateCapsuleShape(radius, height);
-    cc.controller = physics.CreateCharacterController(shape, stepHeight);
+    if (!physics)
+        return;
+
+    auto shape = physics->CreateCapsuleShape(radius, height);
+    cc.controller = physics->CreateCharacterController(shape, stepHeight);
 
     if (cc.controller)
     {
         cc.controller->SetMaxSlope(glm::radians(maxSlope));
         cc.controller->SetWorldTransform(pos.value, rot.value);
-        physics.AddCharacterController(cc.controller.get());
+        cc.controller->SetUserPointer(reinterpret_cast<void*>(static_cast<uintptr_t>(entity) + 1));
+        physics->AddCharacterController(cc.controller.get());
     }
 }

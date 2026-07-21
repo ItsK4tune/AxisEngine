@@ -37,12 +37,16 @@ layout(std140, binding = 20) uniform CameraData {
 
 
 layout(location = 10) in mat4 instanceMatrix;
+layout(location = 14) in uint instanceEntityID;
 
 uniform bool u_IsInstanced;
+uniform uint u_EntityID;
+
+flat out uint EntityID;
 
 
 
-const int MAX_BONES = 200;
+const int MAX_BONES = 128;
 
 const int MAX_BONE_INFLUENCE = 4;
 
@@ -111,6 +115,7 @@ void main()
 
 
     mat4 modelMatrix = u_IsInstanced ? instanceMatrix : u_Model;
+    EntityID = u_IsInstanced ? instanceEntityID : u_EntityID;
 
 
 

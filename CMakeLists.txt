@@ -8,19 +8,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
 option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
 option(ENABLE_TESTS "Build AxisEngine automated tests" OFF)
+option(ENABLE_LTO "Enable interprocedural optimization for optimized builds" ON)
+option(ENABLE_PCH "Use a private precompiled header to reduce engine compile time" ON)
+option(ENABLE_UNITY_BUILD "Use CMake unity translation units for engine compile time" OFF)
+
+if(ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT AXIS_IPO_SUPPORTED OUTPUT AXIS_IPO_ERROR)
+    if(AXIS_IPO_SUPPORTED)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MINSIZEREL ON)
+    else()
+        message(WARNING "AxisEngine LTO is unavailable: ${AXIS_IPO_ERROR}")
+    endif()
+endif()
 
 set(AXIS_GRAPHICS_BACKEND "OpenGL" CACHE STRING "Graphics backend to compile")
-set_property(CACHE AXIS_GRAPHICS_BACKEND PROPERTY STRINGS OpenGL Vulkan DirectX)
+set_property(CACHE AXIS_GRAPHICS_BACKEND PROPERTY STRINGS OpenGL)
 
 set(AXIS_PHYSICS_BACKEND "Bullet" CACHE STRING "Physics backend to compile")
-set_property(CACHE AXIS_PHYSICS_BACKEND PROPERTY STRINGS Bullet PhysX)
+set_property(CACHE AXIS_PHYSICS_BACKEND PROPERTY STRINGS Bullet)
 
 set(_AXIS_DEFAULT_AUDIO_BACKEND "Null")
 set(AXIS_AUDIO_BACKEND "${_AXIS_DEFAULT_AUDIO_BACKEND}" CACHE STRING "Audio backend to compile")
 set_property(CACHE AXIS_AUDIO_BACKEND PROPERTY STRINGS Null IrrKlang FMOD)
 
 if(ENABLE_EDITOR)
-    add_compile_definitions(ENABLE_EDITOR)
     message(STATUS "Editor System Enabled")
 endif()
 
@@ -28,10 +42,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-foreach(OUTPUTCONFIG IN ITEMS DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/bin)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/lib)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG} ${CMAKE_BINARY_DIR}/lib)
+foreach(_axis_config IN ITEMS Debug Release RelWithDebInfo MinSizeRel)
+    string(TOUPPER "${_axis_config}" _axis_config_upper)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_axis_config_upper} "${CMAKE_BINARY_DIR}/bin/${_axis_config}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${_axis_config_upper} "${CMAKE_BINARY_DIR}/lib/${_axis_config}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_axis_config_upper} "${CMAKE_BINARY_DIR}/lib/${_axis_config}")
 endforeach()
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
@@ -59,11 +74,11 @@ if(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "OPENGL")
     find_package(Glad REQUIRED)
     set(AXIS_HAS_OPENGL_BACKEND 1)
 elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "VULKAN")
-    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=Vulkan was selected, but the Vulkan renderer is not implemented yet.")
+    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=Vulkan is not provided by this release. Select OpenGL.")
 elseif(AXIS_GRAPHICS_BACKEND_UPPER STREQUAL "DIRECTX")
-    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=DirectX was selected, but the DirectX renderer is not implemented yet.")
+    message(FATAL_ERROR "AXIS_GRAPHICS_BACKEND=DirectX is not provided by this release. Select OpenGL.")
 else()
-    message(FATAL_ERROR "Unknown AXIS_GRAPHICS_BACKEND='${AXIS_GRAPHICS_BACKEND}'. Expected OpenGL, Vulkan, or DirectX.")
+    message(FATAL_ERROR "Unsupported AXIS_GRAPHICS_BACKEND='${AXIS_GRAPHICS_BACKEND}'. This release provides OpenGL.")
 endif()
 
 set(AXIS_HAS_BULLET_BACKEND 0)
@@ -72,9 +87,9 @@ if(AXIS_PHYSICS_BACKEND_UPPER STREQUAL "BULLET")
     find_package(Bullet REQUIRED)
     set(AXIS_HAS_BULLET_BACKEND 1)
 elseif(AXIS_PHYSICS_BACKEND_UPPER STREQUAL "PHYSX")
-    message(FATAL_ERROR "AXIS_PHYSICS_BACKEND=PhysX was selected, but the PhysX backend is not implemented yet.")
+    message(FATAL_ERROR "AXIS_PHYSICS_BACKEND=PhysX is not provided by this release. Select Bullet.")
 else()
-    message(FATAL_ERROR "Unknown AXIS_PHYSICS_BACKEND='${AXIS_PHYSICS_BACKEND}'. Expected Bullet or PhysX.")
+    message(FATAL_ERROR "Unsupported AXIS_PHYSICS_BACKEND='${AXIS_PHYSICS_BACKEND}'. This release provides Bullet.")
 endif()
 
 set(AXIS_HAS_IRRKLANG_BACKEND 0)
@@ -113,10 +128,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/sources.cmake)
 # Engine Core Library
 add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
 add_library(Axis::Engine ALIAS axis_engine)
+set_target_properties(axis_engine PROPERTIES EXPORT_NAME Engine)
 
 target_compile_features(axis_engine PUBLIC cxx_std_20)
 
 target_compile_definitions(axis_engine PUBLIC
+    GLM_ENABLE_EXPERIMENTAL
     AXIS_HAS_OPENGL_BACKEND=${AXIS_HAS_OPENGL_BACKEND}
     AXIS_HAS_VULKAN_BACKEND=${AXIS_HAS_VULKAN_BACKEND}
     AXIS_HAS_DIRECTX_BACKEND=${AXIS_HAS_DIRECTX_BACKEND}
@@ -130,7 +147,23 @@ target_compile_definitions(axis_engine PUBLIC
 
 if(MSVC)
     target_compile_options(axis_engine PRIVATE /FS)
+    add_link_options($<$<CONFIG:Release>:/OPT:REF> $<$<CONFIG:Release>:/OPT:ICF>)
 endif()
+
+if(ENABLE_PCH)
+    target_precompile_headers(axis_engine PRIVATE
+        <algorithm>
+        <array>
+        <cstdint>
+        <memory>
+        <string>
+        <unordered_map>
+        <vector>
+        <glm/glm.hpp>
+        <entt/entt.hpp>
+    )
+endif()
+set_target_properties(axis_engine PROPERTIES UNITY_BUILD ${ENABLE_UNITY_BUILD})
 
 target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -149,10 +182,6 @@ target_link_libraries(axis_engine PUBLIC
     EnTT::EnTT
     STB::STB
 )
-
-if(ENABLE_EDITOR)
-    target_link_libraries(axis_engine PUBLIC ImGui::ImGui)
-endif()
 
 if(AXIS_HAS_BULLET_BACKEND)
     target_link_libraries(axis_engine PUBLIC Bullet::Bullet)
@@ -176,11 +205,11 @@ if(AXIS_HAS_IRRKLANG_BACKEND)
         if(_axis_irrklang_runtime)
             add_custom_command(TARGET axis_engine POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory
-                    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                    "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "${_axis_irrklang_runtime}"
-                    "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
-                COMMENT "Copying irrKlang runtime library to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                    "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/"
+                COMMENT "Copying irrKlang runtime library beside $<CONFIG> executables"
             )
         endif()
     endforeach()
@@ -195,22 +224,22 @@ if(AXIS_HAS_FMOD_BACKEND)
     if(FMOD_RUNTIME_LIBRARY_RELEASE)
         add_custom_command(TARGET axis_engine POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${FMOD_RUNTIME_LIBRARY_RELEASE}"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
-            COMMENT "Copying FMOD release runtime library to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/"
+            COMMENT "Copying FMOD release runtime library beside $<CONFIG> executables"
         )
     endif()
 
     if(FMOD_RUNTIME_LIBRARY_DEBUG)
         add_custom_command(TARGET axis_engine POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${FMOD_RUNTIME_LIBRARY_DEBUG}"
-                "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/"
-            COMMENT "Copying FMOD debug runtime library to ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+                "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/"
+            COMMENT "Copying FMOD debug runtime library beside $<CONFIG> executables"
         )
     endif()
 endif()
@@ -220,6 +249,7 @@ if(WIN32)
         opengl32
         dbghelp
         winmm
+        ole32
         ws2_32
     )
 elseif(APPLE)
@@ -244,6 +274,7 @@ endif()
 if(ENABLE_EDITOR)
     add_library(axis_editor STATIC ${AXIS_EDITOR_SOURCES})
     add_library(Axis::Editor ALIAS axis_editor)
+    set_target_properties(axis_editor PROPERTIES EXPORT_NAME Editor)
 
     if(MSVC)
         target_compile_options(axis_editor PRIVATE /FS)
@@ -258,6 +289,7 @@ if(ENABLE_EDITOR)
         axis_engine
         ImGui::ImGui
     )
+    target_compile_definitions(axis_editor PUBLIC ENABLE_EDITOR)
 endif()
 
 # Installation & Export Setup
@@ -283,6 +315,16 @@ endif()
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    PATTERN "engine/asset/*" EXCLUDE
+    PATTERN "strategy" EXCLUDE
+    PATTERN "modules" EXCLUDE
+    PATTERN "panels" EXCLUDE
+    PATTERN "static_batch_manager.h" EXCLUDE
+    PATTERN "texture_atlas.h" EXCLUDE
+)
+
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/engine/asset/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/AxisEngine/assets
 )
 
 if(AXIS_HAS_FMOD_BACKEND AND FMOD_RUNTIME_LIBRARY_RELEASE)
@@ -370,13 +412,7 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     if(WIN32)
         target_link_libraries(axis_samples PRIVATE
             dxgi
-            pdh
         )
-    endif()
-
-    if(MSVC)
-        target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_engine")
-        target_link_options(axis_samples PRIVATE "/WHOLEARCHIVE:axis_editor")
     endif()
 
 endif()
@@ -397,9 +433,5 @@ target_link_libraries(axis_compile PRIVATE
 if(WIN32)
     target_link_libraries(axis_compile PRIVATE
         dxgi
-        pdh
     )
-endif()
-if(MSVC)
-    target_link_options(axis_compile PRIVATE "/WHOLEARCHIVE:axis_engine")
 endif()

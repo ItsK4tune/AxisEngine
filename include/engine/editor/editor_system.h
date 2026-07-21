@@ -4,7 +4,9 @@
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
+#include <editor/i_editor_extension_registry.h>
 #include <memory>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -22,11 +24,11 @@ struct Scene;
 
 class IEditorModule;
 
-class EditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
+class EditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem, public IEditorExtensionRegistry
 {
 public:
     EditorSystem();
-    ~EditorSystem();
+    ~EditorSystem() override;
 
     void Initialize() override;
     void Shutdown() override;
@@ -84,16 +86,36 @@ public:
         return m_ImGuiLayer;
     }
 
+    bool RegisterModule(std::string owner, std::string name, ModuleFactory factory) override;
+    bool RegisterPanel(std::string owner, std::string name, PanelFactory factory) override;
+    size_t UnregisterOwner(std::string_view owner) override;
+    std::vector<EditorExtensionInfo> GetExtensions() const override;
+
 private:
     bool m_Enabled = true;
 
     ImGuiLayer m_ImGuiLayer;
     std::vector<std::unique_ptr<IEditorPanel>> m_Panels;
     std::vector<std::unique_ptr<IEditorModule>> m_Modules;
+    std::vector<std::string> m_PanelOwners;
+    std::vector<std::string> m_ModuleOwners;
+    std::vector<EditorExtensionInfo> m_Extensions;
+    bool m_Initialized = false;
 
-    CursorMode m_PreHoverCursorMode;
-    bool m_WasHoveringPanel = false;
     bool m_CtrlSPressed = false;
+    bool m_ZPressed = false;
+    bool m_YPressed = false;
+    bool m_F1Pressed = false;
+    bool m_F2Pressed = false;
+    bool m_F3Pressed = false;
+    bool m_F4Pressed = false;
+    bool m_F5Pressed = false;
+    bool m_F6Pressed = false;
+    bool m_GPressed = false;
+    bool m_HPressed = false;
+    bool m_RPressed = false;
+    float m_NudgeTimer = 0.0f;
+    std::array<bool, 10> m_NumberKeyPressed{};
     bool m_ShowAboutPopup = false;
 
     void DrawMenuBar();
@@ -104,22 +126,7 @@ private:
 class NullEditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
 {
 public:
-    void Initialize() override
-    {
-    }
-    void Shutdown() override
-    {
-    }
     void Update(Scene&, float) override
-    {
-    }
-    void OnUpdate(float)
-    {
-    }
-    void Render(Scene&) override
-    {
-    }
-    void RenderUIPass(Scene&, float, float, IRenderStateManager&) override
     {
     }
     bool IsEnabled() const override

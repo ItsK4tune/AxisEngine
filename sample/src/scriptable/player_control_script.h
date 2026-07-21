@@ -97,7 +97,7 @@ public:
             dirty = true;
         }
 
-        if (dirty && HasComponent<WorldTransformComponent>())
-            GetComponent<WorldTransformComponent>().isDirty = true;
+        if (dirty)
+            MarkTransformDirty();
     }
 };

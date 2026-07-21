@@ -9,7 +9,6 @@
 class Logger
 {
 public:
-    static void Initialize();
     static void SetLogLevel(LogLevel level);
     static LogLevel GetLogLevel();
 

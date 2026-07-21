@@ -10,7 +10,9 @@ class IRenderSystem : virtual public IBaseSystem
 public:
     virtual ~IRenderSystem() = default;
 
-    virtual void Render(Scene& scene) = 0;
+    virtual void Render(Scene& scene)
+    {
+    }
     virtual void RenderAlphaPass(Scene& scene, int width, int height, float alpha)
     {
     }

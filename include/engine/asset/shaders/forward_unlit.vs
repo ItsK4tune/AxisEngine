@@ -36,7 +36,7 @@ uniform bool u_IsInstanced;
 
 
 
-const int MAX_BONES = 200;
+const int MAX_BONES = 128;
 
 const int MAX_BONE_INFLUENCE = 4;
 

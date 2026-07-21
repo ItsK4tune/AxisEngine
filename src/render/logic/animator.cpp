@@ -1,6 +1,7 @@
 #include <resource/unit/animator.h>
 #include <core/logic/logger.h>
 #include <resource/unit/bone.h>
+#include <render/type/shader_abi.h>
 #include <assimp/Importer.hpp>
 #include <iostream>
 #include <map>
@@ -9,7 +10,7 @@ Animator::Animator(std::shared_ptr<Animation> animation)
 {
     m_CurrentTime = 0.0;
     m_CurrentAnimation = animation;
-    m_FinalBoneMatrices.resize(200, glm::mat4(1.0f));
+    m_FinalBoneMatrices.resize(ShaderABI::MaxBones, glm::mat4(1.0f));
     m_Speed = 1.0f;
     m_UpdateRate = 0.0f;
     m_TimeSinceLastUpdate = 0.0f;
@@ -227,13 +228,4 @@ void Animator::CalculateBoneTransform(const BoneNodeData* node, glm::mat4 parent
 const std::vector<glm::mat4>& Animator::GetFinalBoneMatrices()
 {
     return m_FinalBoneMatrices;
-}
-
-void Animator::SetIdentityMatrices(int boneCount)
-{
-    std::lock_guard<std::mutex> lock(m_Mutex);
-    if (m_FinalBoneMatrices.size() < (size_t)boneCount)
-        m_FinalBoneMatrices.resize(boneCount, glm::mat4(1.0f));
-
-    for (int i = 0; i < boneCount; ++i) m_FinalBoneMatrices[i] = glm::mat4(1.0f);
 }

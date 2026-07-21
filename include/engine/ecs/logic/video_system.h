@@ -2,10 +2,11 @@
 
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_update_system.h>
+#include <core/interface/i_optimization_configurable.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 
-class VideoSystem : public IUpdateSystem, public IECSSystem
+class VideoSystem : public IUpdateSystem, public IECSSystem, public IOptimizationConfigurable
 {
 public:
     void Initialize() override;
@@ -31,6 +32,7 @@ public:
         return SystemRequirement::Graphics;
     }
     void Update(Scene& scene, float dt) override;
+    void ApplyOptimizationConfig(const OptimizationConfig& config) override;
 
     std::vector<entt::id_type> GetReadComponents() const override;
     std::vector<entt::id_type> GetWriteComponents() const override;
@@ -40,4 +42,5 @@ private:
 
     bool m_Enabled = true;
     Scene* m_BoundScene = nullptr;
+    bool m_AsyncDecodeEnabled = true;
 };

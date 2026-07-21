@@ -15,6 +15,10 @@ in vec3 Normal;
 
 
 layout (binding = 27) uniform sampler2D splatMap;
+layout (binding = 22) uniform sampler2D normalLayer0;
+layout (binding = 23) uniform sampler2D normalLayer1;
+layout (binding = 24) uniform sampler2D normalLayer2;
+layout (binding = 25) uniform sampler2D normalLayer3;
 
 layout (binding = 28) uniform sampler2D textureLayer0;
 
@@ -81,22 +85,45 @@ layout(std430, binding = 23) buffer DirLightBuffer { DirLight dirLights[]; };
 
 
 uniform float textureScale;
+uniform int normalLayerCount;
+uniform int diffuseLayerCount;
 
 void main()
 {
     vec4 splat = texture(splatMap, TexCoords);
     vec2 tiledCoords = TexCoords * textureScale;
-    vec3 col0 = pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2));
-    vec3 col1 = pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2));
-    vec3 col2 = pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2));
-    vec3 col3 = pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2));
+    vec3 col0 = diffuseLayerCount > 0 ? pow(texture(textureLayer0, tiledCoords).rgb, vec3(2.2)) : vec3(0.5);
+    vec3 col1 = diffuseLayerCount > 1 ? pow(texture(textureLayer1, tiledCoords).rgb, vec3(2.2)) : col0;
+    vec3 col2 = diffuseLayerCount > 2 ? pow(texture(textureLayer2, tiledCoords).rgb, vec3(2.2)) : col1;
+    vec3 col3 = diffuseLayerCount > 3 ? pow(texture(textureLayer3, tiledCoords).rgb, vec3(2.2)) : col2;
+    vec4 weights = vec4(splat.rgb, 1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
 
     vec3 albedo = col0 * splat.r + 
                  col1 * splat.g + 
                  col2 * splat.b + 
-                 col3 * (1.0 - clamp(splat.r + splat.g + splat.b, 0.0, 1.0));
+                 col3 * weights.w;
 
     vec3 N = normalize(Normal);
+    if (normalLayerCount > 0)
+    {
+        vec3 tangentNormal = vec3(0.0);
+        float normalWeight = 0.0;
+        if (normalLayerCount > 0) { tangentNormal += (texture(normalLayer0, tiledCoords).xyz * 2.0 - 1.0) * weights.x; normalWeight += weights.x; }
+        if (normalLayerCount > 1) { tangentNormal += (texture(normalLayer1, tiledCoords).xyz * 2.0 - 1.0) * weights.y; normalWeight += weights.y; }
+        if (normalLayerCount > 2) { tangentNormal += (texture(normalLayer2, tiledCoords).xyz * 2.0 - 1.0) * weights.z; normalWeight += weights.z; }
+        if (normalLayerCount > 3) { tangentNormal += (texture(normalLayer3, tiledCoords).xyz * 2.0 - 1.0) * weights.w; normalWeight += weights.w; }
+        if (normalWeight > 0.0001)
+        {
+            tangentNormal = normalize(tangentNormal / normalWeight);
+            vec3 dp1 = dFdx(WorldPos);
+            vec3 dp2 = dFdy(WorldPos);
+            vec2 duv1 = dFdx(tiledCoords);
+            vec2 duv2 = dFdy(tiledCoords);
+            vec3 tangent = normalize(dp1 * duv2.y - dp2 * duv1.y);
+            vec3 bitangent = normalize(-dp1 * duv2.x + dp2 * duv1.x);
+            N = normalize(mat3(tangent, bitangent, N) * tangentNormal);
+        }
+    }
 
     vec3 V = normalize(camera.viewPos.xyz - WorldPos);
 

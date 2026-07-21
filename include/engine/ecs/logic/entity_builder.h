@@ -25,7 +25,6 @@ class IRigidBody;
 class ICharacterController;
 class Entity;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 enum class MaterialTextureSlot
 {
@@ -126,7 +125,7 @@ public:
     EntityBuilder& WithRigidBody(float mass = 1.0f, bool isStatic = false, bool isTrigger = false,
                                  float linearDamping = 0.0f, float angularDamping = 0.0f);
     EntityBuilder& WithCharacterController(std::shared_ptr<ICharacterController> controller, float stepHeight = 0.35f,
-                                           float maxSlope = 45.0f);
+                                           float maxSlope = 45.0f, float radius = 0.5f, float height = 1.0f);
 
     EntityBuilder& WithPathFollower(float moveSpeed = 5.0f, float rotationSpeed = 10.0f, float maxRotationSpeed = 20.0f,
                                     float rotationAcceleration = 40.0f,
@@ -161,7 +160,8 @@ public:
     EntityBuilder& WithUIFlex(FlexDirection dir, float spacing = 5.0f);
     EntityBuilder& WithUIText(const std::string& text, const std::string& fontName, float scale = 1.0f,
                               const glm::vec4& color = glm::vec4(1.0f));
-    EntityBuilder& WithUITextAlignment(TextAlignment align, bool wrap = false, float maxWidth = 0.0f, bool wrapByWord = true);
+    EntityBuilder& WithUITextAlignment(TextAlignment align, bool wrap = false, float maxWidth = 0.0f,
+                                       bool wrapByWord = true);
     EntityBuilder& WithUIRenderer(const std::string& textureName, const glm::vec4& color = glm::vec4(1.0f));
     EntityBuilder& WithUITexture(const std::string& textureNameOrPath, const glm::vec4& color = glm::vec4(1.0f),
                                  const std::string& uiModelName = "");
@@ -217,7 +217,7 @@ public:
     EntityBuilder& WithInfo(const InfoComponent& info);
     EntityBuilder& WithPostProcess(const PostProcessComponent& postProcess);
     EntityBuilder& WithPostProcessEffect(const std::string& shaderName, int priority = 1, int x = 0, int y = 0,
-                                         int w = 0, int h = 0);
+                                         int w = 0, int h = 0, PostProcessInput inputs = PostProcessInput::Standard);
     EntityBuilder& WithReflectionProbe(const ReflectionProbeComponent& probe);
     EntityBuilder& WithReflectionProbe(ReflectionProbeType type = ReflectionProbeType::Static, int resolution = 512,
                                        bool boxProjection = true);
@@ -252,8 +252,8 @@ public:
     EntityBuilder& WithSkybox(const SkyboxRenderComponent& skybox);
 
     static Entity SpawnObject(Scene& scene, ResourceManager& res, const std::string& sceneName,
-                                    const std::string& fragmentPath, const glm::vec3& pos,
-                                    const glm::vec3& scale = glm::vec3(1.0f));
+                              const std::string& fragmentPath, const glm::vec3& pos,
+                              const glm::vec3& scale = glm::vec3(1.0f));
 
     static void ScatterObjects(Scene& scene, ResourceManager& res, const std::string& sceneName,
                                const std::string& fragmentPath, const PlacementRule& rule,

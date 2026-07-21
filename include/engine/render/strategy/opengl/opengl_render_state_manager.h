@@ -1,15 +1,34 @@
 #pragma once
 
 #include <render/interface/i_render_state_manager.h>
-#include <unordered_map>
+#include <array>
+#include <cstdint>
 
 class OpenGLRenderStateManager : public IRenderStateManager
 {
 public:
+    void InvalidateCache()
+    {
+        ++m_CacheGeneration;
+        if (m_CacheGeneration == 0)
+        {
+            m_KnownGeneration.fill(0);
+            m_CacheGeneration = 1;
+        }
+    }
+
+    void SetCacheEnabled(bool enabled)
+    {
+        m_CacheEnabled = enabled;
+        InvalidateCache();
+    }
+
     void Enable(ServerCapability cap) override;
     void Disable(ServerCapability cap) override;
 
     void SetBlendFunc(BlendFactor sfactor, BlendFactor dfactor) override;
+    void SetBlendFuncSeparate(BlendFactor srcRgb, BlendFactor dstRgb, BlendFactor srcAlpha,
+                              BlendFactor dstAlpha) override;
     void SetBlendEquation(BlendEquation mode) override;
 
     void SetDepthFunc(CompareFunc func) override;
@@ -36,10 +55,18 @@ public:
     const char* GetBackendName() const override;
 
 private:
-    std::unordered_map<ServerCapability, bool> m_Capabilities;
+    bool IsKnown(size_t slot) const { return m_CacheEnabled && m_KnownGeneration[slot] == m_CacheGeneration; }
+    void MarkKnown(size_t slot) { m_KnownGeneration[slot] = m_CacheGeneration; }
+
+    std::array<uint64_t, 21> m_KnownGeneration{};
+    uint64_t m_CacheGeneration = 1;
+    bool m_CacheEnabled = true;
+    std::array<bool, 6> m_Capabilities{};
 
     BlendFactor m_BlendSrc = BlendFactor::One;
     BlendFactor m_BlendDst = BlendFactor::Zero;
+    BlendFactor m_BlendSrcAlpha = BlendFactor::One;
+    BlendFactor m_BlendDstAlpha = BlendFactor::Zero;
     BlendEquation m_BlendEquation = BlendEquation::Add;
 
     CompareFunc m_DepthFunc = CompareFunc::Less;

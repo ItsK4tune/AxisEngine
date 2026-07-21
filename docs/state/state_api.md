@@ -110,7 +110,7 @@ public:
     
     void OnExit() override {
         // Cleanup
-        GetSceneManager().ClearAllScenes();
+        QueuePopScene();
     }
 };
 ```
@@ -318,32 +318,27 @@ void OnEnter() override {
 
 ## Manager Access
 
-### Input Managers
+### Input actions
 
 ```cpp
-KeyboardManager& GetKeyboard();
-MouseManager& GetMouse();
-InputManager& GetInputManager();
+bool GetAction(const std::string& actionName);
+bool GetActionDown(const std::string& actionName);
+bool GetActionUp(const std::string& actionName);
 ```
 
 **Example:**
 ```cpp
 void OnUpdate(float dt) override {
-    auto& keyboard = GetKeyboard();
-    auto& mouse = GetMouse();
-    
-    if (keyboard.GetKeyDown(GLFW_KEY_SPACE)) {
+    if (GetActionDown("Jump")) {
         // Jump
     }
-    
-    if (mouse.GetButtonDown(GLFW_MOUSE_BUTTON_LEFT)) {
+    if (GetActionDown("Fire")) {
         // Shoot
     }
 }
 ```
 
-### Action Mapping
-Instead of polling raw keys, use higher-level actions defined in input bindings.
+Raw device polling is available explicitly through `Resolve<IOHandler>()`, but gameplay should use mapped actions so bindings and active-device selection remain effective.
 
 ```cpp
 bool GetAction(const std::string& actionName);
@@ -361,48 +356,31 @@ if (GetActionDown("Jump")) {
 ### Resource & Scene Managers
 
 ```cpp
-ResourceManager& GetResourceManager();
-SceneManager& GetSceneManager();
-SoundManager& GetSoundManager();
-AppHandler& GetAppHandler();
-
-const AppConfig& GetConfig() const;
+AppConfig GetConfig() const;
 void ApplyConfig(const AppConfig& config);
 ```
 
 **Example:**
 ```cpp
 void OnEnter() override {
-    auto& config = GetConfig();
-    LOGGER_INFO("State") << "Running on: " << config.graphicsBackend;
+    auto config = GetConfig();
+    LOGGER_INFO("State") << "Window width: " << config.window.width;
 }
 ```
 
 ### System Accessors
 
 ```cpp
-RenderSystem& GetRenderSystem();
-PhysicsSystem& GetPhysicsSystem();
-AudioSystem& GetAudioSystem();
-ScriptableSystem& GetScriptSystem();
-UIRenderSystem& GetUIRenderSystem();
-UIInteractSystem& GetUIInteractSystem();
-ParticleSystem& GetParticleSystem();
-SkyboxRenderSystem& GetSkyboxRenderSystem();
-AnimationSystem& GetAnimationSystem();
-VideoSystem& GetVideoSystem();
+template <typename T> T& GetSystem() const;
+template <typename T> T& Get() const;
+template <typename T> T* Resolve() const;
 ```
 
 **Example:**
 ```cpp
 void OnUpdate(float dt) override {
-    auto& renderSystem = GetRenderSystem();
-    
-    // Toggle shadows dynamically
-    if (GetKeyboard().GetKeyDown(GLFW_KEY_F7)) {
-        bool shadows = !renderSystem.IsShadowsEnabled();
-        renderSystem.SetEnableShadows(shadows);
-    }
+    if (GetActionDown("toggle_physics"))
+        EnablePhysics(false);
 }
 ```
 
@@ -434,7 +412,7 @@ class MenuState : public State {
     }
     
     void OnExit() override {
-        GetSceneManager().ClearAllScenes();
+        QueuePopScene();
     }
 };
 ```
@@ -463,7 +441,7 @@ class GameplayState : public State {
     }
     
     void OnExit() override {
-        GetSceneManager().ClearAllScenes();
+        QueuePopScene();
     }
 };
 ```
@@ -545,7 +523,7 @@ public:
     }
     
     void OnExit() override {
-        GetSceneManager().ClearAllScenes();
+        QueuePopScene();
     }
 };
 ```
@@ -576,7 +554,7 @@ class CutsceneState : public State {
     }
     
     void OnExit() override {
-        GetSceneManager().ClearAllScenes();
+        QueuePopScene();
     }
 };
 ```
@@ -601,7 +579,7 @@ class CutsceneState : public State {
 ---
 
 ## See Also
-- [State Machine Guide](../guides/state_system.md)
-- [Scriptable API](scriptable_api.md)
+- [State Machine Guide](../systems/core_systems.md)
+- [Scriptable API](../scripting/scriptable_api.md)
 - [Scene Format](../guides/scene_format.md)
-- [Input Manager API](managers/input_manager.md)
+- [Device Management](../guides/device_management.md)

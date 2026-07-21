@@ -34,6 +34,7 @@ public:
     virtual void DrawBuffer(FramebufferAttachment buf) = 0;
     virtual void ReadBuffer(FramebufferAttachment buf) = 0;
     virtual void DrawBuffers(int n, const FramebufferAttachment* bufs) = 0;
+    virtual void ClearColorAttachmentUInt(int drawBuffer, const unsigned int value[4]) = 0;
 
     virtual const char* GetBackendName() const = 0;
 };

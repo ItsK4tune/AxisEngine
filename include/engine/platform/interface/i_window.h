@@ -51,10 +51,14 @@ public:
     using MouseButtonCallback = std::function<void(int, int, int)>;
     using MousePositionCallback = std::function<void(double, double)>;
     using ScrollCallback = std::function<void(double, double)>;
+    using FocusCallback = std::function<void(bool)>;
 
     virtual void SetResizeCallback(const ResizeCallback& callback) = 0;
     virtual void SetKeyCallback(const KeyCallback& callback) = 0;
     virtual void SetMouseButtonCallback(const MouseButtonCallback& callback) = 0;
     virtual void SetCursorPosCallback(const MousePositionCallback& callback) = 0;
     virtual void SetScrollCallback(const ScrollCallback& callback) = 0;
+    virtual void SetFocusCallback(const FocusCallback& callback)
+    {
+    }
 };

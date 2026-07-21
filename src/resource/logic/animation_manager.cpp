@@ -21,7 +21,7 @@ std::shared_ptr<Animation> AnimationManager::Load(const std::string& name, const
     }
 
     auto animation = std::make_shared<Animation>(path, *model);
-    if (animation)
+    if (animation && animation->IsValid())
     {
         m_Cache.Add(name, animation);
         LOGGER_INFO("AnimationManager") << "Loaded animation: " << name;

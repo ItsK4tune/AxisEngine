@@ -1,5 +1,6 @@
 #pragma once
 #include <core/logic/data_node.h>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -11,15 +12,10 @@ public:
     bool HasDataNode(const std::string& key) const;
     void RemoveDataNode(const std::string& key);
 
-    std::unordered_map<std::string, DataNode>& GetDataNodes()
-    {
-        return m_DataNodes;
-    }
-    const std::unordered_map<std::string, DataNode>& GetDataNodes() const
-    {
-        return m_DataNodes;
-    }
+    std::unordered_map<std::string, DataNode> GetDataNodes() const;
+    void ReplaceDataNodes(std::unordered_map<std::string, DataNode> data);
 
 private:
     std::unordered_map<std::string, DataNode> m_DataNodes;
+    mutable std::shared_mutex m_Mutex;
 };

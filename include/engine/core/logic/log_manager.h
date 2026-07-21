@@ -2,6 +2,7 @@
 
 #include <core/logic/logger_types.h>
 #include <core/type/event_types.h>
+#include <atomic>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -50,22 +51,21 @@ public:
 
     void SetLogLevel(LogLevel level)
     {
-        m_LogLevel = level;
+        m_LogLevel.store(level, std::memory_order_relaxed);
     }
     LogLevel GetLogLevel() const
     {
-        return m_LogLevel;
+        return m_LogLevel.load(std::memory_order_relaxed);
     }
 
     void Log(LogType type, const std::string& tag, const std::string& message);
 
-#ifdef ENABLE_EDITOR
     using LogCallback = std::function<void(LogType, const std::string&, const std::string&)>;
-    void SetEditorLogCallback(LogCallback cb)
+    void SetLogCallback(LogCallback cb)
     {
-        m_EditorLogCallback = std::move(cb);
+        std::lock_guard lock(m_LogMutex);
+        m_LogCallback = std::move(cb);
     }
-#endif
 
 private:
     LogManager() = default;
@@ -80,9 +80,7 @@ private:
     std::streambuf* m_OldOut = nullptr;
     std::streambuf* m_OldErr = nullptr;
     int m_ConfigListenerId = -1;
-    LogLevel m_LogLevel = LogLevel::None;
+    std::atomic<LogLevel> m_LogLevel = LogLevel::None;
     std::mutex m_LogMutex;
-#ifdef ENABLE_EDITOR
-    LogCallback m_EditorLogCallback;
-#endif
+    LogCallback m_LogCallback;
 };

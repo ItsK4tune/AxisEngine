@@ -2,6 +2,7 @@
 #include <core/logic/logger.h>
 #include <render/logic/assimp_glm_helpers.h>
 #include <resource/unit/model.h>
+#include <render/type/shader_abi.h>
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 
@@ -26,6 +27,7 @@ Animation::Animation(const std::string& animationPath, Model& model)
     ReadMissingBones(animation, model);
 
     BindNodesToBones(m_RootNode);
+    m_Valid = true;
 }
 
 Bone* Animation::FindBone(const std::string& name)
@@ -53,19 +55,20 @@ void Animation::ReadMissingBones(const aiAnimation* animation, Model& model)
 
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
-            if (boneCount < 200)
+            if (boneCount < ShaderABI::MaxBones)
             {
                 boneInfoMap[boneName].id = boneCount;
                 boneCount++;
             }
             else
             {
-                LOGGER_WARN("Animation") << "Max bone limit (200) exceeded while processing missing bone: " << boneName;
+                LOGGER_WARN("Animation") << "Max bone limit (" << ShaderABI::MaxBones
+                                         << ") exceeded while processing missing bone: " << boneName;
                 continue;
             }
         }
 
-        m_Bones.push_back(Bone(channel->mNodeName.data, boneInfoMap[channel->mNodeName.data].id, channel));
+        m_Bones.emplace_back(channel->mNodeName.data, channel);
     }
 
     m_BoneInfoMap = boneInfoMap;

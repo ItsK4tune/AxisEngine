@@ -2,6 +2,7 @@
 
 #include <render/type/graphics_types.h>
 #include <cstddef>
+#include <cstdint>
 
 class IBufferManager
 {
@@ -19,6 +20,17 @@ public:
     virtual void BindBuffer(BufferType target, unsigned int buffer) = 0;
     virtual void BufferData(BufferType target, size_t size, const void* data, BufferUsage usage) = 0;
     virtual void BufferSubData(BufferType target, size_t offset, size_t size, const void* data) = 0;
+
+    // Optional high-throughput transient upload path. Default implementations
+    // keep third-party backends source-compatible and select the BufferSubData
+    // fallback in TransientBufferRing.
+    virtual bool SupportsPersistentMapping() const { return false; }
+    virtual size_t GetBufferOffsetAlignment(BufferType) const { return 1; }
+    virtual void* AllocatePersistentStorage(BufferType, size_t) { return nullptr; }
+    virtual void FlushPersistentWrites() {}
+    virtual void UnmapPersistentStorage(BufferType) {}
+    virtual uintptr_t InsertGpuFence() { return 0; }
+    virtual void WaitAndDeleteGpuFence(uintptr_t) {}
     virtual void DeleteBuffer(unsigned int buffer) = 0;
     virtual void DeleteBuffers(int n, const unsigned int* buffers) = 0;
 

@@ -9,7 +9,6 @@
 
 class ITextureManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class TextureAtlas
 {
@@ -44,6 +43,7 @@ public:
     bool HasTexture(const std::string& name) const;
 
     static void SetTextureManager(ITextureManager& textureManager);
+    static void ClearTextureManager();
 
 private:
     unsigned int m_AtlasID;

@@ -5,6 +5,8 @@
 #include <render/unit/frustum.h>
 #include <render/unit/shadow.h>
 #include <vector>
+#include <algorithm>
+#include <cstddef>
 
 class ResourceManager;
 class IShaderLibrary;
@@ -52,6 +54,11 @@ public:
     void SetShadowSoftness(int softness)
     {
         m_ShadowSoftness = softness;
+    }
+    void SetParallelBuildConfig(bool enabled, size_t threshold)
+    {
+        m_ParallelBuildEnabled = enabled;
+        m_ParallelBuildThreshold = (std::max)(size_t{1}, threshold);
     }
 
     float GetShadowBias() const
@@ -108,6 +115,8 @@ private:
     float m_ShadowBias = 0.005f;
     int m_ShadowSoftness = 1;
     bool m_DirLightLimitWarned = false;
+    bool m_ParallelBuildEnabled = true;
+    size_t m_ParallelBuildThreshold = 128;
 
     uint32_t m_LastLightVersionsDir[Shadow::MAX_DIR_LIGHTS_SHADOW] = {0};
     uint32_t m_LastLightVersionsPoint[Shadow::MAX_POINT_LIGHTS_SHADOW] = {0};

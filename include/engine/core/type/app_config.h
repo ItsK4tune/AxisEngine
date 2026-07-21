@@ -14,7 +14,7 @@
 #include <utility>
 
 #ifndef AXIS_HAS_IRRKLANG_BACKEND
-#define AXIS_HAS_IRRKLANG_BACKEND 1
+#define AXIS_HAS_IRRKLANG_BACKEND 0
 #endif
 #ifndef AXIS_HAS_FMOD_BACKEND
 #define AXIS_HAS_FMOD_BACKEND 0
@@ -102,7 +102,21 @@ struct AudioConfig
     AudioBackend audioBackend = AudioBackend::Null;
 #endif
     float masterVolume = 100.0f;
+    // Playback endpoint preference. Backends that cannot switch endpoints must
+    // report that capability instead of silently accepting this value.
     std::string audioDevice = "";
+    bool captureEnabled = false;
+    std::string captureDevice = "";
+    float captureInputVolume = 1.0f;
+    float captureNoiseGate = 0.02f;
+    float captureGain = 4.0f;
+    float captureAttackSeconds = 0.05f;
+    float captureReleaseSeconds = 0.05f;
+    float capturePeakDecaySeconds = 0.125f;
+    float captureCalibrationSeconds = 1.0f;
+    float capturePulseThreshold = 0.15f;
+    float capturePulseCooldown = 0.08f;
+    float capturePulseDuration = 0.6f;
 };
 
 struct CullingConfig
@@ -118,14 +132,73 @@ struct CullingConfig
     float distanceCulling = 0.0f;
 };
 
+// Runtime performance policy. These values control optimizations that have a
+// meaningful quality/latency trade-off; correctness-only optimizations remain
+// implementation details and are intentionally not user-toggleable.
+struct OptimizationConfig
+{
+    #if defined(NDEBUG)
+    bool resourceHotReloadEnabled = false;
+    #else
+    bool resourceHotReloadEnabled = true;
+    #endif
+    bool resourceUploadBudgetEnabled = true;
+    int maxModelUploadsPerFrame = 2;
+    int maxTextureUploadsPerFrame = 4;
+    bool discardCpuMeshDataAfterUpload = false;
+    bool compressedTextureLoadingEnabled = true;
+
+    bool streamingUpdateThrottlingEnabled = true;
+    float streamingCheckIntervalSeconds = 1.0f;
+
+    bool reflectionCaptureBudgetEnabled = true;
+    int maxReflectionProbeFacesPerFrame = 2;
+    int maxPlanarReflectionCapturesPerFrame = 1;
+
+    bool shadowParallelBuildEnabled = true;
+    int shadowParallelThreshold = 128;
+
+    bool animationParallelEvaluationEnabled = true;
+    int animationParallelThreshold = 64;
+
+    bool navigationSpatialHashEnabled = true;
+    float navigationAgentCellSize = 2.0f;
+    bool navigationAsyncPathfindingEnabled = true;
+    int navigationMaxPathRequestsPerFrame = 4;
+    bool navMeshRebuildBudgetEnabled = true;
+    int maxNavMeshRebuildsPerFrame = 1;
+    bool navigationDirtyTilesEnabled = true;
+    float navigationNavMeshTileSize = 8.0f;
+    int navigationMaxDirtyTilesPerFrame = 4;
+
+    bool networkBatchingEnabled = true;
+    int networkMaxEventsPerUpdate = 256;
+    float networkMaxEventProcessingMs = 2.0f;
+    int networkMaxBytesPerUpdate = 1048576;
+    bool networkReplicationEnabled = true;
+    float networkReplicationRateHz = 20.0f;
+    float networkInterestRadius = 0.0f;
+
+    bool particleSpawnBudgetEnabled = true;
+    int particleMaxSpawnPerFrame = 4096;
+    bool particleBatchingEnabled = true;
+
+    bool renderStateCacheEnabled = true;
+    bool persistentMappedBuffersEnabled = true;
+    bool tiledLightCullingEnabled = true;
+    int tiledLightTileSize = 32;
+    // Keep the picking attachment resident even when no built-in pass needs
+    // it. Decals request it automatically; tools can request it per frame.
+    bool gbufferEntityIdEnabled = false;
+    bool physicsMeshShapeCacheEnabled = true;
+    bool uiLayoutCacheEnabled = true;
+    bool videoAsyncDecodeEnabled = true;
+};
+
 struct DebugConfig
 {
     bool physicsDebug = false;
-#ifdef ENABLE_EDITOR
     bool uiEnabled = true;
-#else
-    bool uiEnabled = true;
-#endif
     bool gizmos = false;
     bool lightGizmos = false;
     bool entityNames = false;
@@ -147,6 +220,8 @@ struct AppConfig
     float timeScale = 1.0f;
     std::string iconPath = "";
     bool headlessMode = false;
+    bool loadDefaultAssets = true;
+    std::string defaultAssetManifest = "asset://load.axs";
 
     // Sub-configs
     WindowConfig window;
@@ -157,149 +232,7 @@ struct AppConfig
     InputConfig input;
     AudioConfig audio;
     CullingConfig culling;
+    OptimizationConfig optimization;
     DebugConfig debug;
     LightingMode lightingMode = LightingMode::RealTime;
-
-    // Legacy accessors keep existing code compiling during config migration.
-    int& width = window.width;
-    int& height = window.height;
-    WindowMode& windowMode = window.windowMode;
-    bool& vsync = window.vsync;
-    int& monitorIndex = window.monitorIndex;
-    int& refreshRate = window.refreshRate;
-    int& frameRateLimit = window.frameRateLimit;
-
-    GraphicsBackend& graphicsBackend = graphics.graphicsBackend;
-    int& msaaSamples = graphics.msaaSamples;
-    int& antialiasing = graphics.antialiasing;
-    float& maxAnisotropy = graphics.maxAnisotropy;
-    float& renderScale = graphics.renderScale;
-    bool& asyncResourceLoading = graphics.asyncResourceLoading;
-    bool& strictAssetLoading = graphics.strictAssetLoading;
-
-    TonemappingMode& tonemappingMode = render.tonemappingMode;
-    bool& hdrEnabled = render.hdrEnabled;
-    bool& bloomEnabled = render.bloomEnabled;
-    float& gamma = render.gamma;
-    float& exposure = render.exposure;
-    float& bloomIntensity = render.bloomIntensity;
-    float& bloomThreshold = render.bloomThreshold;
-    float& bloomRadius = render.bloomRadius;
-    float& skyboxIntensity = render.skyboxIntensity;
-    float& ambientIntensity = render.ambientIntensity;
-    float& uiReferenceWidth = render.uiReferenceWidth;
-    float& uiReferenceHeight = render.uiReferenceHeight;
-    float (&clearColor)[4] = render.clearColor;
-
-    bool& shadowsEnabled = shadow.shadowsEnabled;
-    int& shadowMode = shadow.shadowMode;
-    int& shadowMapResolution = shadow.shadowMapResolution;
-    float& shadowProjectionSize = shadow.shadowProjectionSize;
-    bool& shadowFrustumCullingEnabled = shadow.shadowFrustumCullingEnabled;
-    float& shadowDistanceCulling = shadow.shadowDistanceCulling;
-    float& shadowBias = shadow.shadowBias;
-    int& shadowSoftness = shadow.shadowSoftness;
-
-    PhysicsBackend& physicsBackend = physics.physicsBackend;
-    PhysicsMode& physicsMode = physics.physicsMode;
-    float (&gravity)[3] = physics.gravity;
-    int& maxSubSteps = physics.maxSubSteps;
-    float& physicsTickRate = physics.physicsTickRate;
-    bool& ccdEnabled = physics.ccdEnabled;
-    float& ccdThreshold = physics.ccdThreshold;
-    int& solverIterations = physics.solverIterations;
-
-    float& mouseSensitivityX = input.mouseSensitivityX;
-    float& mouseSensitivityY = input.mouseSensitivityY;
-    bool& mouseInvertX = input.mouseInvertX;
-    bool& mouseInvertY = input.mouseInvertY;
-    bool& rawMouseInput = input.rawMouseInput;
-
-    AudioBackend& audioBackend = audio.audioBackend;
-    float& masterVolume = audio.masterVolume;
-    std::string& audioDevice = audio.audioDevice;
-
-    bool& cullFaceEnabled = culling.cullFaceEnabled;
-    bool& depthTestEnabled = culling.depthTestEnabled;
-    bool& stencilTestEnabled = culling.stencilTestEnabled;
-    bool& frustumCullingEnabled = culling.frustumCullingEnabled;
-    bool& occlusionCullingEnabled = culling.occlusionCullingEnabled;
-    bool& instanceBatchingEnabled = culling.instanceBatchingEnabled;
-    bool& renderOrderEnabled = culling.renderOrderEnabled;
-    uint32_t& filterLayerMask = culling.filterLayerMask;
-    float& distanceCulling = culling.distanceCulling;
-
-    // Copy/move support (references need special handling)
-    AppConfig() = default;
-    AppConfig(const AppConfig& o)
-        : title(o.title),
-          logLevel(o.logLevel),
-          numJobThreads(o.numJobThreads),
-          timeScale(o.timeScale),
-          iconPath(o.iconPath),
-          headlessMode(o.headlessMode),
-          window(o.window),
-          graphics(o.graphics),
-          render(o.render),
-          shadow(o.shadow),
-          physics(o.physics),
-          input(o.input),
-          audio(o.audio),
-          culling(o.culling),
-          debug(o.debug),
-          lightingMode(o.lightingMode)
-    {
-    }
-
-    AppConfig& operator=(const AppConfig& o)
-    {
-        if (this == &o)
-            return *this;
-        title = o.title;
-        logLevel = o.logLevel;
-        numJobThreads = o.numJobThreads;
-        timeScale = o.timeScale;
-        iconPath = o.iconPath;
-        headlessMode = o.headlessMode;
-        window = o.window;
-        graphics = o.graphics;
-        render = o.render;
-        shadow = o.shadow;
-        physics = o.physics;
-        input = o.input;
-        audio = o.audio;
-        culling = o.culling;
-        debug = o.debug;
-        lightingMode = o.lightingMode;
-        return *this;
-    }
-
-    AppConfig(AppConfig&& o) noexcept
-        : AppConfig()
-    {
-        *this = std::move(o);
-    }
-
-    AppConfig& operator=(AppConfig&& o) noexcept
-    {
-        if (this == &o)
-            return *this;
-        title = std::move(o.title);
-        logLevel = o.logLevel;
-        numJobThreads = o.numJobThreads;
-        timeScale = o.timeScale;
-        iconPath = std::move(o.iconPath);
-        headlessMode = o.headlessMode;
-        window = std::move(o.window);
-        graphics = std::move(o.graphics);
-        render = std::move(o.render);
-        shadow = std::move(o.shadow);
-        physics = std::move(o.physics);
-        input = std::move(o.input);
-        audio = std::move(o.audio);
-        culling = std::move(o.culling);
-        debug = std::move(o.debug);
-        lightingMode = o.lightingMode;
-        return *this;
-    }
 };

@@ -1,11 +1,13 @@
 #include <algorithm>
+#include <utility>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/mesh.h>
+#include <cstddef>
 #include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/logic/transient_buffer_ring.h>
 #include <render/type/graphics_types.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -157,6 +159,67 @@ Mesh::Mesh(std::vector<uint8_t> vertexData, size_t vertexCount, size_t vertexStr
 
 Mesh::~Mesh()
 {
+    ReleaseGpuResources();
+}
+
+Mesh::Mesh(Mesh&& other) noexcept
+    : m_VertexData(std::move(other.m_VertexData)),
+      m_VertexCount(other.m_VertexCount),
+      m_VertexStride(other.m_VertexStride),
+      m_IsSkinned(other.m_IsSkinned),
+      indices(std::move(other.indices)),
+      textures(std::move(other.textures)),
+      VAO(other.VAO),
+      aabb(other.aabb),
+      VBO(other.VBO),
+      EBO(other.EBO),
+      instanceVBO(other.instanceVBO),
+      m_Initialized(other.m_Initialized),
+      m_InstanceBufferCapacity(other.m_InstanceBufferCapacity),
+      m_InstanceUpload(std::move(other.m_InstanceUpload)),
+      m_CompactPositions(std::move(other.m_CompactPositions))
+{
+    other.VAO = 0;
+    other.VBO = 0;
+    other.EBO = 0;
+    other.instanceVBO = 0;
+    other.m_Initialized = false;
+    other.m_InstanceBufferCapacity = 0;
+}
+
+Mesh& Mesh::operator=(Mesh&& other) noexcept
+{
+    if (this == &other)
+        return *this;
+    ReleaseGpuResources();
+    m_VertexData = std::move(other.m_VertexData);
+    m_VertexCount = other.m_VertexCount;
+    m_VertexStride = other.m_VertexStride;
+    m_IsSkinned = other.m_IsSkinned;
+    indices = std::move(other.indices);
+    textures = std::move(other.textures);
+    VAO = other.VAO;
+    aabb = other.aabb;
+    VBO = other.VBO;
+    EBO = other.EBO;
+    instanceVBO = other.instanceVBO;
+    m_Initialized = other.m_Initialized;
+    m_InstanceBufferCapacity = other.m_InstanceBufferCapacity;
+    m_InstanceUpload = std::move(other.m_InstanceUpload);
+    m_CompactPositions = std::move(other.m_CompactPositions);
+
+    other.VAO = 0;
+    other.VBO = 0;
+    other.EBO = 0;
+    other.instanceVBO = 0;
+    other.m_Initialized = false;
+    other.m_InstanceBufferCapacity = 0;
+    return *this;
+}
+
+void Mesh::ReleaseGpuResources() noexcept
+{
+    m_InstanceUpload.reset();
     if (m_Initialized && s_BufferManager)
     {
         try
@@ -164,14 +227,38 @@ Mesh::~Mesh()
             s_BufferManager->DeleteVertexArray(VAO);
             s_BufferManager->DeleteBuffer(VBO);
             s_BufferManager->DeleteBuffer(EBO);
-            if (instanceVBO != 0)
-                s_BufferManager->DeleteBuffer(instanceVBO);
         }
         catch (...)
         {
             LOGGER_ERROR("Mesh") << "Destructor: CRASH during buffer deletion";
         }
     }
+    VAO = VBO = EBO = instanceVBO = 0;
+    m_Initialized = false;
+    m_InstanceBufferCapacity = 0;
+}
+
+glm::vec3 Mesh::GetPosition(size_t vertexIndex) const
+{
+    if (vertexIndex >= m_VertexCount)
+        return glm::vec3(0.0f);
+    if (!m_VertexData.empty())
+    {
+        const float* value =
+            reinterpret_cast<const float*>(m_VertexData.data() + vertexIndex * m_VertexStride);
+        return glm::vec3(value[0], value[1], value[2]);
+    }
+    return vertexIndex < m_CompactPositions.size() ? m_CompactPositions[vertexIndex] : glm::vec3(0.0f);
+}
+
+void Mesh::ReleaseCpuVertexData()
+{
+    if (m_VertexData.empty())
+        return;
+    m_CompactPositions.resize(m_VertexCount);
+    for (size_t index = 0; index < m_VertexCount; ++index)
+        m_CompactPositions[index] = GetPosition(index);
+    std::vector<uint8_t>().swap(m_VertexData);
 }
 
 void Mesh::Draw(Shader& shader, bool bindTextures)
@@ -185,14 +272,16 @@ void Mesh::Draw(Shader& shader, bool bindTextures)
         BindMeshTextures(shader, textures, tm);
     }
 
-    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", false);
+    shader.setBool_Fast(shader.m_Loc_u_IsInstanced, "u_IsInstanced", false);
 
     bm.BindVertexArray(VAO);
     dm.DrawElements(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0);
 }
 
-void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures)
+void Mesh::DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& instances, bool bindTextures)
 {
+    if (instances.empty() || !m_InstanceUpload)
+        return;
     auto& tm = GetTextureManager();
     auto& dm = GetDrawContext();
     auto& bm = GetBufferManager();
@@ -202,27 +291,26 @@ void Mesh::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, b
         BindMeshTextures(shader, textures, tm);
     }
 
-    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", true);
+    shader.setBool_Fast(shader.m_Loc_u_IsInstanced, "u_IsInstanced", true);
 
-    bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
-    size_t requiredSize = models.size() * sizeof(glm::mat4);
-    if (requiredSize > m_InstanceBufferCapacity)
-    {
-        m_InstanceBufferCapacity = requiredSize;
-        bm.BufferData(BufferType::ArrayBuffer, m_InstanceBufferCapacity, models.data(), BufferUsage::DynamicDraw);
-    }
-    else
-    {
-        bm.BufferData(BufferType::ArrayBuffer, m_InstanceBufferCapacity, NULL, BufferUsage::DynamicDraw);  // Orphan
-        bm.BufferSubData(BufferType::ArrayBuffer, 0, requiredSize, models.data());
-    }
-    bm.BindBuffer(BufferType::ArrayBuffer, 0);
-
+    size_t requiredSize = instances.size() * sizeof(MeshInstanceData);
+    const auto slice = m_InstanceUpload->Upload(instances.data(), requiredSize);
+    instanceVBO = slice.buffer;
+    m_InstanceBufferCapacity = m_InstanceUpload->GetSegmentCapacity();
     bm.BindVertexArray(VAO);
+    bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
+    const size_t vec4Size = sizeof(glm::vec4);
+    for (unsigned int column = 0; column < 4; ++column)
+        bm.VertexAttribPointer(10 + column, 4, DataType::Float, false, sizeof(MeshInstanceData),
+                               reinterpret_cast<void*>(slice.offset + offsetof(MeshInstanceData, model) +
+                                                       column * vec4Size));
+    bm.VertexAttribIPointer(14, 1, DataType::UnsignedInt, sizeof(MeshInstanceData),
+                            reinterpret_cast<void*>(slice.offset + offsetof(MeshInstanceData, entityId)));
     dm.DrawElementsInstanced(Primitive::Triangles, static_cast<int>(indices.size()), DataType::UnsignedInt, 0,
-                             static_cast<int>(models.size()));
+                             static_cast<int>(instances.size()));
+    m_InstanceUpload->Commit();
 
-    shader.setBool_Fast(shader.m_Loc_isInstanced, "isInstanced", false);
+    shader.setBool_Fast(shader.m_Loc_u_IsInstanced, "u_IsInstanced", false);
 }
 
 void Mesh::setupMesh()
@@ -267,27 +355,36 @@ void Mesh::setupMesh()
         bm.VertexAttribPointer(6, 4, DataType::Float, false, m_VertexStride, (void*)48);
     }
 
-    instanceVBO = bm.CreateBuffer();
+    m_InstanceUpload = std::make_unique<TransientBufferRing>();
+    m_InstanceUpload->Initialize(bm, BufferType::ArrayBuffer, sizeof(MeshInstanceData) * 64);
+    instanceVBO = m_InstanceUpload->GetBuffer();
     bm.BindBuffer(BufferType::ArrayBuffer, instanceVBO);
-    glm::mat4 identity(1.0f);
-    bm.BufferData(BufferType::ArrayBuffer, sizeof(glm::mat4), &identity, BufferUsage::StaticDraw);
-    m_InstanceBufferCapacity = sizeof(glm::mat4);
+    m_InstanceBufferCapacity = m_InstanceUpload->GetSegmentCapacity();
 
     std::size_t vec4Size = sizeof(glm::vec4);
 
     bm.EnableVertexAttribArray(10);
-    bm.VertexAttribPointer(10, 4, DataType::Float, false, 4 * vec4Size, (void*)0);
+    bm.VertexAttribPointer(10, 4, DataType::Float, false, sizeof(MeshInstanceData),
+                           (void*)(offsetof(MeshInstanceData, model) + 0 * vec4Size));
     bm.EnableVertexAttribArray(11);
-    bm.VertexAttribPointer(11, 4, DataType::Float, false, 4 * vec4Size, (void*)(1 * vec4Size));
+    bm.VertexAttribPointer(11, 4, DataType::Float, false, sizeof(MeshInstanceData),
+                           (void*)(offsetof(MeshInstanceData, model) + 1 * vec4Size));
     bm.EnableVertexAttribArray(12);
-    bm.VertexAttribPointer(12, 4, DataType::Float, false, 4 * vec4Size, (void*)(2 * vec4Size));
+    bm.VertexAttribPointer(12, 4, DataType::Float, false, sizeof(MeshInstanceData),
+                           (void*)(offsetof(MeshInstanceData, model) + 2 * vec4Size));
     bm.EnableVertexAttribArray(13);
-    bm.VertexAttribPointer(13, 4, DataType::Float, false, 4 * vec4Size, (void*)(3 * vec4Size));
+    bm.VertexAttribPointer(13, 4, DataType::Float, false, sizeof(MeshInstanceData),
+                           (void*)(offsetof(MeshInstanceData, model) + 3 * vec4Size));
+
+    bm.EnableVertexAttribArray(14);
+    bm.VertexAttribIPointer(14, 1, DataType::UnsignedInt, sizeof(MeshInstanceData),
+                            (void*)offsetof(MeshInstanceData, entityId));
 
     bm.VertexAttribDivisor(10, 1);
     bm.VertexAttribDivisor(11, 1);
     bm.VertexAttribDivisor(12, 1);
     bm.VertexAttribDivisor(13, 1);
+    bm.VertexAttribDivisor(14, 1);
 
     bm.BindVertexArray(0);
     m_Initialized = true;

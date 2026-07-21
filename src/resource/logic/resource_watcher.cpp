@@ -5,19 +5,30 @@
 #include <chrono>
 #include <iostream>
 
-ResourceWatcher::ResourceWatcher() : m_Running(true)
+ResourceWatcher::ResourceWatcher()
 {
-    m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
 }
 
 ResourceWatcher::~ResourceWatcher()
 {
-    {
-        std::lock_guard<std::mutex> lock(m_StopMutex);
-        m_Running = false;
-    }
-    m_StopCV.notify_all();
+    SetEnabled(false);
+}
 
+void ResourceWatcher::SetEnabled(bool enabled)
+{
+    if (enabled)
+    {
+        bool expected = false;
+        if (!m_Running.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+            return;
+        m_WatcherThread = std::thread(&ResourceWatcher::WatcherLoop, this);
+        return;
+    }
+
+    bool expected = true;
+    if (!m_Running.compare_exchange_strong(expected, false, std::memory_order_acq_rel))
+        return;
+    m_StopCV.notify_all();
     if (m_WatcherThread.joinable())
         m_WatcherThread.join();
 }

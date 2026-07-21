@@ -40,10 +40,6 @@ public:
         return SystemRequirement::Graphics;
     }
     void Render(Scene& scene) override;
-    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override
-    {
-    }
-
     GBuffer& GetGBuffer() override
     {
         return m_GBuffer;
@@ -67,9 +63,9 @@ public:
     {
         return m_GBuffer.GetIDTexture();
     }
-    uint32_t GetGBufferPosition() const override
+    void RequestEntityIdBuffer() override
     {
-        return m_GBuffer.GetPositionTexture();
+        m_EntityIdRequested = true;
     }
     uint32_t GetGBufferNormal() const override
     {
@@ -90,9 +86,8 @@ public:
 private:
     bool m_Enabled = true;
     GBuffer m_GBuffer;
-    std::shared_ptr<Shader> m_GBufferShader;
-    CommandQueue m_CommandQueue;
     bool m_IsDeferredCached = false;
+    bool m_EntityIdRequested = false;
 
     class IRenderService* m_RenderService = nullptr;
     class IShadowService* m_ShadowService = nullptr;

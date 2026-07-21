@@ -80,11 +80,11 @@ void main()
 
     if (tonemappingMode == 1) {
 
-        result = ReinhardTonemap(result);
+        result = ACESFilm(result);
 
     } else if (tonemappingMode == 2) {
 
-        result = ACESFilm(result);
+        result = ReinhardTonemap(result);
 
     }
 

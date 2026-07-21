@@ -4,6 +4,7 @@
 #include <platform/interface/i_window.h>
 #include <platform/interface/input_codes.h>
 #include <iostream>
+#include <algorithm>
 #include <string>
 
 InputManager::InputManager(const KeyboardManager& keyboard, const MouseManager& mouse, const IWindow& window)
@@ -69,6 +70,8 @@ bool InputManager::GetAction(const std::string& actionName) const
 
     for (const auto& binding : it->second.bindings)
     {
+        if (!IsBindingTypeActive(binding.type))
+            continue;
         if (binding.type == InputType::Key)
         {
             if (m_Keyboard.GetKey(static_cast<Key>(binding.code)))
@@ -102,9 +105,11 @@ bool InputManager::GetActionDown(const std::string& actionName) const
 
     for (const auto& binding : it->second.bindings)
     {
+        if (!IsBindingTypeActive(binding.type))
+            continue;
         if (binding.type == InputType::Key)
         {
-            if (const_cast<KeyboardManager&>(m_Keyboard).IsKeyDown(static_cast<Key>(binding.code)))
+            if (m_Keyboard.IsKeyDown(static_cast<Key>(binding.code)))
                 return true;
         }
         else if (binding.type == InputType::MouseButton)
@@ -135,6 +140,8 @@ bool InputManager::GetActionUp(const std::string& actionName) const
 
     for (const auto& binding : it->second.bindings)
     {
+        if (!IsBindingTypeActive(binding.type))
+            continue;
         if (binding.type == InputType::Key)
         {
             if (m_Keyboard.GetKeyUp(static_cast<Key>(binding.code)))
@@ -152,20 +159,44 @@ bool InputManager::GetActionUp(const std::string& actionName) const
 
 std::vector<DeviceInfo> InputManager::GetAllDevices() const
 {
-    return m_Window.GetConnectedDevices();
+    std::vector<DeviceInfo> devices;
+    devices.push_back({"merged_input", "Keyboard & Mouse", DeviceType::Keyboard, true});
+    for (const auto& device : m_Window.GetConnectedDevices())
+    {
+        if (device.type == DeviceType::Keyboard || device.type == DeviceType::Mouse)
+            devices.push_back(device);
+    }
+    return devices;
 }
 
 DeviceInfo InputManager::GetCurrentDevice() const
 {
-    DeviceInfo info;
-    info.id = "merged_input";
-    info.name = "Keyboard & Mouse";
-    info.type = DeviceType::Keyboard;
-    info.isDefault = true;
-    return info;
+    for (const auto& device : GetAllDevices())
+    {
+        if (device.id == m_ActiveDeviceId)
+            return device;
+    }
+    return {"merged_input", "Keyboard & Mouse", DeviceType::Keyboard, true};
 }
 
 bool InputManager::SetActiveDevice(const std::string& deviceId)
 {
+    const auto devices = GetAllDevices();
+    const auto found =
+        std::find_if(devices.begin(), devices.end(), [&](const DeviceInfo& device) { return device.id == deviceId; });
+    if (found == devices.end())
+        return false;
+    m_ActiveDeviceId = deviceId;
     return true;
+}
+
+bool InputManager::IsBindingTypeActive(InputType type) const
+{
+    if (m_ActiveDeviceId == "merged_input")
+        return true;
+    if (m_ActiveDeviceId == "keyboard_0")
+        return type == InputType::Key;
+    if (m_ActiveDeviceId == "mouse_0")
+        return type == InputType::MouseButton;
+    return false;
 }

@@ -1,12 +1,16 @@
 add_executable(axis_test
     test_main.cpp
+    api/test_public_headers.cpp
     unit/test_collision_matrix.cpp
     unit/test_entity_manager.cpp
-    unit/test_event_manager.cpp
+      unit/test_event_manager.cpp
+      unit/test_dds_texture_loader.cpp
     unit/test_pathfinding.cpp
+    unit/test_runtime_contracts.cpp
     unit/test_scene_validator.cpp
     unit/test_static_batch_manager.cpp
     unit/test_texture_ownership.cpp
+    unit/test_video_decoder.cpp
     unit/test_yaml_parser.cpp
     unit/test_yaml_writer.cpp
     integration/test_binary_scene_serializer.cpp
@@ -31,6 +35,7 @@ add_executable(axis_test
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario29.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario30.cpp
     ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario31.cpp
+    ${CMAKE_SOURCE_DIR}/sample/src/scenarios/scenario33.cpp
 )
 
 target_include_directories(axis_test PRIVATE
@@ -41,7 +46,11 @@ target_include_directories(axis_test PRIVATE
     ${CMAKE_SOURCE_DIR}/include/engine
 )
 
-target_compile_definitions(axis_test PRIVATE AXIS_TESTING)
+file(TO_CMAKE_PATH "${CMAKE_SOURCE_DIR}/sample/resource/video/sample.mp4" AXIS_TEST_VIDEO_PATH_VALUE)
+target_compile_definitions(axis_test PRIVATE
+    AXIS_TESTING
+    AXIS_TEST_VIDEO_PATH="${AXIS_TEST_VIDEO_PATH_VALUE}"
+)
 
 target_link_libraries(axis_test PRIVATE axis_engine)
 

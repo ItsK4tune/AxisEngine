@@ -70,6 +70,7 @@ public:
     void RemoveCharacterController(ICharacterController* controller) override;
 
     void DebugDraw() override;
+    void SetDebugRenderContext(IBufferManager* bufferManager, IDrawContext* drawContext) override;
 
     RayHit Raycast(const glm::vec3& origin, const glm::vec3& dir, float maxDist,
                    entt::entity ignore = entt::null) override;

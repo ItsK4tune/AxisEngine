@@ -12,7 +12,6 @@ RuntimeCore::RuntimeCore()
 void RuntimeCore::Initialize()
 {
     m_EngineLoop.Initialize();
-    m_StateMachine.Initialize();
 
     LOGGER_INFO("RuntimeCore") << "Initialized";
 }

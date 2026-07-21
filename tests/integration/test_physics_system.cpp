@@ -2,8 +2,10 @@
 #include "test_framework.h"
 #include "test_support.h"
 
+#include <core/app/engine_accessor.h>
 #include <core/logic/service_locator.h>
 #include <ecs/logic/physics_system.h>
+#include <ecs/logic/system_manager.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/physics_components.h>
 #include <physics/logic/physics_loader.h>
@@ -12,6 +14,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 using axis_test_mocks::FakePhysicsWorld;
+using axis_test_mocks::FakeRigidBody;
 
 namespace
 {
@@ -41,8 +44,7 @@ public:
 
     ~BulletBodyRegistration()
     {
-        for (auto it = m_Bodies.rbegin(); it != m_Bodies.rend(); ++it)
-            m_World.RemoveRigidBody(*it);
+        for (auto it = m_Bodies.rbegin(); it != m_Bodies.rend(); ++it) m_World.RemoveRigidBody(*it);
     }
 
     void Add(IRigidBody* body)
@@ -203,6 +205,59 @@ AXIS_TEST_CASE("PhysicsSystem collision filter respects disabled collision flag"
     AXIS_CHECK(!physics.collisionFilter(enabled, disabled));
     AXIS_CHECK(!physics.collisionFilter(disabled, enabled));
     system.Reset();
+    axis_test_support::ResetServices();
+}
+
+AXIS_TEST_CASE("EngineAccessor ForcePhysicsUpdate performs an explicit positive-time physics step")
+{
+    axis_test_support::ResetServices();
+    Scene scene;
+    FakePhysicsWorld physics;
+    SystemManager systems;
+    systems.RegisterSystem(std::make_unique<PhysicsSystem>());
+    ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
+    ServiceLocator::Instance().Register<ISystemRegistry>(&systems);
+
+    EngineAccessor accessor;
+    accessor.SetActiveScene(&scene);
+    accessor.ForcePhysicsUpdate(0.25f);
+
+    AXIS_CHECK(physics.updateCount == 1);
+    AXIS_CHECK_NEAR(physics.lastUpdateDt, 0.25f, 0.0001f);
+    systems.Shutdown();
+    axis_test_support::ResetServices();
+}
+
+AXIS_TEST_CASE("Constraints are tracked by both bodies and removed when either endpoint is destroyed")
+{
+    axis_test_support::ResetServices();
+    Scene scene;
+    FakePhysicsWorld physics;
+    ServiceLocator::Instance().Register<IPhysicsWorld>(&physics);
+
+    Entity first = scene.CreateEntity("FirstBody");
+    Entity second = scene.CreateEntity("SecondBody");
+    scene.AddComponent<RigidBodyComponent>(first);
+    scene.AddComponent<RigidBodyComponent>(second);
+    auto& firstBody = scene.GetComponent<RigidBodyComponent>(first);
+    auto& secondBody = scene.GetComponent<RigidBodyComponent>(second);
+    firstBody.body = std::make_shared<FakeRigidBody>();
+    secondBody.body = std::make_shared<FakeRigidBody>();
+
+    EngineAccessor accessor;
+    accessor.SetActiveScene(&scene);
+    accessor.CreateHingeConstraint(first, second, {}, {}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f});
+    accessor.CreatePointToPointConstraint(first, second, {}, {});
+    accessor.CreateFixedConstraint(first, second, {}, {}, glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+                                   glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+
+    AXIS_CHECK(physics.constraints.size() == 3);
+    AXIS_CHECK(firstBody.constraints.size() == 3);
+    AXIS_CHECK(secondBody.constraints.size() == 3);
+
+    scene.DestroyEntity(second);
+    AXIS_CHECK(physics.removedConstraints.size() == 3);
+    AXIS_CHECK(scene.GetComponent<RigidBodyComponent>(first).constraints.empty());
     axis_test_support::ResetServices();
 }
 

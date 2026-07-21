@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <typeindex>
 #include <algorithm>
 #include <functional>
@@ -13,8 +14,8 @@ namespace internal
 {
 inline int GetNextEventId()
 {
-    static int id = 0;
-    return id++;
+    static std::atomic<int> id = 0;
+    return id.fetch_add(1, std::memory_order_relaxed);
 }
 }  // namespace internal
 
@@ -141,6 +142,12 @@ public:
             auto* dispatcher = static_cast<EventDispatcher<T>*>(m_Dispatchers[eventId].get());
             dispatcher->Unregister(listenerId);
         }
+    }
+
+    void Clear()
+    {
+        std::lock_guard<std::mutex> lock(m_DispatchersMutex);
+        m_Dispatchers.clear();
     }
 
     void Unsubscribe(int listenerId)

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <core/logic/event_manager.h>
 #include <ecs/interface/i_ecs_system.h>
 #include <ecs/interface/i_render_system.h>
 #include <ecs/interface/i_update_system.h>
@@ -56,9 +55,6 @@ public:
 
     void Update(Scene& scene, float dt) override;
     void Render(Scene& scene) override;
-    void RenderAlphaPass(Scene& scene, int width, int height, float alpha) override
-    {
-    }
     void RenderShadowPass(Scene& scene, Shader& shader, const Frustum* lightFrustum, const glm::vec3& cullingOrigin,
                           float distanceCullingSq);
 
@@ -81,8 +77,6 @@ private:
 
     std::map<entt::entity, std::unique_ptr<TerrainData>> m_TerrainCache;
     Scene* m_LastScene = nullptr;
-    EventSubscriptionList m_EventSubscriptions;
-
     void BuildTerrain(entt::entity entity, TerrainComponent& terrain);
     void CreateChunkMesh(TerrainChunk& chunk, const TerrainComponent& terrain, int xOffset, int zOffset,
                          const std::vector<float>& heights, int mapWidth, int mapHeight);

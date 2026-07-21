@@ -16,7 +16,7 @@ uniform mat4 u_Model;
 
 uniform bool u_HasAnimation;
 
-const int MAX_BONES = 200;
+const int MAX_BONES = 128;
 
 uniform mat4 u_FinalBonesMatrices[MAX_BONES];
 

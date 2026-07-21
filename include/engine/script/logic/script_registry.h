@@ -4,10 +4,12 @@
 #include <ecs/interface/i_script_registry.h>
 #include <script/logic/scriptable.h>
 #include <functional>
-#include <iostream>
 #include <memory>
+#include <mutex>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class ScriptRegistry : public IScriptRegistry
 {
@@ -15,53 +17,17 @@ public:
     ScriptRegistry() = default;
     void Initialize();
 
-    using ScriptFactory = std::function<std::unique_ptr<IScriptable>()>;
-
     template <typename T>
     void Register(const std::string& name)
     {
-        if (m_FactoryMap.find(name) == m_FactoryMap.end())
-        {
-            m_FactoryMap[name] = []() -> std::unique_ptr<Scriptable> { return std::make_unique<T>(); };
-            LOGGER_INFO("ScriptRegistry") << "Registered script: " << name;
-        }
+        RegisterFactory(name, []() -> std::unique_ptr<IScriptable> { return std::make_unique<T>(); });
     }
 
+    bool RegisterFactory(const std::string& name, ScriptFactory factory) override;
     std::unique_ptr<IScriptable> Create(const std::string& name) override;
-
-    static std::unordered_map<std::string, ScriptFactory>& GetStaticFactoryMap()
-    {
-        static std::unordered_map<std::string, ScriptFactory> staticMap;
-        return staticMap;
-    }
+    std::vector<std::string> GetRegisteredNames() const override;
 
 private:
     std::unordered_map<std::string, ScriptFactory> m_FactoryMap;
+    mutable std::mutex m_FactoryMutex;
 };
-
-#define GET_MACRO(_1, _2, NAME, ...) NAME
-#define REGISTER_SCRIPT(...) GET_MACRO(__VA_ARGS__, REGISTER_SCRIPT_NAMED, REGISTER_SCRIPT_DEFAULT)(__VA_ARGS__)
-
-#define REGISTER_SCRIPT_DEFAULT(TYPE)                                                            \
-    struct AutoRegister_##TYPE                                                                   \
-    {                                                                                            \
-        AutoRegister_##TYPE()                                                                    \
-        {                                                                                        \
-            ScriptRegistry::GetStaticFactoryMap()[#TYPE] = []() -> std::unique_ptr<Scriptable> { \
-                return std::make_unique<TYPE>();                                                 \
-            };                                                                                   \
-        }                                                                                        \
-    };                                                                                           \
-    static AutoRegister_##TYPE global_ver_##TYPE;
-
-#define REGISTER_SCRIPT_NAMED(TYPE, NAME)                                                       \
-    struct AutoRegister_##TYPE                                                                  \
-    {                                                                                           \
-        AutoRegister_##TYPE()                                                                   \
-        {                                                                                       \
-            ScriptRegistry::GetStaticFactoryMap()[NAME] = []() -> std::unique_ptr<Scriptable> { \
-                return std::make_unique<TYPE>();                                                \
-            };                                                                                  \
-        }                                                                                       \
-    };                                                                                          \
-    static AutoRegister_##TYPE global_ver_##TYPE;

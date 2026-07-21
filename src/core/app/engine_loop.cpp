@@ -1,9 +1,11 @@
 #include <audio/logic/audio_service.h>
 #include <core/app/runtime_core.h>
+#include <audio/interface/i_audio_capture_service.h>
 #include <core/app/state_machine.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
+#include <core/logic/runtime_profiler.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/time_service.h>
 #include <core/type/event_types.h>
@@ -16,12 +18,12 @@
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <scene/logic/scene_manager.h>
+#include <algorithm>
+#include <cmath>
 
 #ifdef _WIN32
 #include <windows.h>
-
-typedef MMRESULT(WINAPI* LPTIMEBEGINPERIOD)(UINT);
-typedef MMRESULT(WINAPI* LPTIMEENDPERIOD)(UINT);
+#include <timeapi.h>
 #endif
 
 EngineLoop::EngineLoop() : m_LastFrameTime(std::chrono::steady_clock::now())
@@ -31,27 +33,22 @@ EngineLoop::EngineLoop() : m_LastFrameTime(std::chrono::steady_clock::now())
 void EngineLoop::Initialize()
 {
 #ifdef _WIN32
-    if (HMODULE hWinmm = LoadLibraryA("winmm.dll"))
-    {
-        if (auto pTimeBeginPeriod = (LPTIMEBEGINPERIOD)GetProcAddress(hWinmm, "timeBeginPeriod"))
-        {
-            pTimeBeginPeriod(1);
-        }
-    }
+    if (!m_TimerResolutionEnabled)
+        m_TimerResolutionEnabled = timeBeginPeriod(1) == TIMERR_NOERROR;
 #endif
 
     auto& sl = ServiceLocator::Instance();
     auto& configMgr = sl.Require<ConfigManager>();
     auto appConfig = configMgr.GetConfig();
 
-    SetPhysicsStep(1.0f / appConfig.physicsTickRate);
-    SetMaxSubSteps(appConfig.maxSubSteps);
+    SetPhysicsStep(1.0f / (std::max)(appConfig.physics.physicsTickRate, 1.0f));
+    SetMaxSubSteps(appConfig.physics.maxSubSteps);
     SetTimeScale(appConfig.timeScale);
 
     m_ConfigSubscriptionId =
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            SetPhysicsStep(1.0f / e.config.physicsTickRate);
-            SetMaxSubSteps(e.config.maxSubSteps);
+            SetPhysicsStep(1.0f / (std::max)(e.config.physics.physicsTickRate, 1.0f));
+            SetMaxSubSteps(e.config.physics.maxSubSteps);
             SetTimeScale(e.config.timeScale);
         });
 }
@@ -59,18 +56,17 @@ void EngineLoop::Initialize()
 void EngineLoop::Shutdown()
 {
 #ifdef _WIN32
-    if (HMODULE hWinmm = LoadLibraryA("winmm.dll"))
+    if (m_TimerResolutionEnabled)
     {
-        if (auto pTimeEndPeriod = (LPTIMEENDPERIOD)GetProcAddress(hWinmm, "timeEndPeriod"))
-        {
-            pTimeEndPeriod(1);
-        }
+        timeEndPeriod(1);
+        m_TimerResolutionEnabled = false;
     }
 #endif
 
     if (m_ConfigSubscriptionId != -1)
     {
         EventManager::Instance().Unsubscribe<ConfigChangedEvent>(m_ConfigSubscriptionId);
+        m_ConfigSubscriptionId = -1;
     }
 }
 
@@ -82,6 +78,8 @@ void EngineLoop::Run()
 {
     LOGGER_INFO("EngineLoop") << "Starting engine loop";
     m_IsRunning = true;
+    m_LastFrameTime = std::chrono::steady_clock::now();
+    m_Accumulator = 0.0f;
 
     auto& sl = ServiceLocator::Instance();
     auto ioHandler = sl.Resolve<IOHandler>();
@@ -104,6 +102,13 @@ void EngineLoop::Run()
 
 void EngineLoop::ProcessFrame()
 {
+    const auto profileStart = std::chrono::steady_clock::now();
+    auto& profiler = RuntimeProfiler::Instance();
+    profiler.BeginFrame();
+    const auto elapsedMs = [](const auto& start) {
+        return std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - start).count();
+    };
+
     auto& sl = ServiceLocator::Instance();
     auto ioHandler = sl.Resolve<IOHandler>();
     auto& timeService = sl.Require<TimeService>();
@@ -118,6 +123,7 @@ void EngineLoop::ProcessFrame()
     m_DeltaTime = m_RealDeltaTime;
     m_LastFrameTime = now;
 
+    auto stageStart = std::chrono::steady_clock::now();
     if (ioHandler)
     {
         auto window = ioHandler->GetMonitorManager().GetWindow();
@@ -127,6 +133,7 @@ void EngineLoop::ProcessFrame()
         }
         ioHandler->GetMouse().Update();
     }
+    profiler.AddPassTime(ProfiledRenderPass::Input, elapsedMs(stageStart));
 
     if (m_IsPaused)
     {
@@ -140,26 +147,35 @@ void EngineLoop::ProcessFrame()
     m_TotalTime += m_RealDeltaTime;
     timeService.SetTimeData(m_DeltaTime, m_RealDeltaTime, m_TotalTime);
 
+    stageStart = std::chrono::steady_clock::now();
     resourceManager.Update(m_RealDeltaTime);
+    if (auto* audioCapture = sl.Resolve<IAudioCaptureService>())
+        audioCapture->Update(m_RealDeltaTime);
+    profiler.AddPassTime(ProfiledRenderPass::ResourceUpdate, elapsedMs(stageStart));
 
+    stageStart = std::chrono::steady_clock::now();
     if (ioHandler)
     {
         ioHandler->ProcessInput();
         ioHandler->GetInputManager().Update();
     }
+    profiler.AddPassTime(ProfiledRenderPass::Input, elapsedMs(stageStart));
 
     auto& stateMachine = runtimeCore.GetStateMachine();
+    stageStart = std::chrono::steady_clock::now();
     systemManager.Update(scene, m_DeltaTime);
-    systemManager.UpdateDebug(m_RealDeltaTime);
 
     stateMachine.Update(m_DeltaTime);
+    profiler.AddPassTime(ProfiledRenderPass::GameUpdate, elapsedMs(stageStart));
 
     if (ioHandler)
     {
         ioHandler->GetMouse().EndFrame();
     }
 
+    stageStart = std::chrono::steady_clock::now();
     FixedUpdate();
+    profiler.AddPassTime(ProfiledRenderPass::FixedUpdate, elapsedMs(stageStart));
     Render();
 
     if (ioHandler)
@@ -167,11 +183,14 @@ void EngineLoop::ProcessFrame()
         auto window = ioHandler->GetMonitorManager().GetWindow();
         if (window)
         {
+            stageStart = std::chrono::steady_clock::now();
             window->SwapBuffers();
+            profiler.AddPassTime(ProfiledRenderPass::Swap, elapsedMs(stageStart));
 
             int frameRateLimit = ioHandler->GetMonitorManager().GetFrameRateLimit();
             if (frameRateLimit > 0)
             {
+                stageStart = std::chrono::steady_clock::now();
                 double targetFrameTime = 1.0 / (double)frameRateLimit;
                 auto frameEnd = std::chrono::steady_clock::now();
                 double frameElapsed = std::chrono::duration<double>(frameEnd - now).count();
@@ -192,6 +211,7 @@ void EngineLoop::ProcessFrame()
                         }
                     }
                 }
+                profiler.AddPassTime(ProfiledRenderPass::FrameLimiter, elapsedMs(stageStart));
             }
         }
     }
@@ -200,6 +220,10 @@ void EngineLoop::ProcessFrame()
     {
         sceneManager.UpdatePendingScene();
     }
+
+    const float fullFrameMs = elapsedMs(profileStart);
+    profiler.SetCpuFrameTime(fullFrameMs);
+    profiler.SetPassTime(ProfiledRenderPass::TotalFrame, fullFrameMs);
 }
 
 void EngineLoop::FixedUpdate()
@@ -249,9 +273,12 @@ void EngineLoop::Render()
         height = io->GetMonitorManager().GetHeight();
     }
 
+    EventManager::Instance().Publish(RenderFrameBeginEvent{m_DeltaTime});
     sysMgr.Render(scene, width, height, m_Alpha);
     rtCore.GetStateMachine().Render();
+    rtCore.GetStateMachine().RenderDebug();
     sysMgr.RenderDebug(scene);
+    EventManager::Instance().Publish(RenderFrameEndEvent{});
 }
 
 void EngineLoop::SetPhysicsStep(float step)
@@ -263,8 +290,16 @@ void EngineLoop::SetPhysicsStep(float step)
     }
 }
 
+void EngineLoop::SetMaxSubSteps(int steps)
+{
+    m_MaxSubSteps = std::clamp(steps, 1, 128);
+}
+
 void EngineLoop::SetTimeScale(float scale)
 {
+    if (!std::isfinite(scale))
+        scale = 1.0f;
+    scale = std::clamp(scale, 0.0f, 100.0f);
     if (std::abs(m_TimeScale - scale) > 0.0001f)
     {
         m_TimeScale = scale;

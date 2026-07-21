@@ -53,7 +53,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                     {
                         std::string name = resNode.GetChildValue("Name");
                         std::string path = resNode.GetChildValue("Path");
-                        res.LoadSound(name, path, sound->GetEngine());
+                        res.LoadSound(name, path);
                     }
                     else
                     {
@@ -86,20 +86,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                     auto* entOverride = const_cast<YAMLNode*>(overrideNode)->GetChild(entityName);
                     if (entOverride)
                     {
-                        LOGGER_INFO("FragmentLoader") << "Applying overrides to entity '" << entityName << "'";
                         YAMLNode::Merge(entNode, *entOverride);
-
-                        // Debug merged children
-                        for (auto& c : entNode.children)
-                        {
-                            if (c.key == "Component")
-                            {
-                                std::string subKeys = "";
-                                for (auto& sc : c.children) subKeys += sc.key + ", ";
-                                LOGGER_INFO("FragmentLoader")
-                                    << " Merged component '" << c.value << "' keys: " << subKeys;
-                            }
-                        }
                     }
                 }
 
@@ -116,12 +103,12 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 scene.AddComponent<RotationComponent>(currentEntity);
                 scene.AddComponent<ScaleComponent>(currentEntity);
                 scene.AddComponent<HierarchyComponent>(currentEntity);
-                auto& wt = scene.AddComponent<WorldTransformComponent>(currentEntity);
-                wt.isDirty = true;
+                scene.AddComponent<WorldTransformComponent>(currentEntity);
+                scene.MarkTransformDirty(currentEntity);
                 uint32_t entityLayer = 1;
                 if (auto* layerNode = entNode.GetChild("Layer"))
                 {
-                    entityLayer = std::stoul(layerNode->value);
+                    entityLayer = static_cast<uint32_t>(LoaderUtils::SafeStoul(layerNode->value, 1));
                 }
                 scene.AddComponent<InfoComponent>(currentEntity, namespacedName, namespacedTag);
 
@@ -137,8 +124,8 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                         scene.AddComponent<HierarchyComponent>(parent);
                     }
                     scene.GetRegistry().patch<HierarchyComponent>(currentEntity, [&](auto& h) { h.parent = parent; });
-                    scene.GetRegistry().patch<HierarchyComponent>(parent,
-                                                             [&](auto& h) { h.children.push_back(currentEntity); });
+                    scene.GetRegistry().patch<HierarchyComponent>(
+                        parent, [&](auto& h) { h.children.push_back(currentEntity); });
                 }
 
                 // Handle Transform component if present
@@ -182,7 +169,7 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
 
                         if (scene.HasAllComponents<WorldTransformComponent>(currentEntity))
                         {
-                            scene.GetComponent<WorldTransformComponent>(currentEntity).isDirty = true;
+                            scene.MarkTransformDirty(currentEntity);
                         }
                         break;
                     }
@@ -201,7 +188,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                     if (compType == "Transform")
                         continue;  // Already handled
 
-                    ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys);
+                    if (!ComponentLoader::Load(compType, scene, currentEntity, compNode, res, phys))
+                        LOGGER_WARN("FragmentLoader")
+                            << "Unknown component type '" << compType << "' in fragment entity '" << entityName << "'";
                 }
             }
         }

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <core/logic/event_manager.h>
+#include <audio/interface/i_audio_capture_service.h>
+#include <render/type/post_process_input.h>
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_resource_libraries.h>
 #include <resource/unit/shader.h>
@@ -10,8 +12,8 @@
 
 class IGraphicsContext;
 class ResourceManager;
+class TransientBufferRing;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 enum class AntiAliasingMode;
 
@@ -22,6 +24,7 @@ struct PostProcessEffect
     int width = 0, height = 0;
     int priority = 0;
     bool affectUI = false;
+    PostProcessInput inputs = PostProcessInput::Color;
 };
 
 class PostProcessPipeline
@@ -39,9 +42,12 @@ public:
     void ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4& prevViewProj, const glm::mat4& currViewProj,
                            const glm::vec2& jitterOffset);
 
-    void AddEffect(std::shared_ptr<Shader> shader, bool affectUI = false);
-    void AddEffect(std::shared_ptr<Shader> shader, int priority, bool affectUI = false);
-    void AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h, int priority = 0, bool affectUI = false);
+    void AddEffect(std::shared_ptr<Shader> shader, bool affectUI = false,
+                   PostProcessInput inputs = PostProcessInput::Color);
+    void AddEffect(std::shared_ptr<Shader> shader, int priority, bool affectUI = false,
+                   PostProcessInput inputs = PostProcessInput::Color);
+    void AddEffect(std::shared_ptr<Shader> shader, int x, int y, int w, int h, int priority = 0, bool affectUI = false,
+                   PostProcessInput inputs = PostProcessInput::Color);
 
     bool HasUIEffects() const;
     void RenderUIEffects();
@@ -57,13 +63,14 @@ public:
     }
     uint32_t GetFinalColorTexture() const
     {
-        return m_PingPong.color[m_PingPong.currentIndex] ? m_PingPong.color[m_PingPong.currentIndex]->Get() : 0;
+        return m_PingPong.CurrentColorHandle();
+    }
+    uint32_t GetFinalFBO()
+    {
+        return m_PingPong.CurrentFBO().Get();
     }
 
     void ClearEffects();
-
-    float GetGamma() const;
-    float GetExposure() const;
 
     int GetWidth() const
     {
@@ -116,33 +123,64 @@ private:
         std::unique_ptr<GPUFramebuffer> fbo[2];
         std::unique_ptr<GPUTexture> color[2];
         int currentIndex = 0;
+        int writeIndex = 1;
+        GPUFramebuffer* externalCurrentFBO = nullptr;
+        GPUTexture* externalCurrentColor = nullptr;
 
         GPUFramebuffer& CurrentFBO()
         {
-            return *fbo[currentIndex];
+            return externalCurrentFBO ? *externalCurrentFBO : *fbo[currentIndex];
         }
         GPUFramebuffer& PreviousFBO()
         {
-            return *fbo[1 - currentIndex];
+            return *fbo[writeIndex];
         }
         GPUTexture& CurrentColor()
         {
-            return *color[currentIndex];
+            return externalCurrentColor ? *externalCurrentColor : *color[currentIndex];
         }
         GPUTexture& PreviousColor()
         {
-            return *color[1 - currentIndex];
+            return *color[writeIndex];
+        }
+        uint32_t CurrentColorHandle() const
+        {
+            if (externalCurrentColor)
+                return externalCurrentColor->Get();
+            return color[currentIndex] ? color[currentIndex]->Get() : 0;
+        }
+        void ResetToCapture()
+        {
+            currentIndex = 0;
+            writeIndex = 1;
+            externalCurrentFBO = nullptr;
+            externalCurrentColor = nullptr;
+        }
+        void SetExternalCurrent(GPUFramebuffer& framebuffer, GPUTexture& texture)
+        {
+            externalCurrentFBO = &framebuffer;
+            externalCurrentColor = &texture;
+            writeIndex = 1;
         }
         void Swap()
         {
-            currentIndex ^= 1;
+            currentIndex = writeIndex;
+            writeIndex = 1 - currentIndex;
+            externalCurrentFBO = nullptr;
+            externalCurrentColor = nullptr;
         }
     } m_PingPong;
 
     std::unique_ptr<GPUTexture> m_DepthTexture;
+    std::unique_ptr<TransientBufferRing> m_PulseUpload;
+    size_t m_PulseBufferCapacity = 0;
+    size_t m_PulseBufferOffset = 0;
+    size_t m_PulseBufferSize = 0;
+    bool m_PulseUploadPending = false;
 
-    std::unique_ptr<GPUFramebuffer> m_HistoryFBO;
-    std::unique_ptr<GPUTexture> m_HistoryTexture;
+    std::unique_ptr<GPUFramebuffer> m_HistoryFBO[2];
+    std::unique_ptr<GPUTexture> m_HistoryTexture[2];
+    int m_HistoryIndex = 0;
 
     std::shared_ptr<Shader> m_FXAAShader;
     std::shared_ptr<Shader> m_TAAShader;
@@ -159,10 +197,22 @@ private:
 
     GpuHandle m_QuadVAO;
     GpuHandle m_QuadVBO;
-    GpuHandle m_PartialVAO;
-    GpuHandle m_PartialVBO;
 
     std::vector<PostProcessEffect> m_Effects;
+    bool m_EffectsDirty = false;
+    bool m_HasUIEffects = false;
+
+    struct FrameInputs
+    {
+        uint32_t depthTexture = 0;
+        uint32_t normalTexture = 0;
+        uint32_t worldPositionTexture = 0;
+        glm::mat4 inverseViewProjection{1.0f};
+        AudioCaptureSnapshot audio;
+        size_t pulseCount = 0;
+        bool hasCameraMatrices = false;
+        bool prepared = false;
+    } m_FrameInputs;
 
     glm::vec4 m_ClearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
     bool m_HDREnabled = false;
@@ -179,6 +229,8 @@ private:
     void UpdateConfig();
     void InitQuad();
     void InitFramebuffers();
+    void PrepareFrameInputs();
+    void CommitPulseUpload();
     void RenderBloom(uint32_t srcTexture);
     void RenderEffectsRange(int minPriority, int maxPriority, bool affectUI);
 };

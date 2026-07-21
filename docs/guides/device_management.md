@@ -1,6 +1,7 @@
 # Device Management
 
-The AXIS Engine uses a unified `IDeviceManager` interface to handle hardware devices (Monitors, Audio, Inputs).
+Axis uses `IDeviceManager` for monitors and input devices. Audio playback and microphone capture have
+separate interfaces because their lifecycles and capabilities are different.
 
 ## 1. IDeviceManager Interface
 
@@ -10,7 +11,7 @@ All device managers implement `IDeviceManager`, providing a standard way to enum
 struct DeviceInfo {
     std::string id;       // Unique ID used for selection
     std::string name;     // Human-readable name
-    DeviceType type;      // Monitor, Keyboard, Mouse, AudioOutput, etc.
+    DeviceType type;      // Monitor, Keyboard, Mouse, Joystick, or Gamepad
     bool isDefault;       // Is this the system default?
 };
 
@@ -27,13 +28,14 @@ virtual bool SetActiveDevice(const std::string& deviceId) = 0;
 - Supports resizing, fullscreen/windowed modes, vsync.
 - **Config**: Set via the `Config` block in your `.axs` scene file.
 
-### SoundManager
-- Manages Audio Output devices via `irrKlang`.
-- **Config**: Set via the `Config` block in your `.axs` scene file.
-
 ### InputManager
 - Manages Keyboards, Mice, and Joysticks.
 - Currently supports listing devices.
+
+### Audio services
+- `IAudioEngine` owns playback and reports backend-specific output-device capabilities.
+- `IAudioCaptureService` owns microphone enumeration, selection, calibration, and level/pulse snapshots.
+- See [Microphone capture](audio_capture.md).
 
 ## 3. Debugging
 

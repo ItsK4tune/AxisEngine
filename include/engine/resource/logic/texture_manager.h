@@ -4,11 +4,15 @@
 #include <render/type/graphics_types.h>
 #include <resource/interface/i_asset_manager.h>
 #include <resource/logic/resource_cache.h>
+#include <resource/logic/dds_texture_loader.h>
 #include <future>
+#include <algorithm>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
+#include <cstdint>
+#include <unordered_map>
 
 class TextureManager : public IAssetManager<Texture>
 {
@@ -52,17 +56,33 @@ public:
     {
         m_StrictLoading = strict;
     }
+    void SetCompressedTextureLoadingEnabled(bool enabled)
+    {
+        m_CompressedTextureLoadingEnabled = enabled;
+    }
+    void SetCompletedLoadBudget(bool enabled, size_t maxPerFrame)
+    {
+        m_CompletedLoadBudgetEnabled = enabled;
+        m_MaxCompletedLoadsPerFrame = (std::max)(size_t{1}, maxPerFrame);
+    }
 
     void Initialize() override;
 
 private:
+    struct StbiPixelDeleter
+    {
+        void operator()(unsigned char* pixels) const;
+    };
+
     struct TextureData
     {
         std::string name;
         std::string path;
         int width, height, nrComponents;
-        unsigned char* data = nullptr;
+        std::unique_ptr<unsigned char, StbiPixelDeleter> data;
+        std::shared_ptr<CompressedTextureData> compressed;
         bool keepCpuData = false;
+        uint64_t generation = 0;
     };
 
     std::unordered_map<std::string, std::shared_ptr<Texture>> m_PathToTextureMap;
@@ -75,11 +95,15 @@ private:
     ResourceCache<Texture> m_Cache;
 
     std::vector<std::future<TextureData>> m_AsyncLoads;
+    std::unordered_map<std::string, uint64_t> m_LoadGenerations;
     std::mutex m_AsyncMutex;
+    size_t m_MaxCompletedLoadsPerFrame = 4;
+    bool m_CompletedLoadBudgetEnabled = true;
 
     bool m_AsyncEnabled = true;
     float m_MaxAnisotropy = 1.0f;
     bool m_StrictLoading = false;
+    bool m_CompressedTextureLoadingEnabled = true;
 
     std::shared_ptr<Texture> m_ErrorTexture;
 };

@@ -1,5 +1,4 @@
 #version 460 core
-layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec4 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out uint gEntityID;
@@ -23,6 +22,7 @@ uniform vec4 u_BaseColor;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
 uniform uint u_EntityID;
+flat in uint EntityID;
 uniform float u_Reflectivity;
 uniform float u_FresnelPower;
 uniform float u_FresnelBias;
@@ -37,13 +37,12 @@ void main()
     float metallic = clamp(u_Metallic * texture(u_MetallicMap, uv).r, 0.0, 1.0);
     float roughness = clamp(u_Roughness * texture(u_RoughnessMap, uv).r, 0.04, 1.0);
 
-    gPosition = FragPos;
     gNormal = vec4(normalize(Normal), u_ReceiveShadowFlag);
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = max(u_FresnelBias, 0.04);
-    gEntityID = u_EntityID;
+    gEntityID = EntityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, uv).rgb;
 
-    float packedReflection = clamp(u_FresnelPower / 100.0, 0.0, 0.99);
+    float packedReflection = round(clamp(u_FresnelPower, 0.0, 15.0)) / 255.0;
     gPBRParams = vec4(metallic, roughness, u_Reflectivity, packedReflection);
 }

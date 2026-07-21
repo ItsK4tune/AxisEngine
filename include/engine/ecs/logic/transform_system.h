@@ -6,6 +6,7 @@
 #include <ecs/unit/core_components.h>
 #include <scene/logic/scene.h>
 #include <unordered_set>
+#include <unordered_map>
 
 class TransformSystem : public IUpdateSystem, public IECSSystem
 {
@@ -51,6 +52,10 @@ public:
     {
         m_IsLinearTransformsDirty = true;
     }
+    void MarkTransformDirty(entt::entity entity)
+    {
+        m_DirtyTransforms.insert(entity);
+    }
     void BindRegistry(Scene& scene);
     void UnbindRegistries();
     void RebuildLinearTransforms(Scene& scene);
@@ -61,5 +66,9 @@ public:
 
 private:
     std::unordered_set<entt::registry*> m_BoundRegistries;
+    bool m_HasParentedTransforms = false;
+    std::unordered_set<entt::entity> m_DirtyTransforms;
+    std::unordered_map<entt::entity, size_t> m_LinearTransformIndices;
+    std::vector<entt::entity> m_DirtyScratch;
     EventSubscriptionList m_EventSubscriptions;
 };

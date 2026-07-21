@@ -104,11 +104,7 @@ void MouseManager::SetCursorMode(CursorMode mode)
 
     if (m_ForceFree && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
     {
-#ifdef ENABLE_EDITOR
         mode = CursorMode::Disabled;
-#else
-        mode = CursorMode::Normal;
-#endif
     }
 
     if (mode == CursorMode::Locked && m_Mode != CursorMode::Locked)
@@ -117,7 +113,6 @@ void MouseManager::SetCursorMode(CursorMode mode)
         m_LockY = m_LastY;
     }
 
-#ifdef ENABLE_EDITOR
     if (mode == CursorMode::Disabled)
     {
         // Disabled = cursor visible, normal movement, but game ignores mouse data
@@ -126,7 +121,6 @@ void MouseManager::SetCursorMode(CursorMode mode)
         m_Mode = CursorMode::Disabled;
         return;
     }
-#endif
 
     m_Window->SetCursorMode(mode);
     m_Mode = mode;

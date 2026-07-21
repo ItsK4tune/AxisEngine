@@ -1,11 +1,22 @@
 #include <resource/unit/shader.h>
 #include <core/logic/logger.h>
+#include <core/logic/runtime_profiler.h>
 #include <core/logic/service_locator.h>
 #include <ecs/interface/i_geometry_service.h>
 #include <render/interface/i_shader_manager.h>
 #include <resource/logic/shader_manager.h>
+#include <render/type/shader_abi.h>
 #include <fstream>
 #include <sstream>
+
+namespace
+{
+void RecordUniformUpdate(int location)
+{
+    if (location != -1)
+        RuntimeProfiler::Instance().AddUniformUpdates();
+}
+}
 
 Shader::Shader(IShaderManager& manager) : ID(0), m_ShaderManager(manager)
 {
@@ -119,10 +130,7 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
         sm.DeleteProgram(previousID);
     }
 
-    {
-        std::lock_guard<std::mutex> lock(m_UniformMutex);
-        m_UniformLocations.clear();
-    }
+    m_UniformLocations.clear();
 
     m_Loc_u_Model = -2;
     m_Loc_u_TintColor = -2;
@@ -140,7 +148,6 @@ void Shader::load(const char* vertexPath, const char* fragmentPath, const char* 
     m_Loc_u_FresnelPower = -2;
     m_Loc_u_FresnelBias = -2;
     m_Loc_u_ReflectionIntensity = -2;
-    m_Loc_isInstanced = -2;
 
     LOGGER_INFO("Shader") << "Shader loaded successfully: " << vertexPath << " | " << fragmentPath;
 }
@@ -185,6 +192,7 @@ void Shader::setBool(const std::string& name, bool value) const
 
 void Shader::setBool(int location, bool value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform1i(location, (int)value);
 }
@@ -196,6 +204,7 @@ void Shader::setInt(const std::string& name, int value) const
 
 void Shader::setInt(int location, int value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform1i(location, value);
 }
@@ -207,6 +216,7 @@ void Shader::setUInt(const std::string& name, unsigned int value) const
 
 void Shader::setUInt(int location, unsigned int value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform1ui(location, value);
 }
@@ -218,6 +228,7 @@ void Shader::setFloat(const std::string& name, float value) const
 
 void Shader::setFloat(int location, float value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform1f(location, value);
 }
@@ -229,6 +240,7 @@ void Shader::setVec2(const std::string& name, const glm::vec2& value) const
 
 void Shader::setVec2(int location, const glm::vec2& value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform2fv(location, &value[0]);
 }
@@ -245,6 +257,7 @@ void Shader::setVec3(const std::string& name, const glm::vec3& value) const
 
 void Shader::setVec3(int location, const glm::vec3& value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform3fv(location, &value[0]);
 }
@@ -261,6 +274,7 @@ void Shader::setVec4(const std::string& name, const glm::vec4& value) const
 
 void Shader::setVec4(int location, const glm::vec4& value) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniform4fv(location, &value[0]);
 }
@@ -273,6 +287,7 @@ void Shader::setVec4(const std::string& name, float x, float y, float z, float w
 void Shader::setMat2(const std::string& name, const glm::mat2& mat) const
 {
     int loc = GetUniformLocation(name);
+    RecordUniformUpdate(loc);
     if (loc != -1)
         m_ShaderManager.SetUniformMatrix2fv(loc, &mat[0][0]);
 }
@@ -280,6 +295,7 @@ void Shader::setMat2(const std::string& name, const glm::mat2& mat) const
 void Shader::setMat3(const std::string& name, const glm::mat3& mat) const
 {
     int loc = GetUniformLocation(name);
+    RecordUniformUpdate(loc);
     if (loc != -1)
         m_ShaderManager.SetUniformMatrix3fv(loc, &mat[0][0]);
 }
@@ -291,6 +307,7 @@ void Shader::setMat4(const std::string& name, const glm::mat4& mat) const
 
 void Shader::setMat4(int location, const glm::mat4& mat) const
 {
+    RecordUniformUpdate(location);
     if (location != -1)
         m_ShaderManager.SetUniformMatrix4fv(location, &mat[0][0]);
 }
@@ -302,6 +319,7 @@ void Shader::setVec3Array(const std::string& name, const glm::vec3* values, int 
 
 void Shader::setVec3Array(int location, const glm::vec3* values, int count) const
 {
+    RecordUniformUpdate(location);
     if (location != -1 && values != nullptr && count > 0)
         m_ShaderManager.SetUniform3fvArray(location, count, &values[0][0]);
 }
@@ -313,11 +331,12 @@ void Shader::setMat4Array(const std::string& name, const std::vector<glm::mat4>&
 
 void Shader::setMat4Array(int location, const std::vector<glm::mat4>& matrices) const
 {
+    RecordUniformUpdate(location);
     if (matrices.empty() || location == -1)
         return;
     int count = static_cast<int>(matrices.size());
-    if (count > 128)
-        count = 128;
+    if (count > ShaderABI::MaxBones)
+        count = ShaderABI::MaxBones;
 
     m_ShaderManager.SetUniformMatrix4fvArray(location, count, &matrices[0][0][0]);
 }
@@ -325,15 +344,15 @@ void Shader::setMat4Array(int location, const std::vector<glm::mat4>& matrices) 
 void Shader::setCustomPorts(const ShaderPorts& ports) const
 {
     int loc = GetUniformLocation("u_CustomPorts");
+    RecordUniformUpdate(loc);
     if (loc != -1)
     {
-        m_ShaderManager.SetUniform1fv(loc, 8, ports.data);
+        m_ShaderManager.SetUniform1fv(loc, ShaderABI::CustomPortCount, ports.data);
     }
 }
 
 int Shader::GetUniformLocation(const std::string& name) const
 {
-    std::lock_guard<std::mutex> lock(m_UniformMutex);
     auto it = m_UniformLocations.find(name);
     if (it != m_UniformLocations.end())
         return it->second;
@@ -370,42 +389,49 @@ void Shader::checkCompileErrors(unsigned int shader, std::string type)
 
 void Shader::setBool_Fast(int& cachedLoc, const std::string& name, bool value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setBool(cachedLoc, value);
 }
 
 void Shader::setInt_Fast(int& cachedLoc, const std::string& name, int value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setInt(cachedLoc, value);
 }
 
 void Shader::setUInt_Fast(int& cachedLoc, const std::string& name, unsigned int value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setUInt(cachedLoc, value);
 }
 
 void Shader::setFloat_Fast(int& cachedLoc, const std::string& name, float value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setFloat(cachedLoc, value);
 }
 
 void Shader::setVec3_Fast(int& cachedLoc, const std::string& name, const glm::vec3& value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setVec3(cachedLoc, value);
 }
 
 void Shader::setVec4_Fast(int& cachedLoc, const std::string& name, const glm::vec4& value) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setVec4(cachedLoc, value);
 }
 
 void Shader::setMat4_Fast(int& cachedLoc, const std::string& name, const glm::mat4& mat) const
 {
-    if (cachedLoc == -2) cachedLoc = GetUniformLocation(name);
+    if (cachedLoc == -2)
+        cachedLoc = GetUniformLocation(name);
     setMat4(cachedLoc, mat);
 }

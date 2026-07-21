@@ -5,7 +5,6 @@
 #include <glm/glm.hpp>
 
 class RenderQueue;
-class StaticBatchManager;
 class ShadowRenderer;
 class MaterialRenderer;
 class Shader;

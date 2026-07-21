@@ -1,76 +1,130 @@
 #include <core/logic/config_loader.h>
-#include <core/app/runtime_core.h>
-#include <core/logic/backend_registry.h>
 #include <core/logic/logger.h>
-#include <physics/interface/i_physics_world.h>
-#include <platform/interface/i_window.h>
-#include <platform/logic/io_handler.h>
-#include <platform/logic/monitor_manager.h>
-#include <render/type/graphics_types.h>
 #include <algorithm>
+#include <charconv>
+#include <cctype>
 #include <unordered_map>
 
 namespace
 {
 std::string ToUpper(std::string s)
 {
-    std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char value) { return static_cast<char>(std::toupper(value)); });
     return s;
 }
 
-template <typename T>
-T ResolveEnum(const std::string& input, const std::unordered_map<std::string, T>& mapping, T defaultValue)
+std::string ReadRemaining(std::stringstream& stream)
 {
-    if (input.empty())
-        return defaultValue;
+    std::string value;
+    std::getline(stream, value);
+    const size_t first = value.find_first_not_of(" \t");
+    return first == std::string::npos ? std::string{} : value.substr(first);
+}
 
-    try
+template <typename T>
+T ResolveEnum(const char* key, const std::string& input, const std::unordered_map<std::string, T>& mapping,
+              T currentValue)
+{
+    if (!input.empty())
     {
-        size_t pos;
-        int val = std::stoi(input, &pos);
-        if (pos == input.length())
+        int val = 0;
+        const auto [end, error] = std::from_chars(input.data(), input.data() + input.size(), val);
+        if (error == std::errc{} && end == input.data() + input.size())
         {
-            for (auto const& [name, enumVal] : mapping)
+            for (const auto& [name, enumValue] : mapping)
             {
-                if (static_cast<int>(enumVal) == val)
-                    return enumVal;
+                if (static_cast<int>(enumValue) == val)
+                    return enumValue;
             }
         }
+        else
+        {
+            std::string clean = ToUpper(input);
+            const size_t colon = clean.rfind("::");
+            if (colon != std::string::npos)
+                clean = clean.substr(colon + 2);
+
+            if (const auto it = mapping.find(clean); it != mapping.end())
+                return it->second;
+        }
     }
-    catch (...)
-    {
-    }
 
-    std::string clean = ToUpper(input);
-
-    size_t colon = clean.rfind("::");
-    if (colon != std::string::npos)
-    {
-        clean = clean.substr(colon + 2);
-    }
-
-    auto it = mapping.find(clean);
-    if (it != mapping.end())
-        return it->second;
-
-    return defaultValue;
+    LOGGER_WARN("ConfigLoader") << "Invalid value '" << input << "' for " << key << "; keeping current value.";
+    return currentValue;
 }
-}  // namespace
 
-template <typename Backend>
-bool AcceptSupportedBackend(const char* key, Backend requested, Backend& target, const char* supported)
+bool LoadOptimizationSetting(const std::string& key, std::stringstream& stream, OptimizationConfig& config)
 {
-    if (BackendRegistry::IsSupported(requested))
+    static const std::unordered_map<std::string, bool OptimizationConfig::*> boolFields = {
+        {"OPT_RESOURCE_HOT_RELOAD", &OptimizationConfig::resourceHotReloadEnabled},
+        {"OPT_RESOURCE_UPLOAD_BUDGET", &OptimizationConfig::resourceUploadBudgetEnabled},
+        {"OPT_DISCARD_CPU_MESH_DATA_AFTER_UPLOAD", &OptimizationConfig::discardCpuMeshDataAfterUpload},
+        {"OPT_COMPRESSED_TEXTURE_LOADING", &OptimizationConfig::compressedTextureLoadingEnabled},
+        {"OPT_STREAMING_UPDATE_THROTTLING", &OptimizationConfig::streamingUpdateThrottlingEnabled},
+        {"OPT_REFLECTION_CAPTURE_BUDGET", &OptimizationConfig::reflectionCaptureBudgetEnabled},
+        {"OPT_SHADOW_PARALLEL_BUILD", &OptimizationConfig::shadowParallelBuildEnabled},
+        {"OPT_ANIMATION_PARALLEL_EVALUATION", &OptimizationConfig::animationParallelEvaluationEnabled},
+        {"OPT_NAVIGATION_SPATIAL_HASH", &OptimizationConfig::navigationSpatialHashEnabled},
+        {"OPT_NAVIGATION_ASYNC_PATHFINDING", &OptimizationConfig::navigationAsyncPathfindingEnabled},
+        {"OPT_NAVMESH_REBUILD_BUDGET", &OptimizationConfig::navMeshRebuildBudgetEnabled},
+        {"OPT_NAVIGATION_DIRTY_TILES", &OptimizationConfig::navigationDirtyTilesEnabled},
+        {"OPT_NETWORK_BATCHING", &OptimizationConfig::networkBatchingEnabled},
+        {"OPT_NETWORK_REPLICATION", &OptimizationConfig::networkReplicationEnabled},
+        {"OPT_PARTICLE_SPAWN_BUDGET", &OptimizationConfig::particleSpawnBudgetEnabled},
+        {"OPT_PARTICLE_BATCHING", &OptimizationConfig::particleBatchingEnabled},
+        {"OPT_RENDER_STATE_CACHE", &OptimizationConfig::renderStateCacheEnabled},
+        {"OPT_PERSISTENT_MAPPED_BUFFERS", &OptimizationConfig::persistentMappedBuffersEnabled},
+        {"OPT_TILED_LIGHT_CULLING", &OptimizationConfig::tiledLightCullingEnabled},
+        {"OPT_GBUFFER_ENTITY_ID", &OptimizationConfig::gbufferEntityIdEnabled},
+        {"OPT_PHYSICS_MESH_SHAPE_CACHE", &OptimizationConfig::physicsMeshShapeCacheEnabled},
+        {"OPT_UI_LAYOUT_CACHE", &OptimizationConfig::uiLayoutCacheEnabled},
+        {"OPT_VIDEO_ASYNC_DECODE", &OptimizationConfig::videoAsyncDecodeEnabled},
+    };
+    static const std::unordered_map<std::string, int OptimizationConfig::*> intFields = {
+        {"OPT_MAX_MODEL_UPLOADS_PER_FRAME", &OptimizationConfig::maxModelUploadsPerFrame},
+        {"OPT_MAX_TEXTURE_UPLOADS_PER_FRAME", &OptimizationConfig::maxTextureUploadsPerFrame},
+        {"OPT_MAX_REFLECTION_PROBE_FACES_PER_FRAME", &OptimizationConfig::maxReflectionProbeFacesPerFrame},
+        {"OPT_MAX_PLANAR_REFLECTION_CAPTURES_PER_FRAME", &OptimizationConfig::maxPlanarReflectionCapturesPerFrame},
+        {"OPT_SHADOW_PARALLEL_THRESHOLD", &OptimizationConfig::shadowParallelThreshold},
+        {"OPT_ANIMATION_PARALLEL_THRESHOLD", &OptimizationConfig::animationParallelThreshold},
+        {"OPT_NAVIGATION_MAX_PATH_REQUESTS_PER_FRAME", &OptimizationConfig::navigationMaxPathRequestsPerFrame},
+        {"OPT_MAX_NAVMESH_REBUILDS_PER_FRAME", &OptimizationConfig::maxNavMeshRebuildsPerFrame},
+        {"OPT_NAVIGATION_MAX_DIRTY_TILES_PER_FRAME", &OptimizationConfig::navigationMaxDirtyTilesPerFrame},
+        {"OPT_NETWORK_MAX_EVENTS_PER_UPDATE", &OptimizationConfig::networkMaxEventsPerUpdate},
+        {"OPT_NETWORK_MAX_BYTES_PER_UPDATE", &OptimizationConfig::networkMaxBytesPerUpdate},
+        {"OPT_PARTICLE_MAX_SPAWN_PER_FRAME", &OptimizationConfig::particleMaxSpawnPerFrame},
+        {"OPT_TILED_LIGHT_TILE_SIZE", &OptimizationConfig::tiledLightTileSize},
+    };
+    static const std::unordered_map<std::string, float OptimizationConfig::*> floatFields = {
+        {"OPT_STREAMING_CHECK_INTERVAL", &OptimizationConfig::streamingCheckIntervalSeconds},
+        {"OPT_NAVIGATION_AGENT_CELL_SIZE", &OptimizationConfig::navigationAgentCellSize},
+        {"OPT_NAVIGATION_NAVMESH_TILE_SIZE", &OptimizationConfig::navigationNavMeshTileSize},
+        {"OPT_NETWORK_MAX_EVENT_PROCESSING_MS", &OptimizationConfig::networkMaxEventProcessingMs},
+        {"OPT_NETWORK_REPLICATION_RATE_HZ", &OptimizationConfig::networkReplicationRateHz},
+        {"OPT_NETWORK_INTEREST_RADIUS", &OptimizationConfig::networkInterestRadius},
+    };
+
+    if (const auto field = boolFields.find(key); field != boolFields.end())
     {
-        target = requested;
+        int value = 0;
+        stream >> value;
+        config.*(field->second) = value != 0;
         return true;
     }
-
-    LOGGER_ERROR("ConfigLoader") << key << " requested unsupported backend '" << BackendRegistry::ToString(requested)
-                                 << "'. Keeping '" << BackendRegistry::ToString(target)
-                                 << "'. Supported in this build: " << supported << ".";
+    if (const auto field = intFields.find(key); field != intFields.end())
+    {
+        stream >> config.*(field->second);
+        return true;
+    }
+    if (const auto field = floatFields.find(key); field != floatFields.end())
+    {
+        stream >> config.*(field->second);
+        return true;
+    }
     return false;
 }
+}  // namespace
 
 void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool headless)
 {
@@ -82,9 +136,24 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         static const std::unordered_map<std::string, bool> s_HeadlessCritical = {
             {"LOG_LEVEL", true},        {"JOB_THREADS", true},  {"TIME_SCALE", true},    {"HEADLESS", true},
+            {"LOAD_DEFAULT_ASSETS", true}, {"DEFAULT_ASSET_MANIFEST", true},
             {"PHYSICS_ENGINE", true},   {"PHYSICS_MODE", true}, {"GRAVITY", true},       {"MAX_SUBSTEPS", true},
-            {"PHYSICS_TICKRATE", true}, {"CCD_ENABLED", true},  {"CCD_THRESHOLD", true}, {"SOLVER_ITERATIONS", true}};
-        if (s_HeadlessCritical.find(subCmd) == s_HeadlessCritical.end())
+            {"PHYSICS_TICKRATE", true}, {"CCD_ENABLED", true},  {"CCD_THRESHOLD", true}, {"SOLVER_ITERATIONS", true},
+            {"OPT_RESOURCE_UPLOAD_BUDGET", true}, {"OPT_MAX_MODEL_UPLOADS_PER_FRAME", true},
+            {"OPT_MAX_TEXTURE_UPLOADS_PER_FRAME", true}, {"OPT_STREAMING_UPDATE_THROTTLING", true},
+            {"OPT_STREAMING_CHECK_INTERVAL", true}, {"OPT_REFLECTION_CAPTURE_BUDGET", true},
+            {"OPT_MAX_REFLECTION_PROBE_FACES_PER_FRAME", true},
+            {"OPT_MAX_PLANAR_REFLECTION_CAPTURES_PER_FRAME", true}, {"OPT_SHADOW_PARALLEL_BUILD", true},
+            {"OPT_SHADOW_PARALLEL_THRESHOLD", true}, {"OPT_ANIMATION_PARALLEL_EVALUATION", true},
+            {"OPT_ANIMATION_PARALLEL_THRESHOLD", true}, {"OPT_NAVIGATION_SPATIAL_HASH", true},
+            {"OPT_NAVIGATION_AGENT_CELL_SIZE", true}, {"OPT_NETWORK_BATCHING", true},
+            {"OPT_NETWORK_MAX_EVENTS_PER_UPDATE", true}, {"OPT_NETWORK_MAX_EVENT_PROCESSING_MS", true},
+            {"OPT_PARTICLE_SPAWN_BUDGET", true}, {"OPT_PARTICLE_MAX_SPAWN_PER_FRAME", true}};
+        // Dedicated/headless builds still run streaming, navigation, networking,
+        // physics and resource jobs. Keep every optimization policy loadable so
+        // adding a new OPT_* key cannot silently diverge from desktop builds.
+        const bool optimizationSetting = subCmd.rfind("OPT_", 0) == 0;
+        if (!optimizationSetting && s_HeadlessCritical.find(subCmd) == s_HeadlessCritical.end())
             return;  // skip non-critical config in headless
     }
 
@@ -92,280 +161,281 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     {
         std::string val;
         ss >> val;
-        GraphicsBackend requested = ResolveEnum(val,
-                                                {{"OPENGL", GraphicsBackend::OpenGL},
-                                                 {"VULKAN", GraphicsBackend::Vulkan},
-                                                 {"DIRECTX", GraphicsBackend::DirectX}},
-                                                config.graphicsBackend);
-        AcceptSupportedBackend("GRAPHICS_API", requested, config.graphicsBackend,
-                               BackendRegistry::SupportedGraphicsBackends());
+        config.graphics.graphicsBackend = ResolveEnum("GRAPHICS_API", val,
+                                                      {{"OPENGL", GraphicsBackend::OpenGL},
+                                                       {"VULKAN", GraphicsBackend::Vulkan},
+                                                       {"DIRECTX", GraphicsBackend::DirectX}},
+                                                      config.graphics.graphicsBackend);
     }
     else if (subCmd == "PHYSICS_ENGINE")
     {
         std::string val;
         ss >> val;
-        PhysicsBackend requested = ResolveEnum(
-            val, {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}}, config.physicsBackend);
-        AcceptSupportedBackend("PHYSICS_ENGINE", requested, config.physicsBackend,
-                               BackendRegistry::SupportedPhysicsBackends());
+        config.physics.physicsBackend =
+            ResolveEnum("PHYSICS_ENGINE", val, {{"BULLET", PhysicsBackend::Bullet}, {"PHYSX", PhysicsBackend::PhysX}},
+                        config.physics.physicsBackend);
     }
     else if (subCmd == "AUDIO_ENGINE")
     {
         std::string val;
         ss >> val;
-        AudioBackend requested = ResolveEnum(val,
-                                             {{"NULL", AudioBackend::Null},
-                                              {"NONE", AudioBackend::Null},
-                                              {"IRRKLANG", AudioBackend::IrrKlang},
-                                              {"FMOD", AudioBackend::FMOD},
-                                              {"OPENAL", AudioBackend::OpenAL}},
-                                             config.audioBackend);
-        AcceptSupportedBackend("AUDIO_ENGINE", requested, config.audioBackend,
-                               BackendRegistry::SupportedAudioBackends());
+        config.audio.audioBackend = ResolveEnum("AUDIO_ENGINE", val,
+                                                {{"NULL", AudioBackend::Null},
+                                                 {"NONE", AudioBackend::Null},
+                                                 {"IRRKLANG", AudioBackend::IrrKlang},
+                                                 {"FMOD", AudioBackend::FMOD},
+                                                 {"OPENAL", AudioBackend::OpenAL}},
+                                                config.audio.audioBackend);
     }
     else if (subCmd == "TONEMAPPING")
     {
         std::string val;
         ss >> val;
-        config.tonemappingMode = ResolveEnum(
-            val,
+        config.render.tonemappingMode = ResolveEnum(
+            "TONEMAPPING", val,
             {{"NONE", TonemappingMode::None}, {"ACES", TonemappingMode::ACES}, {"REINHARD", TonemappingMode::Reinhard}},
-            TonemappingMode::ACES);
+            config.render.tonemappingMode);
     }
     else if (subCmd == "LOG_LEVEL")
     {
         std::string val;
         ss >> val;
-        config.logLevel = ResolveEnum(val,
+        config.logLevel = ResolveEnum("LOG_LEVEL", val,
                                       {{"NONE", LogLevel::None},
                                        {"MINIMAL", LogLevel::Minimal},
                                        {"FLEX", LogLevel::Flex},
                                        {"VERBOSE", LogLevel::Verbose},
                                        {"DEBUG", LogLevel::Debug}},
-                                      LogLevel::Debug);
+                                      config.logLevel);
     }
     else if (subCmd == "PHYSICS_MODE")
     {
         std::string val;
         ss >> val;
-        config.physicsMode = ResolveEnum(
-            val,
+        config.physics.physicsMode = ResolveEnum(
+            "PHYSICS_MODE", val,
             {{"FAST", PhysicsMode::Fast}, {"BALANCED", PhysicsMode::Balanced}, {"ACCURATE", PhysicsMode::Accurate}},
-            PhysicsMode::Balanced);
+            config.physics.physicsMode);
     }
     else if (subCmd == "SHADOWS")
     {
         int mode;
         ss >> mode;
-        config.shadowMode = mode;
+        config.shadow.shadowMode = mode;
     }
     else if (subCmd == "SHADOW_SIZE")
     {
-        ss >> config.shadowProjectionSize;
+        ss >> config.shadow.shadowProjectionSize;
     }
     else if (subCmd == "SHADOW_RESOLUTION")
     {
-        ss >> config.shadowMapResolution;
+        ss >> config.shadow.shadowMapResolution;
     }
     else if (subCmd == "INSTANCING")
     {
         int enable;
         ss >> enable;
-        config.instanceBatchingEnabled = (enable != 0);
+        config.culling.instanceBatchingEnabled = (enable != 0);
     }
     else if (subCmd == "CULL_FACE")
     {
         int enable;
         ss >> enable;
-        config.cullFaceEnabled = (enable != 0);
+        config.culling.cullFaceEnabled = (enable != 0);
     }
     else if (subCmd == "DEPTH_TEST")
     {
         int enable;
         ss >> enable;
-        config.depthTestEnabled = (enable != 0);
+        config.culling.depthTestEnabled = (enable != 0);
+    }
+    else if (subCmd == "STENCIL_TEST")
+    {
+        int enable;
+        ss >> enable;
+        config.culling.stencilTestEnabled = (enable != 0);
     }
     else if (subCmd == "WINDOW_WIDTH")
     {
-        ss >> config.width;
+        ss >> config.window.width;
     }
     else if (subCmd == "WINDOW_HEIGHT")
     {
-        ss >> config.height;
+        ss >> config.window.height;
     }
     else if (subCmd == "WINDOW_MODE")
     {
         std::string modeStr;
         ss >> modeStr;
-        config.windowMode = ResolveEnum(modeStr,
-                                        {{"WINDOWED", WindowMode::Windowed},
-                                         {"FULLSCREEN", WindowMode::Fullscreen},
-                                         {"BORDERLESS", WindowMode::Borderless},
-                                         {"BORDERLESS_FULLSCREEN", WindowMode::BorderlessFullscreen}},
-                                        WindowMode::Windowed);
+        config.window.windowMode = ResolveEnum("WINDOW_MODE", modeStr,
+                                               {{"WINDOWED", WindowMode::Windowed},
+                                                {"FULLSCREEN", WindowMode::Fullscreen},
+                                                {"BORDERLESS", WindowMode::Borderless},
+                                                {"BORDERLESS_FULLSCREEN", WindowMode::BorderlessFullscreen}},
+                                               config.window.windowMode);
     }
     else if (subCmd == "VSYNC")
     {
         int enable;
         ss >> enable;
-        config.vsync = (enable != 0);
+        config.window.vsync = (enable != 0);
     }
     else if (subCmd == "MONITOR")
     {
-        ss >> config.monitorIndex;
+        ss >> config.window.monitorIndex;
     }
     else if (subCmd == "REFRESH_RATE")
     {
-        ss >> config.refreshRate;
+        ss >> config.window.refreshRate;
     }
     else if (subCmd == "FPS")
     {
-        ss >> config.frameRateLimit;
+        ss >> config.window.frameRateLimit;
     }
     else if (subCmd == "FRUSTUM")
     {
         int enable;
         ss >> enable;
-        config.frustumCullingEnabled = (enable != 0);
+        config.culling.frustumCullingEnabled = (enable != 0);
     }
     else if (subCmd == "SHADOW_FRUSTUM")
     {
         int enable;
         ss >> enable;
-        config.shadowFrustumCullingEnabled = (enable != 0);
+        config.shadow.shadowFrustumCullingEnabled = (enable != 0);
     }
     else if (subCmd == "SHADOW_DISTANCE")
     {
-        ss >> config.shadowDistanceCulling;
+        ss >> config.shadow.shadowDistanceCulling;
     }
     else if (subCmd == "SHADOW_BIAS")
     {
-        ss >> config.shadowBias;
+        ss >> config.shadow.shadowBias;
     }
     else if (subCmd == "SHADOW_SOFTNESS")
     {
-        ss >> config.shadowSoftness;
+        ss >> config.shadow.shadowSoftness;
     }
     else if (subCmd == "DISTANCE")
     {
-        ss >> config.distanceCulling;
+        ss >> config.culling.distanceCulling;
     }
     else if (subCmd == "MOUSE_SENSITIVITY")
     {
-        ss >> config.mouseSensitivityX;
-        config.mouseSensitivityY = config.mouseSensitivityX;
+        ss >> config.input.mouseSensitivityX;
+        config.input.mouseSensitivityY = config.input.mouseSensitivityX;
     }
     else if (subCmd == "MOUSE_SENSITIVITY_X")
     {
-        ss >> config.mouseSensitivityX;
+        ss >> config.input.mouseSensitivityX;
     }
     else if (subCmd == "MOUSE_SENSITIVITY_Y")
     {
-        ss >> config.mouseSensitivityY;
+        ss >> config.input.mouseSensitivityY;
     }
     else if (subCmd == "MOUSE_INVERT_X")
     {
         int invert;
         ss >> invert;
-        config.mouseInvertX = (invert != 0);
+        config.input.mouseInvertX = (invert != 0);
     }
     else if (subCmd == "MOUSE_INVERT_Y")
     {
         int invert;
         ss >> invert;
-        config.mouseInvertY = (invert != 0);
+        config.input.mouseInvertY = (invert != 0);
     }
     else if (subCmd == "RAW_MOUSE_INPUT")
     {
         int enable;
         ss >> enable;
-        config.rawMouseInput = (enable != 0);
+        config.input.rawMouseInput = (enable != 0);
     }
     else if (subCmd == "MSAA")
     {
-        ss >> config.msaaSamples;
+        ss >> config.graphics.msaaSamples;
     }
     else if (subCmd == "ANISOTROPY")
     {
-        ss >> config.maxAnisotropy;
+        ss >> config.graphics.maxAnisotropy;
     }
     else if (subCmd == "RENDER_SCALE")
     {
-        ss >> config.renderScale;
+        ss >> config.graphics.renderScale;
     }
     else if (subCmd == "ASYNC_RESOURCES")
     {
         int enable;
         ss >> enable;
-        config.asyncResourceLoading = (enable != 0);
+        config.graphics.asyncResourceLoading = (enable != 0);
     }
     else if (subCmd == "STRICT_ASSET_LOADING")
     {
         int enable;
         ss >> enable;
-        config.strictAssetLoading = (enable != 0);
+        config.graphics.strictAssetLoading = (enable != 0);
     }
     else if (subCmd == "SHADOWS_ENABLED")
     {
         int enable;
         ss >> enable;
-        config.shadowsEnabled = (enable != 0);
+        config.shadow.shadowsEnabled = (enable != 0);
     }
     else if (subCmd == "BLOOM_ENABLED")
     {
         int enable;
         ss >> enable;
-        config.bloomEnabled = (enable != 0);
+        config.render.bloomEnabled = (enable != 0);
     }
     else if (subCmd == "HDR_ENABLED")
     {
         int enable;
         ss >> enable;
-        config.hdrEnabled = (enable != 0);
+        config.render.hdrEnabled = (enable != 0);
     }
     else if (subCmd == "GAMMA")
     {
-        ss >> config.gamma;
+        ss >> config.render.gamma;
     }
     else if (subCmd == "EXPOSURE")
     {
-        ss >> config.exposure;
+        ss >> config.render.exposure;
     }
     else if (subCmd == "BLOOM_INTENSITY")
     {
-        ss >> config.bloomIntensity;
+        ss >> config.render.bloomIntensity;
     }
     else if (subCmd == "BLOOM_THRESHOLD")
     {
-        ss >> config.bloomThreshold;
+        ss >> config.render.bloomThreshold;
     }
     else if (subCmd == "BLOOM_RADIUS")
     {
-        ss >> config.bloomRadius;
+        ss >> config.render.bloomRadius;
     }
     else if (subCmd == "SKYBOX_INTENSITY")
     {
-        ss >> config.skyboxIntensity;
+        ss >> config.render.skyboxIntensity;
     }
     else if (subCmd == "AMBIENT_INTENSITY")
     {
-        ss >> config.ambientIntensity;
+        ss >> config.render.ambientIntensity;
     }
     else if (subCmd == "UI_REFERENCE_WIDTH")
     {
-        ss >> config.uiReferenceWidth;
+        ss >> config.render.uiReferenceWidth;
     }
     else if (subCmd == "UI_REFERENCE_HEIGHT")
     {
-        ss >> config.uiReferenceHeight;
+        ss >> config.render.uiReferenceHeight;
     }
     else if (subCmd == "UI_REFERENCE_SIZE")
     {
-        ss >> config.uiReferenceWidth >> config.uiReferenceHeight;
+        ss >> config.render.uiReferenceWidth >> config.render.uiReferenceHeight;
     }
     else if (subCmd == "VOLUME")
     {
-        ss >> config.masterVolume;
+        ss >> config.audio.masterVolume;
     }
     else if (subCmd == "JOB_THREADS")
     {
@@ -377,35 +447,35 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     }
     else if (subCmd == "GRAVITY")
     {
-        ss >> config.gravity[0] >> config.gravity[1] >> config.gravity[2];
+        ss >> config.physics.gravity[0] >> config.physics.gravity[1] >> config.physics.gravity[2];
     }
     else if (subCmd == "MAX_SUBSTEPS")
     {
-        ss >> config.maxSubSteps;
+        ss >> config.physics.maxSubSteps;
     }
     else if (subCmd == "PHYSICS_TICKRATE")
     {
-        ss >> config.physicsTickRate;
+        ss >> config.physics.physicsTickRate;
     }
     else if (subCmd == "CCD_ENABLED")
     {
         int enable;
         ss >> enable;
-        config.ccdEnabled = (enable != 0);
+        config.physics.ccdEnabled = (enable != 0);
     }
     else if (subCmd == "CCD_THRESHOLD")
     {
-        ss >> config.ccdThreshold;
+        ss >> config.physics.ccdThreshold;
     }
     else if (subCmd == "SOLVER_ITERATIONS")
     {
-        ss >> config.solverIterations;
+        ss >> config.physics.solverIterations;
     }
     else if (subCmd == "LIGHTING_MODE")
     {
         std::string val;
         ss >> val;
-        config.lightingMode = ResolveEnum(val,
+        config.lightingMode = ResolveEnum("LIGHTING_MODE", val,
                                           {{"BAKE", LightingMode::Bake},
                                            {"LIGHT_PROBE", LightingMode::LightProbe},
                                            {"LIGHTPROBE", LightingMode::LightProbe},
@@ -413,18 +483,14 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
                                            {"REFLECTIONPROBES", LightingMode::ReflectionProbes},
                                            {"REAL_TIME", LightingMode::RealTime},
                                            {"REALTIME", LightingMode::RealTime}},
-                                          LightingMode::RealTime);
+                                          config.lightingMode);
     }
     else if (subCmd == "ANTIALIASING")
     {
         std::string val;
         ss >> val;
-        config.antialiasing = ResolveEnum(val,
-                                          {{"NONE", 0},
-                                           {"OFF", 0},
-                                           {"FXAA", 1},
-                                           {"TAA", 2}},
-                                          1);
+        config.graphics.antialiasing = ResolveEnum(
+            "ANTIALIASING", val, {{"NONE", 0}, {"OFF", 0}, {"FXAA", 1}, {"TAA", 2}}, config.graphics.antialiasing);
     }
     else if (subCmd == "HEADLESS")
     {
@@ -432,45 +498,103 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> enable;
         config.headlessMode = (enable != 0);
     }
+    else if (subCmd == "LOAD_DEFAULT_ASSETS")
+    {
+        int enable;
+        ss >> enable;
+        config.loadDefaultAssets = (enable != 0);
+    }
+    else if (subCmd == "DEFAULT_ASSET_MANIFEST")
+    {
+        config.defaultAssetManifest = ReadRemaining(ss);
+    }
     else if (subCmd == "TITLE")
     {
-        std::string val;
-        std::getline(ss >> std::ws, val);
-        config.title = val;
+        config.title = ReadRemaining(ss);
     }
     else if (subCmd == "ICON_PATH")
     {
-        std::string val;
-        ss >> val;
-        config.iconPath = val;
+        config.iconPath = ReadRemaining(ss);
     }
     else if (subCmd == "CLEAR_COLOR")
     {
-        ss >> config.clearColor[0] >> config.clearColor[1] >> config.clearColor[2] >> config.clearColor[3];
+        ss >> config.render.clearColor[0] >> config.render.clearColor[1] >> config.render.clearColor[2] >>
+            config.render.clearColor[3];
     }
     else if (subCmd == "AUDIO_DEVICE")
     {
-        std::string val;
-        ss >> val;
-        config.audioDevice = val;
+        config.audio.audioDevice = ReadRemaining(ss);
+    }
+    else if (subCmd == "AUDIO_CAPTURE_ENABLED")
+    {
+        int enable = 0;
+        ss >> enable;
+        config.audio.captureEnabled = enable != 0;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_DEVICE")
+    {
+        config.audio.captureDevice = ReadRemaining(ss);
+    }
+    else if (subCmd == "AUDIO_CAPTURE_INPUT_VOLUME" || subCmd == "MIC_INPUT_VOLUME")
+    {
+        ss >> config.audio.captureInputVolume;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_NOISE_GATE" || subCmd == "MIC_INPUT_THRESHOLD")
+    {
+        ss >> config.audio.captureNoiseGate;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_GAIN")
+    {
+        ss >> config.audio.captureGain;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_ATTACK_SECONDS")
+    {
+        ss >> config.audio.captureAttackSeconds;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_RELEASE_SECONDS")
+    {
+        ss >> config.audio.captureReleaseSeconds;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_PEAK_DECAY_SECONDS")
+    {
+        ss >> config.audio.capturePeakDecaySeconds;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_CALIBRATION_SECONDS")
+    {
+        ss >> config.audio.captureCalibrationSeconds;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_PULSE_THRESHOLD")
+    {
+        ss >> config.audio.capturePulseThreshold;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_PULSE_COOLDOWN")
+    {
+        ss >> config.audio.capturePulseCooldown;
+    }
+    else if (subCmd == "AUDIO_CAPTURE_PULSE_DURATION")
+    {
+        ss >> config.audio.capturePulseDuration;
     }
     else if (subCmd == "OCCLUSION_CULLING")
     {
         int enable;
         ss >> enable;
-        config.occlusionCullingEnabled = (enable != 0);
+        config.culling.occlusionCullingEnabled = (enable != 0);
     }
     else if (subCmd == "RENDER_ORDER")
     {
         int enable;
         ss >> enable;
-        config.renderOrderEnabled = (enable != 0);
+        config.culling.renderOrderEnabled = (enable != 0);
     }
     else if (subCmd == "FILTER_LAYER")
     {
         uint32_t mask;
         ss >> mask;
-        config.filterLayerMask = mask;
+        config.culling.filterLayerMask = mask;
+    }
+    else if (LoadOptimizationSetting(subCmd, ss, config.optimization))
+    {
     }
 
     else if (subCmd == "PHYSICS_DEBUG")

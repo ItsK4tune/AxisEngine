@@ -2,12 +2,15 @@
 
 #ifdef ENABLE_EDITOR
 
-struct GLFWwindow;
+#include <platform/interface/i_ui_input_capture.h>
 
-class ImGuiLayer
+class IGraphicsContext;
+class IWindow;
+
+class ImGuiLayer : public IUIInputCapture
 {
 public:
-    void Initialize(GLFWwindow* window);
+    bool Initialize(IWindow& window, IGraphicsContext& graphicsContext);
     void BeginFrame();
     void EndFrame();
     void Shutdown();
@@ -15,9 +18,12 @@ public:
     {
         return m_Initialized;
     }
+    bool WantsPointerInput() const override;
+    bool WantsTextInput() const override;
 
 private:
     bool m_Initialized = false;
+    IGraphicsContext* m_GraphicsContext = nullptr;
 };
 
 #endif

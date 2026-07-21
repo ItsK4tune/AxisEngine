@@ -38,6 +38,15 @@ inline float Scenario23WaypointY(int criteria, float x, float z)
     return (criteria == 0 || criteria == 1 || criteria == 4) ? Scenario23NavHeight(x, z) : 0.5f;
 }
 
+inline void ConfigureScenario23FollowerOptions(PathFollowerComponent& follower, int criteria)
+{
+    follower.pathfindingOptions.criteria = static_cast<PathfindingCriteria>(criteria);
+    follower.pathfindingOptions.preferredTags =
+        criteria == 2 ? std::vector<std::string>{"road"} : std::vector<std::string>{"walkable", "road"};
+    follower.pathfindingOptions.tagWeightBonus = criteria == 2 ? 80.0f : 1.0f;
+    follower.pathfindingOptions.altitudePenaltyWeight = criteria == 1 ? 14.0f : 5.0f;
+}
+
 inline glm::quat RotationFromNegativeY(const glm::vec3& direction)
 {
     glm::vec3 dir = glm::normalize(direction);

@@ -109,6 +109,12 @@ void StaticBatchManager::SetManagers(IBufferManager& bufferManager, IDrawContext
     s_DrawContext = &drawContext;
 }
 
+void StaticBatchManager::ClearManagers()
+{
+    s_BufferManager = nullptr;
+    s_DrawContext = nullptr;
+}
+
 IBufferManager& StaticBatchManager::GetBufferManager()
 {
     if (!s_BufferManager)
@@ -181,6 +187,12 @@ void StaticBatchManager::MergeMeshes(const std::vector<std::shared_ptr<Model>>& 
             if (mesh.m_IsSkinned)
             {
                 LOGGER_WARN("StaticBatchManager") << "Attempted to static-batch a skinned mesh. Skipping.";
+                continue;
+            }
+            if (!mesh.HasCpuVertexData())
+            {
+                LOGGER_WARN("StaticBatchManager")
+                    << "Model CPU render vertices were discarded; static batching must run before discard.";
                 continue;
             }
 

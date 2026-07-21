@@ -19,6 +19,13 @@ void Skybox::SetManagers(IBufferManager& bufferManager, ITextureManager& texture
     s_DrawContext = &drawContext;
 }
 
+void Skybox::ClearManagers()
+{
+    s_BufferManager = nullptr;
+    s_TextureManager = nullptr;
+    s_DrawContext = nullptr;
+}
+
 IBufferManager& Skybox::GetBufferManager()
 {
     if (!s_BufferManager)
@@ -135,15 +142,16 @@ void Skybox::Draw(Shader& shader)
 
 #include <core/logic/filesystem.h>
 
-void Skybox::LoadCubemap(const std::vector<std::string>& faces)
+bool Skybox::LoadCubemap(const std::vector<std::string>& faces)
 {
     if (!s_TextureManager)
-        return;
+        return false;
     auto& tm = GetTextureManager();
 
     m_TextureID = tm.GenTexture();
     tm.BindTexture(TextureType::TextureCubeMap, m_TextureID);
 
+    bool allFacesLoaded = faces.size() == 6;
     for (unsigned int i = 0; i < 6; ++i)
     {
         int width = 0, height = 0, channels = 0;
@@ -200,6 +208,7 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
 
         if (!data)
         {
+            allFacesLoaded = false;
             unsigned char red[3] = {255, 0, 0};
             tm.TexImage2D(faceTarget, 0, InternalFormat::RGB8, 1, 1, 0, TextureFormat::RGB, DataType::UnsignedByte,
                           red);
@@ -216,4 +225,5 @@ void Skybox::LoadCubemap(const std::vector<std::string>& faces)
     tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
     tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
     tm.TexParameteri(TextureType::TextureCubeMap, TextureParameter::WrapR, static_cast<int>(TextureWrap::ClampToEdge));
+    return allFacesLoaded;
 }

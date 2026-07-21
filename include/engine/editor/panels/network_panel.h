@@ -8,9 +8,6 @@ struct Scene;
 class NetworkPanel : public IEditorPanel
 {
 public:
-    void Initialize() override
-    {
-    }
     void OnImGui(Scene& scene) override;
     std::string GetTitle() const override
     {
@@ -20,5 +17,10 @@ public:
     {
         return PanelGroup::Tools;
     }
+
+private:
+    char m_IpAddress[128] = "127.0.0.1";
+    int m_Port = 12345;
+    int m_MaxClients = 32;
 };
 #endif

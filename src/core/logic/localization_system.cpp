@@ -14,6 +14,7 @@ LocalizationSystem::~LocalizationSystem()
 void LocalizationSystem::Initialize()
 {
     ServiceLocator::Instance().Register<LocalizationSystem>(this);
+    ServiceLocator::Instance().Register<ILocalizationService>(this);
     LOGGER_INFO("LocalizationSystem") << "Initialized (no default language loaded)";
 }
 
@@ -94,6 +95,11 @@ std::string LocalizationSystem::Get(const std::string& key) const
     }
 
     return "[MISSING: " + key + "]";
+}
+
+std::string LocalizationSystem::Format(const std::string& key, const std::vector<std::string>& arguments) const
+{
+    return FormatString(Get(key), arguments);
 }
 
 void LocalizationSystem::FlattenNode(const YAMLNode& node, const std::string& prefix,

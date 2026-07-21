@@ -1,5 +1,6 @@
 #pragma once
 
+#include <render/type/post_process_input.h>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,7 @@ struct PostProcessComponent
         int x = 0, y = 0, w = 0, h = 0;  // Viewport/Scissor (0 for full screen)
         bool enabled = true;
         bool affectUI = false;
+        PostProcessInput inputs = PostProcessInput::Color;
     };
 
     bool enabled = true;

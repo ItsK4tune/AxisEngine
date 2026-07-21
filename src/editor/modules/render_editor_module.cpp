@@ -15,25 +15,6 @@
 #include <render/interface/i_render_state_manager.h>
 #include <iostream>
 
-RenderEditorModule::RenderEditorModule()
-{
-}
-RenderEditorModule::~RenderEditorModule()
-{
-}
-
-void RenderEditorModule::Initialize()
-{
-}
-
-void RenderEditorModule::OnUpdate(float dt)
-{
-}
-
-void RenderEditorModule::Render(Scene& scene)
-{
-}
-
 void RenderEditorModule::ProcessInput(KeyboardManager& keyboard)
 {
     if (!m_Enabled)

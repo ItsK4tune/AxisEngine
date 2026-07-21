@@ -6,7 +6,6 @@
 #include <ecs/logic/cached_query.h>
 #include <ecs/logic/system_factory.h>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
@@ -16,6 +15,7 @@
 #include <physics/interface/i_physics_world.h>
 #include <physics/logic/collision_matrix.h>
 #include <physics/logic/physics_collision_dispatcher.h>
+#include <physics/logic/constraint_lifecycle.h>
 #include <physics/logic/physics_transform_sync.h>
 #include <physics/strategy/bullet/bullet_glm_helpers.h>
 #include <physics/unit/ray.h>
@@ -33,7 +33,6 @@ PhysicsSystem::~PhysicsSystem()
 {
     Shutdown();
 }
-REGISTER_SYSTEM(PhysicsSystem)
 
 void PhysicsSystem::Initialize()
 {
@@ -46,31 +45,33 @@ void PhysicsSystem::Initialize()
     if (phys)
     {
         auto cfg = configManager.GetConfig();
-        phys->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
-        phys->SetMode(static_cast<int>(cfg.physicsMode));
-        phys->SetSimulationSettings(cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate : 1.0f / 60.0f,
-                                    cfg.maxSubSteps);
-        phys->SetSolverIterations(cfg.solverIterations);
-        phys->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
+        phys->SetGravity(glm::vec3(cfg.physics.gravity[0], cfg.physics.gravity[1], cfg.physics.gravity[2]));
+        phys->SetMode(static_cast<int>(cfg.physics.physicsMode));
+        phys->SetSimulationSettings(
+            cfg.physics.physicsTickRate > 0.0f ? 1.0f / cfg.physics.physicsTickRate : 1.0f / 60.0f,
+            cfg.physics.maxSubSteps);
+        phys->SetSolverIterations(cfg.physics.solverIterations);
+        phys->SetCCDEnabled(cfg.physics.ccdEnabled, cfg.physics.ccdThreshold);
     }
 
-    m_EventSubscriptions.Add(
-        EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (!(e.bitmask & (ConfigChangedEvent::Physics | ConfigChangedEvent::All)))
-                return;
+    m_EventSubscriptions.Add(EventManager::Instance().Subscribe<ConfigChangedEvent>([this](
+                                                                                        const ConfigChangedEvent& e) {
+        if (!HasConfigChanged(e, ConfigChangedEvent::Physics))
+            return;
 
-            const auto& cfg = e.config;
-            auto* phys_inner = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-            if (phys_inner)
-            {
-                phys_inner->SetGravity(glm::vec3(cfg.gravity[0], cfg.gravity[1], cfg.gravity[2]));
-                phys_inner->SetMode(static_cast<int>(cfg.physicsMode));
-                phys_inner->SetSimulationSettings(
-                    cfg.physicsTickRate > 0.0f ? 1.0f / cfg.physicsTickRate : 1.0f / 60.0f, cfg.maxSubSteps);
-                phys_inner->SetSolverIterations(cfg.solverIterations);
-                phys_inner->SetCCDEnabled(cfg.ccdEnabled, cfg.ccdThreshold);
-            }
-        }));
+        const auto& cfg = e.config;
+        auto* phys_inner = ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+        if (phys_inner)
+        {
+            phys_inner->SetGravity(glm::vec3(cfg.physics.gravity[0], cfg.physics.gravity[1], cfg.physics.gravity[2]));
+            phys_inner->SetMode(static_cast<int>(cfg.physics.physicsMode));
+            phys_inner->SetSimulationSettings(
+                cfg.physics.physicsTickRate > 0.0f ? 1.0f / cfg.physics.physicsTickRate : 1.0f / 60.0f,
+                cfg.physics.maxSubSteps);
+            phys_inner->SetSolverIterations(cfg.physics.solverIterations);
+            phys_inner->SetCCDEnabled(cfg.physics.ccdEnabled, cfg.physics.ccdThreshold);
+        }
+    }));
 
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<PhysicsDebugRenderEvent>([this](const PhysicsDebugRenderEvent& e) {
@@ -149,10 +150,22 @@ void PhysicsSystem::Step(Scene& scene, float dt)
             });
 
         scene.GetRegistry().on_destroy<RigidBodyComponent>().connect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
-        scene.GetRegistry().on_destroy<CharacterControllerComponent>()
+        scene.GetRegistry()
+            .on_destroy<CharacterControllerComponent>()
             .connect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
 
         scene.GetRegistry().on_construct<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeConstructed>(this);
+        scene.GetRegistry().on_update<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeUpdated>(this);
+        scene.GetRegistry().on_destroy<RigidShapeComponent>().connect<&PhysicsSystem::OnShapeDestroyed>(this);
+
+        auto shapeView = scene.GetRegistry().view<RigidShapeComponent>();
+        m_PendingRigidBodies.reserve(shapeView.size());
+        for (auto entity : shapeView)
+        {
+            if (!scene.GetRegistry().all_of<RigidBodyComponent>(entity))
+                scene.GetRegistry().emplace<RigidBodyComponent>(entity);
+            m_PendingRigidBodies.insert(entity);
+        }
     }
 
     if (!m_transformSync)
@@ -163,33 +176,36 @@ void PhysicsSystem::Step(Scene& scene, float dt)
 
     m_transformSync->SyncToPhysics();
 
-    auto viewShape = scene.GetRegistry().view<RigidShapeComponent>(entt::exclude<RigidBodyComponent>);
-    for (auto entity : viewShape)
+    for (auto it = m_PendingRigidBodies.begin(); it != m_PendingRigidBodies.end();)
     {
-        scene.GetRegistry().emplace<RigidBodyComponent>(entity);
-    }
-
-    auto viewInit = scene.GetRegistry().view<RigidShapeComponent, RigidBodyComponent>();
-    for (auto entity : viewInit)
-    {
-        auto& rb = viewInit.get<RigidBodyComponent>(entity);
-        if (!rb.body)
+        const entt::entity entity = *it;
+        if (!scene.IsValid(entity) ||
+            !scene.GetRegistry().all_of<RigidShapeComponent, RigidBodyComponent>(entity))
         {
-            InitializeRigidBodyDirect(scene, entity, viewInit.get<RigidShapeComponent>(entity), rb, *physicsWorld);
+            it = m_PendingRigidBodies.erase(it);
+            continue;
         }
+
+        auto& rb = scene.GetRegistry().get<RigidBodyComponent>(entity);
+        if (!rb.body)
+            InitializeRigidBodyDirect(scene, entity, scene.GetRegistry().get<RigidShapeComponent>(entity), rb,
+                                      *physicsWorld);
+        if (rb.body)
+            it = m_PendingRigidBodies.erase(it);
+        else
+            ++it;
     }
 
-    auto viewCC = scene.GetRegistry().view<CharacterControllerComponent, InfoComponent>();
-    for (auto entity : viewCC)
+    m_ControllerQuery.Update(scene.GetRegistry());
+    for (auto entity : m_ControllerQuery.GetEntities())
     {
-        auto& info = viewCC.get<InfoComponent>(entity);
+        auto& info = scene.GetRegistry().get<InfoComponent>(entity);
         if (!info.isActive)
             continue;
 
-        auto& cc = viewCC.get<CharacterControllerComponent>(entity);
+        auto& cc = scene.GetRegistry().get<CharacterControllerComponent>(entity);
         if (!cc.controller)
             continue;
-
         if (cc.useVelocity)
         {
             if (glm::length(cc.velocity) > 0.0001f)
@@ -217,13 +233,14 @@ void PhysicsSystem::Step(Scene& scene, float dt)
     }
     m_collisionDispatcher->DispatchEvents();
 
-    for (auto entity : viewCC)
+    for (auto entity : m_ControllerQuery.GetEntities())
     {
-        auto& info = viewCC.get<InfoComponent>(entity);
-        if (!info.isActive)
+        if (!scene.IsValid(entity) ||
+            !scene.GetRegistry().all_of<CharacterControllerComponent, InfoComponent>(entity))
             continue;
-
-        auto& cc = viewCC.get<CharacterControllerComponent>(entity);
+        auto& cc = scene.GetRegistry().get<CharacterControllerComponent>(entity);
+        if (!scene.GetRegistry().get<InfoComponent>(entity).isActive)
+            continue;
         if (cc.controller)
         {
             cc.isOnGround = cc.controller->OnGround();
@@ -235,8 +252,7 @@ void PhysicsSystem::Step(Scene& scene, float dt)
                 pos->value = controllerPos;
                 if (auto* rot = scene.GetRegistry().try_get<RotationComponent>(entity))
                     rot->value = controllerRot;
-                if (auto* world = scene.GetRegistry().try_get<WorldTransformComponent>(entity))
-                    world->isDirty = true;
+                scene.MarkTransformDirty(entity);
             }
         }
     }
@@ -249,31 +265,35 @@ void PhysicsSystem::Reset()
 
     if (m_LastScene)
     {
-        m_LastScene->GetRegistry().on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(this);
-        m_LastScene->GetRegistry().on_destroy<CharacterControllerComponent>()
+        m_LastScene->GetRegistry().on_destroy<RigidBodyComponent>().disconnect<&PhysicsSystem::OnRigidBodyDestroyed>(
+            this);
+        m_LastScene->GetRegistry()
+            .on_destroy<CharacterControllerComponent>()
             .disconnect<&PhysicsSystem::OnCharacterControllerDestroyed>(this);
-        m_LastScene->GetRegistry().on_construct<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeConstructed>(this);
+        m_LastScene->GetRegistry().on_construct<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeConstructed>(
+            this);
+        m_LastScene->GetRegistry().on_update<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeUpdated>(this);
+        m_LastScene->GetRegistry().on_destroy<RigidShapeComponent>().disconnect<&PhysicsSystem::OnShapeDestroyed>(this);
     }
 
     m_transformSync.reset();
     m_collisionDispatcher.reset();
     m_LastScene = nullptr;
     m_LastPhysicsWorld = nullptr;
+    m_PendingRigidBodies.clear();
+    m_ControllerQuery.Clear();
+    m_MeshShapeCache.clear();
 }
 
 void PhysicsSystem::OnRigidBodyDestroyed(entt::registry& registry, entt::entity entity)
 {
+    m_PendingRigidBodies.erase(entity);
     if (!m_LastPhysicsWorld)
         return;
     auto& rb = registry.get<RigidBodyComponent>(entity);
+    PhysicsConstraintLifecycle::RemoveAll(registry, *m_LastPhysicsWorld, rb);
     if (rb.body)
     {
-        for (auto& constraint : rb.constraints)
-        {
-            if (constraint)
-                m_LastPhysicsWorld->RemoveConstraint(constraint);
-        }
-        rb.constraints.clear();
         m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
     }
 }
@@ -291,6 +311,48 @@ void PhysicsSystem::OnCharacterControllerDestroyed(entt::registry& registry, ent
 
 void PhysicsSystem::OnShapeConstructed(entt::registry& registry, entt::entity entity)
 {
+    if (!registry.all_of<RigidBodyComponent>(entity))
+        registry.emplace<RigidBodyComponent>(entity);
+    m_PendingRigidBodies.insert(entity);
+}
+
+void PhysicsSystem::OnShapeDestroyed(entt::registry& registry, entt::entity entity)
+{
+    m_PendingRigidBodies.erase(entity);
+    if (!m_LastPhysicsWorld)
+        return;
+    if (auto* rb = registry.try_get<RigidBodyComponent>(entity); rb && rb->body)
+    {
+        PhysicsConstraintLifecycle::RemoveAll(registry, *m_LastPhysicsWorld, *rb);
+        m_LastPhysicsWorld->RemoveRigidBody(rb->body.get());
+        rb->body.reset();
+    }
+}
+
+void PhysicsSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    m_MeshShapeCacheEnabled = config.physicsMeshShapeCacheEnabled;
+    if (!m_MeshShapeCacheEnabled)
+        m_MeshShapeCache.clear();
+}
+
+void PhysicsSystem::OnShapeUpdated(entt::registry& registry, entt::entity entity)
+{
+    if (!registry.all_of<RigidBodyComponent>(entity))
+    {
+        registry.emplace<RigidBodyComponent>(entity);
+    }
+    else if (m_LastPhysicsWorld)
+    {
+        auto& rb = registry.get<RigidBodyComponent>(entity);
+        if (rb.body)
+        {
+            PhysicsConstraintLifecycle::RemoveAll(registry, *m_LastPhysicsWorld, rb);
+            m_LastPhysicsWorld->RemoveRigidBody(rb.body.get());
+            rb.body.reset();
+        }
+    }
+    m_PendingRigidBodies.insert(entity);
 }
 
 void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity, RigidShapeComponent& shape,
@@ -331,26 +393,40 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
         {
             if (meshComp->model)
             {
-                std::vector<float> vertices;
-                std::vector<uint32_t> indices;
-                for (auto& mesh : meshComp->model->meshes)
+                const glm::vec3 entityScale = scene.GetRegistry().all_of<ScaleComponent>(entity)
+                                                  ? scene.GetRegistry().get<ScaleComponent>(entity).value
+                                                  : glm::vec3(1.0f);
+                const MeshShapeCacheKey cacheKey{meshComp->model.get(), entityScale};
+                if (m_MeshShapeCacheEnabled)
                 {
-                    uint32_t offset = (uint32_t)vertices.size() / 3;
-                    for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
+                    if (const auto cached = m_MeshShapeCache.find(cacheKey); cached != m_MeshShapeCache.end())
+                        finalShape = cached->second.lock();
+                }
+
+                if (!finalShape)
+                {
+                    std::vector<float> vertices;
+                    std::vector<uint32_t> indices;
+                    for (auto& mesh : meshComp->model->meshes)
                     {
-                        const float* pos =
-                            reinterpret_cast<const float*>(mesh.m_VertexData.data() + vIdx * mesh.m_VertexStride);
-                        vertices.push_back(pos[0]);
-                        vertices.push_back(pos[1]);
-                        vertices.push_back(pos[2]);
+                        uint32_t offset = (uint32_t)vertices.size() / 3;
+                        for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
+                        {
+                            const glm::vec3 pos = mesh.GetPosition(vIdx);
+                            vertices.push_back(pos.x * entityScale.x);
+                            vertices.push_back(pos.y * entityScale.y);
+                            vertices.push_back(pos.z * entityScale.z);
+                        }
+                        for (auto idx : mesh.indices)
+                            indices.push_back(idx + offset);
                     }
-                    for (auto idx : mesh.indices)
+                    if (!vertices.empty())
                     {
-                        indices.push_back(idx + offset);
+                        finalShape = physics.CreateMeshShape(vertices, indices);
+                        if (finalShape && m_MeshShapeCacheEnabled)
+                            m_MeshShapeCache[cacheKey] = finalShape;
                     }
                 }
-                if (!vertices.empty())
-                    finalShape = physics.CreateMeshShape(vertices, indices);
             }
         }
     }
@@ -387,9 +463,10 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
     if (finalShape)
     {
         glm::vec3 totalScale(1.0f);
-        if (auto* scl = scene.GetRegistry().try_get<ScaleComponent>(entity))
+        if (shape.type != ShapeType::Mesh)
         {
-            totalScale = scl->value;
+            if (auto* scl = scene.GetRegistry().try_get<ScaleComponent>(entity))
+                totalScale = scl->value;
         }
 
         if (shape.type == ShapeType::Mesh)
@@ -448,24 +525,10 @@ void PhysicsSystem::RenderDebug(Scene& scene, Shader& shader, int screenWidth, i
 
     auto& registry = scene.GetRegistry();
 
-    if (!registry.valid(m_cachedPrimaryCamera) || !registry.all_of<CameraComponent>(m_cachedPrimaryCamera) ||
-        !registry.get<CameraComponent>(m_cachedPrimaryCamera).isPrimary)
+    const entt::entity activeCamera = scene.GetActiveCamera();
+    if (registry.valid(activeCamera) && registry.all_of<CameraComponent>(activeCamera))
     {
-        m_cachedPrimaryCamera = entt::null;
-        auto viewCamera = registry.view<CameraComponent, PositionComponent>();
-        for (auto entity : viewCamera)
-        {
-            if (viewCamera.get<CameraComponent>(entity).isPrimary)
-            {
-                m_cachedPrimaryCamera = entity;
-                break;
-            }
-        }
-    }
-
-    if (registry.valid(m_cachedPrimaryCamera))
-    {
-        auto& camera = registry.get<CameraComponent>(m_cachedPrimaryCamera);
+        auto& camera = registry.get<CameraComponent>(activeCamera);
         view = camera.viewMatrix;
         projection = camera.projectionMatrix;
     }

@@ -24,7 +24,7 @@ public:
         if (!HasComponent<PositionComponent>() || !HasComponent<RotationComponent>())
             return;
 
-        auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+        auto* io = Resolve<IOHandler>();
         if (!io)
             return;
 
@@ -74,8 +74,7 @@ public:
 
         GetComponent<PositionComponent>().value = targetPos.value + glm::vec3(0.0f, 1.45f, 0.0f);
         GetComponent<RotationComponent>().value = glm::quatLookAt(front, glm::vec3(0.0f, 1.0f, 0.0f));
-        if (HasComponent<WorldTransformComponent>())
-            GetComponent<WorldTransformComponent>().isDirty = true;
+        MarkTransformDirty();
     }
 
 private:

@@ -21,7 +21,6 @@
 #include <core/logic/data_node_serializer.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
-#include <ecs/logic/system_manager.h>
 #include <ecs/logic/post_process_system.h>
 #include <engine/platform/logic/io_handler.h>
 #include <platform/logic/input_serializer.h>
@@ -33,10 +32,32 @@
 #include <scene/logic/scene_serializer.h>
 #include <scene/logic/binary_scene_serializer.h>
 #include <physics/interface/i_physics_world.h>
+#include <physics/logic/constraint_lifecycle.h>
+
+namespace
+{
+bool CanCreateConstraint(const Scene& scene, const Entity& first, const Entity& second)
+{
+    return first.GetScene() == &scene && second.GetScene() == &scene && first != second && first.IsValid() &&
+           second.IsValid();
+}
+}  // namespace
+
+void* EngineAccessor::ResolveService(std::type_index type) const
+{
+    return ServiceLocator::Instance().ResolveByType(type);
+}
+
+IBaseSystem* EngineAccessor::ResolveSystem(std::type_index type) const
+{
+    if (auto* registry = Resolve<ISystemRegistry>())
+        return registry->GetSystem(type);
+    return nullptr;
+}
 
 Scene& EngineAccessor::GetScene() const
 {
-    return *m_ActiveScene;
+    return m_ActiveScene ? *m_ActiveScene : ServiceLocator::Instance().Require<Scene>();
 }
 
 void EngineAccessor::LoadScene(const std::string& path, bool persistent)
@@ -45,12 +66,8 @@ void EngineAccessor::LoadScene(const std::string& path, bool persistent)
 }
 bool EngineAccessor::LoadInputBindings(const std::string& path)
 {
-    if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
-    {
-        InputSerializer serializer;
-        return serializer.Deserialize(path, io->GetInputManager());
-    }
-    return false;
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+    return resources && resources->LoadUnified("INPUT", path);
 }
 bool EngineAccessor::SaveInputBindings(const std::string& path)
 {
@@ -66,7 +83,11 @@ bool EngineAccessor::LoadDataNodes(const std::string& path)
     if (auto* dm = ServiceLocator::Instance().Resolve<DataManager>())
     {
         DataNodeSerializer serializer;
-        return serializer.Deserialize(path, dm->GetDataNodes());
+        std::unordered_map<std::string, DataNode> data;
+        if (!serializer.Deserialize(path, data))
+            return false;
+        dm->ReplaceDataNodes(std::move(data));
+        return true;
     }
     return false;
 }
@@ -75,23 +96,37 @@ bool EngineAccessor::SaveDataNodes(const std::string& path)
     if (auto* dm = ServiceLocator::Instance().Resolve<DataManager>())
     {
         DataNodeSerializer serializer;
-        return serializer.Serialize(path, dm->GetDataNodes());
+        const auto data = dm->GetDataNodes();
+        return serializer.Serialize(path, data);
     }
     return false;
 }
+void EngineAccessor::SetDataNode(const std::string& key, const DataNode& data)
+{
+    if (auto* manager = Resolve<DataManager>())
+        manager->SetDataNode(key, data);
+}
+DataNode EngineAccessor::GetDataNode(const std::string& key) const
+{
+    if (auto* manager = Resolve<DataManager>())
+        return manager->GetDataNode(key);
+    return {};
+}
+bool EngineAccessor::HasDataNode(const std::string& key) const
+{
+    if (auto* manager = Resolve<DataManager>())
+        return manager->HasDataNode(key);
+    return false;
+}
+void EngineAccessor::RemoveDataNode(const std::string& key)
+{
+    if (auto* manager = Resolve<DataManager>())
+        manager->RemoveDataNode(key);
+}
 bool EngineAccessor::LoadConfig(const std::string& path)
 {
-    if (auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>())
-    {
-        AppConfig config = cm->GetConfig();
-        ConfigSerializer serializer(config.headlessMode);
-        if (serializer.Deserialize(path, config))
-        {
-            cm->UpdateConfig(config);
-            return true;
-        }
-    }
-    return false;
+    auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
+    return resources && resources->LoadUnified("CONFIG", path);
 }
 bool EngineAccessor::SaveConfig(const std::string& path)
 {
@@ -131,26 +166,26 @@ void EngineAccessor::SetCursorMode(CursorMode mode)
 
 void EngineAccessor::LoadLanguage(const std::string& path, const std::string& name)
 {
-    if (auto* loc = Resolve<LocalizationSystem>())
+    if (auto* loc = Resolve<ILocalizationService>())
         loc->LoadLanguage(path, name);
 }
 
 void EngineAccessor::SetLanguage(const std::string& name)
 {
-    if (auto* loc = Resolve<LocalizationSystem>())
+    if (auto* loc = Resolve<ILocalizationService>())
         loc->SetLanguage(name);
 }
 
 std::string EngineAccessor::GetLanguage() const
 {
-    if (auto* loc = Resolve<LocalizationSystem>())
+    if (auto* loc = Resolve<ILocalizationService>())
         return loc->GetLanguage();
     return "";
 }
 
 std::string EngineAccessor::GetTranslation(const std::string& key) const
 {
-    if (auto* loc = Resolve<LocalizationSystem>())
+    if (auto* loc = Resolve<ILocalizationService>())
         return loc->Get(key);
     return "[MISSING: " + key + "]";
 }
@@ -158,6 +193,10 @@ std::string EngineAccessor::GetTranslation(const std::string& key) const
 void EngineAccessor::QueueLoadScene(const std::string& path, bool persistent)
 {
     ServiceLocator::Instance().Require<SceneManager>().QueueLoadScene(path, persistent);
+}
+void EngineAccessor::QueueUnloadScene(const std::string& path)
+{
+    ServiceLocator::Instance().Require<SceneManager>().QueueUnloadScene(path);
 }
 void EngineAccessor::UnloadScene(const std::string& path)
 {
@@ -170,6 +209,10 @@ void EngineAccessor::UnloadScene(const SceneRecord* rec)
 void EngineAccessor::ChangeScene(const std::string& path)
 {
     ServiceLocator::Instance().Require<SceneManager>().ChangeScene(path);
+}
+void EngineAccessor::QueueChangeScene(const std::string& path)
+{
+    ServiceLocator::Instance().Require<SceneManager>().QueueChangeScene(path);
 }
 void EngineAccessor::PopScene()
 {
@@ -188,9 +231,14 @@ bool EngineAccessor::IsSceneLoaded(const std::string& path)
     return ServiceLocator::Instance().Require<SceneManager>().IsLoaded(path);
 }
 
+void EngineAccessor::LogAllScenes()
+{
+    ServiceLocator::Instance().Require<SceneManager>().LogAllScenes();
+}
+
 void EngineAccessor::EnableSystem(const std::string& systemName, bool enable)
 {
-    if (auto* systemManager = ServiceLocator::Instance().Resolve<SystemManager>())
+    if (auto* systemManager = Resolve<ISystemRegistry>())
     {
         if (auto* system = systemManager->GetSystem(systemName))
         {
@@ -199,6 +247,18 @@ void EngineAccessor::EnableSystem(const std::string& systemName, bool enable)
     }
 
     EventManager::Instance().Publish(SystemEnabledEvent{systemName, enable});
+}
+
+void EngineAccessor::EnableSystem(SystemId systemId, bool enable)
+{
+    if (auto* systemManager = Resolve<ISystemRegistry>())
+    {
+        if (auto* system = systemManager->GetSystem(systemId))
+        {
+            system->SetEnabled(enable);
+            EventManager::Instance().Publish(SystemEnabledEvent{system->GetName(), enable});
+        }
+    }
 }
 
 void EngineAccessor::EnableLogic(bool enable)
@@ -274,15 +334,20 @@ void EngineAccessor::IgnoreTagCollision(const std::string& tag1, const std::stri
 
 void EngineAccessor::ForcePhysicsUpdate(float dt)
 {
-    GetSystem<PhysicsSystem>().Update(GetScene(), dt);
+    GetSystem<PhysicsSystem>().FixedUpdate(GetScene(), dt);
 }
 
-void EngineAccessor::CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::vec3& axisA, const glm::vec3& axisB)
+void EngineAccessor::CreateHingeConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA,
+                                           const glm::vec3& pivotB, const glm::vec3& axisA, const glm::vec3& axisB)
 {
     auto* physics = Resolve<IPhysicsWorld>();
-    if (!physics) return;
+    if (!physics)
+        return;
 
-    auto& reg = GetScene().GetRegistry();
+    auto& scene = GetScene();
+    if (!CanCreateConstraint(scene, entityA, entityB))
+        return;
+    auto& reg = scene.GetRegistry();
     if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
     {
         auto& rbA = reg.get<RigidBodyComponent>(entityA);
@@ -293,18 +358,23 @@ void EngineAccessor::CreateHingeConstraint(Entity entityA, Entity entityB, const
             if (constraint)
             {
                 physics->AddConstraint(constraint);
-                rbA.constraints.push_back(constraint);
+                PhysicsConstraintLifecycle::Track(constraint, rbA, rbB);
             }
         }
     }
 }
 
-void EngineAccessor::CreatePointToPointConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB)
+void EngineAccessor::CreatePointToPointConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA,
+                                                  const glm::vec3& pivotB)
 {
     auto* physics = Resolve<IPhysicsWorld>();
-    if (!physics) return;
+    if (!physics)
+        return;
 
-    auto& reg = GetScene().GetRegistry();
+    auto& scene = GetScene();
+    if (!CanCreateConstraint(scene, entityA, entityB))
+        return;
+    auto& reg = scene.GetRegistry();
     if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
     {
         auto& rbA = reg.get<RigidBodyComponent>(entityA);
@@ -315,18 +385,23 @@ void EngineAccessor::CreatePointToPointConstraint(Entity entityA, Entity entityB
             if (constraint)
             {
                 physics->AddConstraint(constraint);
-                rbA.constraints.push_back(constraint);
+                PhysicsConstraintLifecycle::Track(constraint, rbA, rbB);
             }
         }
     }
 }
 
-void EngineAccessor::CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA, const glm::vec3& pivotB, const glm::quat& rotA, const glm::quat& rotB)
+void EngineAccessor::CreateFixedConstraint(Entity entityA, Entity entityB, const glm::vec3& pivotA,
+                                           const glm::vec3& pivotB, const glm::quat& rotA, const glm::quat& rotB)
 {
     auto* physics = Resolve<IPhysicsWorld>();
-    if (!physics) return;
+    if (!physics)
+        return;
 
-    auto& reg = GetScene().GetRegistry();
+    auto& scene = GetScene();
+    if (!CanCreateConstraint(scene, entityA, entityB))
+        return;
+    auto& reg = scene.GetRegistry();
     if (reg.all_of<RigidBodyComponent>(entityA) && reg.all_of<RigidBodyComponent>(entityB))
     {
         auto& rbA = reg.get<RigidBodyComponent>(entityA);
@@ -337,8 +412,7 @@ void EngineAccessor::CreateFixedConstraint(Entity entityA, Entity entityB, const
             if (constraint)
             {
                 physics->AddConstraint(constraint);
-                rbA.constraints.push_back(constraint);
-                rbB.constraints.push_back(constraint);
+                PhysicsConstraintLifecycle::Track(constraint, rbA, rbB);
             }
         }
     }
@@ -419,7 +493,8 @@ void EngineAccessor::SetDepthWriteMask(bool enable)
     }
 }
 
-void EngineAccessor::GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView, glm::mat4& outProj, float& outNear, float& outFar)
+void EngineAccessor::GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView, glm::mat4& outProj, float& outNear,
+                                          float& outFar)
 {
     if (auto* render = Resolve<IRenderService>())
     {
@@ -431,7 +506,8 @@ void EngineAccessor::GetCameraRenderState(glm::vec3& outPos, glm::mat4& outView,
     }
 }
 
-void EngineAccessor::SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos, float nearPlane, float farPlane)
+void EngineAccessor::SetCameraRenderState(const glm::mat4& view, const glm::mat4& proj, const glm::vec3& pos,
+                                          float nearPlane, float farPlane)
 {
     if (auto* render = Resolve<IRenderService>())
     {
@@ -452,7 +528,8 @@ void EngineAccessor::SetCameraRenderState(const glm::mat4& view, const glm::mat4
     }
 }
 
-void EngineAccessor::DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform, const glm::vec4& color, float metallic, float roughness, float ao)
+void EngineAccessor::DrawEntityMesh(Entity entity, const std::string& shaderName, const glm::mat4& customWorldTransform,
+                                    const glm::vec4& color, float metallic, float roughness, float ao)
 {
     auto& reg = GetScene().GetRegistry();
     if (reg.all_of<MeshRendererComponent>(entity))
@@ -481,9 +558,10 @@ void EngineAccessor::DrawEntityMesh(Entity entity, const std::string& shaderName
     }
 }
 
-void EngineAccessor::ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius, float exposure, float gamma, int tonemappingMode)
+void EngineAccessor::ConfigurePostProcessing(bool hdr, bool bloom, float threshold, float intensity, float radius,
+                                             float exposure, float gamma, int tonemappingMode)
 {
-    if (auto* sysMgr = Resolve<SystemManager>())
+    if (auto* sysMgr = Resolve<ISystemRegistry>())
     {
         if (auto* ppSys = dynamic_cast<PostProcessSystem*>(sysMgr->GetSystem("PostProcessSystem")))
         {
@@ -557,7 +635,8 @@ size_t EngineAccessor::GetEntityCount() const
     return 0;
 }
 
-void EngineAccessor::UpdateNavMeshHeightsAndTags(std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier)
+void EngineAccessor::UpdateNavMeshHeightsAndTags(
+    std::function<void(const glm::vec3& pos, glm::vec3& outPos, std::string& outTag)> modifier)
 {
     if (m_ActiveScene && modifier)
     {

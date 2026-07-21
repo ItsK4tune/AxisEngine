@@ -125,8 +125,9 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
     float referenceHeight = 1080.0f;
     if (auto* config = ServiceLocator::Instance().Resolve<ConfigManager>())
     {
-        referenceWidth = (std::max)(1.0f, config->GetConfig().uiReferenceWidth);
-        referenceHeight = (std::max)(1.0f, config->GetConfig().uiReferenceHeight);
+        const auto snapshot = config->GetConfigSnapshot();
+        referenceWidth = (std::max)(1.0f, snapshot->render.uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, snapshot->render.uiReferenceHeight);
     }
 
     const float scaleFactor = (std::min)(screenWidth / referenceWidth, screenHeight / referenceHeight);
@@ -155,8 +156,8 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
         if (!uiTransform)
             continue;
 
-        ScriptableUIRect rect =
-            CalculateScriptableUIRect(scene.GetRegistry(), entity, screenWidth / scaleFactor, screenHeight / scaleFactor);
+        ScriptableUIRect rect = CalculateScriptableUIRect(scene.GetRegistry(), entity, screenWidth / scaleFactor,
+                                                          screenHeight / scaleFactor);
         if (auto* animation = scene.GetRegistry().try_get<UIAnimationComponent>(entity))
             rect = ApplyScriptableVisualScale(rect, *uiTransform, animation->visualScale);
 
@@ -226,9 +227,18 @@ void DispatchUIInput(Scene& scene, float dt, const std::vector<entt::entity>& sc
             [&](float duration) { inputScript->OnMiddleRelease(duration); });
     }
 }
+
+void DispatchKeyBindings(InputScriptable& script, int key, InputEvent event)
+{
+    const auto bindings = script.GetKeyBindings();
+    for (const auto& binding : bindings)
+    {
+        if (binding.key == key && binding.event == event && binding.callback)
+            binding.callback();
+    }
+}
 }  // namespace
 
-REGISTER_SYSTEM(ScriptableSystem)
 
 void ScriptableSystem::Initialize()
 {
@@ -266,6 +276,30 @@ void ScriptableSystem::Shutdown()
     m_ScriptEntities.clear();
 }
 
+void ScriptableSystem::Reset()
+{
+    if (!m_ActiveScene)
+        return;
+    const auto entities = m_ScriptEntities;
+    for (auto entity : entities)
+    {
+        if (!m_ActiveScene->GetRegistry().valid(entity))
+            continue;
+        if (auto* script = m_ActiveScene->GetRegistry().try_get<ScriptComponent>(entity); script && script->instance)
+        {
+            try
+            {
+                script->instance->OnReset();
+            }
+            catch (const std::exception& e)
+            {
+                LOGGER_ERROR("ScriptableSystem")
+                    << "Script reset failed on entity " << static_cast<uint32_t>(entity) << ": " << e.what();
+            }
+        }
+    }
+}
+
 void ScriptableSystem::UnbindRegistries()
 {
     for (auto* registry : m_BoundRegistries)
@@ -290,7 +324,7 @@ void ScriptableSystem::OnSceneChanged(const SceneChangedEvent& e)
             e.registry->on_destroy<ScriptComponent>().connect<&ScriptableSystem::OnScriptComponentDestroyed>(this);
             m_BoundRegistries.insert(e.registry);
         }
- 
+
         m_ScriptEntities.clear();
         auto view = e.registry->view<ScriptComponent>();
         m_ScriptEntities.assign(view.begin(), view.end());
@@ -384,6 +418,10 @@ void ScriptableSystem::OnKeyPressed(const KeyPressedEvent& e)
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnKeyPress(static_cast<Key>(e.key));
+            if (!sc->inputScriptableInstance)
+                sc->inputScriptableInstance = dynamic_cast<InputScriptable*>(sc->instance.get());
+            if (sc->inputScriptableInstance)
+                DispatchKeyBindings(*sc->inputScriptableInstance, e.key, InputEvent::Pressed);
         }
     }
 }
@@ -405,6 +443,10 @@ void ScriptableSystem::OnKeyReleased(const KeyReleasedEvent& e)
         if (sc && sc->instance && sc->instance->IsEnabled())
         {
             sc->instance->OnKeyRelease(static_cast<Key>(e.key));
+            if (!sc->inputScriptableInstance)
+                sc->inputScriptableInstance = dynamic_cast<InputScriptable*>(sc->instance.get());
+            if (sc->inputScriptableInstance)
+                DispatchKeyBindings(*sc->inputScriptableInstance, e.key, InputEvent::Released);
         }
     }
 }
@@ -513,6 +555,7 @@ void ScriptableSystem::Update(Scene& scene, float dt)
     }
 
     auto entities = m_ScriptEntities;
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
 
     for (auto entity : entities)
     {
@@ -572,6 +615,16 @@ void ScriptableSystem::Update(Scene& scene, float dt)
                         script->scriptableInstance->UpdateInvokes(effectiveDt);
                     }
                     script->instance->OnUpdate(effectiveDt);
+                    if (io && script->inputScriptableInstance)
+                    {
+                        const auto bindings = script->inputScriptableInstance->GetKeyBindings();
+                        for (const auto& binding : bindings)
+                        {
+                            if (binding.event == InputEvent::Held && binding.callback &&
+                                io->GetKeyboard().GetKey(static_cast<Key>(binding.key)))
+                                binding.callback();
+                        }
+                    }
                 }
                 catch (const std::exception& e)
                 {
@@ -621,8 +674,7 @@ void ScriptableSystem::FixedUpdate(Scene& scene, float fixedDt)
             }
             catch (...)
             {
-                LOGGER_ERROR("ScriptableSystem")
-                    << "Script FixedUpdate UNKNOWN CRASH on entity " << (uint32_t)entity;
+                LOGGER_ERROR("ScriptableSystem") << "Script FixedUpdate UNKNOWN CRASH on entity " << (uint32_t)entity;
                 script->instance->SetEnabled(false);
             }
         }

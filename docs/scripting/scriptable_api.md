@@ -112,7 +112,7 @@ private:
 
 ### Registering Scripts
 
-Scripts must be registered with the `ScriptRegistry` before use:
+Scripts are registered explicitly through the application's `IScriptRegistry` contract before use:
 
 **In your script header (e.g., `player_controller.h`):**
 ```cpp
@@ -128,14 +128,17 @@ private:
 };
 ```
 
-**In your script registration file (e.g., `register_scripts.cpp`):**
+**In your application class:**
 ```cpp
-#include <script/script_registry.h>
+#include <axis_sdk.h>
 #include "player_controller.h"
 
-void RegisterGameScripts() {
-    REGISTER_SCRIPT(PlayerController);
-}
+class GameApplication final : public Application {
+public:
+    void RegisterUserScripts() override {
+        RegisterScript<PlayerController>("PlayerController");
+    }
+};
 ```
 
 ### Attaching Scripts to Entities
@@ -221,8 +224,8 @@ Called when the entity is destroyed. Use for cleanup.
 ```cpp
 void OnDestroy() override {
     // Stop any playing sounds
-    auto& sound = GetSoundManager();
-    sound.StopAllSounds();
+    if (auto* audio = Resolve<AudioService>())
+        audio->StopAll();
     
     // Release any resources
 }
@@ -505,13 +508,13 @@ void OnTriggerEnter(entt::entity other) override {
 ### Resource Manager
 
 ```cpp
-ResourceManager& GetResourceManager();
+template <typename T> T& Get() const;
 ```
 
 **Example:**
 ```cpp
 void OnCreate() override {
-    auto& res = GetResourceManager();
+    auto& res = Get<ResourceManager>();
     
     // Load resources dynamically
     res.LoadModel("weaponModel", "models/weapon.fbx", true);
@@ -519,60 +522,56 @@ void OnCreate() override {
 }
 ```
 
-### Sound Manager
+### Audio service
 
 ```cpp
-SoundManager& GetSoundManager();
+template <typename T> T* Resolve() const;
 ```
 
 **Example:**
 ```cpp
 void Shoot() {
-    auto& sound = GetSoundManager();
-    sound.PlaySound("shootSound", m_Transform->position, 1.0f);
+    if (auto* audio = Resolve<AudioService>())
+        audio->Play3D("audio/shoot.wav", GetComponent<PositionComponent>().value);
 }
 ```
 
-### Scene Manager
+### Scene transitions
 
 ```cpp
-SceneManager& GetSceneManager();
+void LoadScene(const std::string& path, bool persistent = false);
+void ChangeScene(const std::string& path);
+void UnloadScene(const std::string& path);
 ```
 
 **Example:**
 ```cpp
 void OnTriggerEnter(entt::entity other) override {
     if (/* level complete */) {
-        GetSceneManager().ChangeScene("scenes/next_level.axs");
+        ChangeScene("scenes/next_level.axs");
     }
 }
+```
 
 ### Configuration & System Access
 
 ```cpp
-const AppConfig& GetConfig() const;
+AppConfig GetConfig() const;
 void ApplyConfig(const AppConfig& config);
 
-RenderSystem& GetRenderSystem();
-PhysicsSystem& GetPhysicsSystem();
-AudioSystem& GetAudioSystem();
+template <typename T> T& GetSystem() const;
 Scene& GetScene();
 ```
 
 **Example:**
 ```cpp
 void OnCreate() override {
-    // Access render system to set custom masks
-    GetRenderSystem().SetFilterLayerMask(1);
-    
     // Check global config
-    if (GetConfig().vsync) {
+    if (GetConfig().window.vsync) {
         // ...
     }
 }
 ```
-```
-
 ### Time & Utility
 
 ```cpp
@@ -797,8 +796,8 @@ private:
         
         if (m_IsActivated) {
             // Play sound
-            auto& sound = GetSoundManager();
-            sound.PlaySound("activate", m_Transform->position, 1.0f);
+            if (auto* audio = Resolve<AudioService>())
+                audio->Play3D("audio/activate.wav", GetComponent<PositionComponent>().value);
             
             // Trigger event (e.g., open door, spawn item)
         }
@@ -859,7 +858,7 @@ private:
         // Button action
         // e.g., load scene, start game, etc.
         if (m_ButtonAction == "StartGame") {
-            GetSceneManager().ChangeScene("scenes/game.axs");
+            ChangeScene("scenes/game.axs");
         } else if (m_ButtonAction == "Quit") {
             // Quit game
         }
@@ -893,8 +892,8 @@ private:
 ---
 
 ## See Also
-- [State API](state_api.md)
+- [State API](../state/state_api.md)
 - [Component Reference](../guides/components_reference.md)
-- [Scripting Basics Guide](../guides/scripting_basics.md)
-- [Physics System API](systems/physics_system.md)
-- [Input Manager API](managers/input_manager.md)
+- [Scripting Basics Guide](../scripting/scriptable_api.md)
+- [Physics Guide](../guides/physics.md)
+- [Device Management](../guides/device_management.md)

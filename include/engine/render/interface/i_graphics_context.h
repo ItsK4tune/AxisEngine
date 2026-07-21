@@ -1,6 +1,7 @@
 #pragma once
 
 #include <render/type/graphics_types.h>
+#include <cstdint>
 #include <string>
 
 class IBufferManager;
@@ -27,6 +28,11 @@ public:
 
     virtual void Clear(BufferBit flags) = 0;
 
+    // Call after an external renderer (for example ImGui or a plugin issuing
+    // native graphics calls) may have changed bindings or fixed-function state.
+    virtual void InvalidateStateCache() {}
+    virtual void SetStateCacheEnabled(bool) {}
+
     virtual IBufferManager& GetBufferManager() = 0;
     virtual ITextureManager& GetTextureManager() = 0;
     virtual IShaderManager& GetShaderManager() = 0;
@@ -36,4 +42,8 @@ public:
     virtual IQueryManager& GetQueryManager() = 0;
 
     virtual std::string GetName() const = 0;
+    virtual bool TryGetMemoryBudget(uint64_t&, uint64_t&) const
+    {
+        return false;
+    }
 };

@@ -8,16 +8,18 @@ std::shared_ptr<Skybox> SkyboxManager::Load(const std::string& name, const std::
 
     auto skybox = std::make_shared<Skybox>();
     skybox->SetName(name);
-    skybox->LoadCubemap(faces);
-    if (skybox)
+    const bool allFacesLoaded = skybox->LoadCubemap(faces);
+    if (skybox->GetTextureID() == 0)
     {
-        m_Cache.Add(name, skybox);
-        LOGGER_INFO("SkyboxManager") << "Loaded skybox: " << name;
-        return skybox;
+        LOGGER_ERROR("SkyboxManager") << "Failed to create skybox texture: " << name;
+        return nullptr;
     }
-
-    LOGGER_ERROR("SkyboxManager") << "Failed to load skybox: " << name;
-    return nullptr;
+    m_Cache.Add(name, skybox);
+    if (allFacesLoaded)
+        LOGGER_INFO("SkyboxManager") << "Loaded skybox: " << name;
+    else
+        LOGGER_WARN("SkyboxManager") << "Loaded skybox with fallback faces: " << name;
+    return skybox;
 }
 
 std::shared_ptr<Skybox> SkyboxManager::Get(const std::string& nameOrPath)

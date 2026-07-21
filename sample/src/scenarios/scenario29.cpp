@@ -5,17 +5,17 @@ void SampleState::LoadScene29()
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
-    auto& l10n = GetSystem<LocalizationSystem>();
+    auto& l10n = Get<ILocalizationService>();
     l10n.LoadLanguage("sample/resource/l10n/vi.axs", "vi");
     l10n.LoadLanguage("sample/resource/l10n/en.axs", "en");
     l10n.SetLanguage("en");
 
     // A beautiful centered panel for testing localization (size doubled to 1200x880, shifted to the right)
     auto panel = EntityBuilder(scene, res, "scenario")
-        .WithName("L10nPreviewPanel")
-        .WithUIAnchored(glm::vec2(0.5f, 0.5f), glm::vec2(-500.0f, -440.0f), glm::vec2(1200.0f, 880.0f), 24)
-        .WithUIRenderer("l10n_preview_panel", glm::vec4(0.08f, 0.10f, 0.14f, 0.96f))
-        .Build();
+                     .WithName("L10nPreviewPanel")
+                     .WithUIAnchored(glm::vec2(0.5f, 0.5f), glm::vec2(-500.0f, -440.0f), glm::vec2(1200.0f, 880.0f), 24)
+                     .WithUIRenderer("l10n_preview_panel", glm::vec4(0.08f, 0.10f, 0.14f, 0.96f))
+                     .Build();
 
     // Title (doubled size and Y offsets)
     EntityBuilder(scene, res, "scenario")
@@ -38,8 +38,8 @@ void SampleState::LoadScene29()
     EntityBuilder(scene, res, "scenario")
         .WithName("L10nEntityCountText")
         .WithUIChild(panel, glm::vec2(60.0f, 240.0f), glm::vec2(1080.0f, 72.0f), 25)
-        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)GetEntityCount())),
-                    "time", 0.44f, glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
+        .WithUIText(l10n.GetFormat("scenario.active_entities", std::to_string((int)GetEntityCount())), "time", 0.44f,
+                    glm::vec4(0.85f, 0.90f, 0.96f, 1.0f))
         .WithUITextAlignment(TextAlignment::Left, true, 1040.0f)
         .Build();
 

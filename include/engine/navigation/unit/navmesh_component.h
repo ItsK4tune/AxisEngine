@@ -30,6 +30,8 @@ struct NavMeshComponent
 
     bool isDynamic = false;
     bool needsRebuild = true;
+    float rebuildRetryRemaining = 0.0f;
+    uint64_t revision = 0;
 
     int terrainGridResolution = 64;
     float walkableNormalY = 0.3f;

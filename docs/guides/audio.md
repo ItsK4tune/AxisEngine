@@ -1,6 +1,6 @@
 # Audio Guide
 
-AXIS Engine utilizes the **irrKlang** library for robust 2D and 3D spatial audio playback.
+Axis exposes playback through `IAudioEngine`; the concrete backend can be irrKlang, FMOD, or the null backend selected by the build and configuration.
 
 ---
 
@@ -18,18 +18,20 @@ Defines a sound emitter attached to an entity.
 
 ---
 
-## 2. Sound Management API
-The `SoundManager` handles the global audio state and direct playback.
+## 2. Audio service API
+`AudioService` owns the selected playback backend and provides direct playback.
 
 ### Accessing the Manager
 ```cpp
-auto& soundMgr = m_App->GetSoundManager();
+if (auto* audio = Resolve<AudioService>()) {
+    audio->Play2D("audio/music.ogg", true);
+}
 ```
 
 ### Common Operations
-- **Play2D**: Use for background music or UI sound effects (`soundMgr.Play2D("path.wav", true)`).
+- **Play2D**: Use for background music or UI sound effects (`audio->Play2D("path.wav", true)`).
 - **Play3D**: Trigger a one-off sound at a world position.
-- **Global Control**: `StopAll()` or `SetVolume(float)` for master volume control.
+- **Global Control**: `StopAll()` or `SetGlobalVolume(float)` for master volume control.
 - **Listener**: The system automatically updates the listener's "ears" to match the active camera position and orientation.
 
 ---
@@ -40,7 +42,7 @@ The `AudioSystem` runs every frame to ensure spatial consistency:
 1.  **3D Tracking**: Updates the position of all active `AudioSourceComponent` instances to match their entity's `TransformComponent`.
 2.  **Listener Sync**: Synchronizes the 3D listener state with the current camera's view matrix.
 3.  **Automatic Playback**: Starts sources that are flagged with `PlayOnAwake` or set to play via logic.
-4.  **Resource Cleanup**: Safely releases irrKlang sound instances when entities are destroyed.
+4.  **Resource Cleanup**: Safely releases backend sound instances when entities are destroyed.
 
 ---
 

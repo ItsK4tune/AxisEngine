@@ -56,7 +56,7 @@ void Entity::SetPosition(const glm::vec3& pos)
     {
         auto& p = m_Scene->GetRegistry().get<PositionComponent>(m_EntityHandle);
         p.value = p.prev = pos;
-        m_Scene->SetOctreeDirty(true);
+        m_Scene->MarkTransformDirty(m_EntityHandle);
     }
 }
 
@@ -75,7 +75,7 @@ void Entity::SetRotation(const glm::quat& rot)
     {
         auto& r = m_Scene->GetRegistry().get<RotationComponent>(m_EntityHandle);
         r.value = r.prev = rot;
-        m_Scene->SetOctreeDirty(true);
+        m_Scene->MarkTransformDirty(m_EntityHandle);
     }
 }
 
@@ -99,7 +99,7 @@ void Entity::SetScale(const glm::vec3& scale)
     {
         auto& s = m_Scene->GetRegistry().get<ScaleComponent>(m_EntityHandle);
         s.value = s.prev = scale;
-        m_Scene->SetOctreeDirty(true);
+        m_Scene->MarkTransformDirty(m_EntityHandle);
     }
 }
 
@@ -534,13 +534,15 @@ void Entity::SetLightProbeIntensity(float intensity)
 
 void Entity::SetLightProbeTint(const glm::vec3& tint)
 {
+    if (IsValid() && m_Scene->GetRegistry().all_of<LightProbeComponent>(m_EntityHandle))
+        m_Scene->GetRegistry().get<LightProbeComponent>(m_EntityHandle).tint = glm::max(tint, glm::vec3(0.0f));
 }
 
 void Entity::MarkTransformDirty()
 {
     if (IsValid() && m_Scene->GetRegistry().all_of<WorldTransformComponent>(m_EntityHandle))
     {
-        m_Scene->GetRegistry().get<WorldTransformComponent>(m_EntityHandle).isDirty = true;
+        m_Scene->MarkTransformDirty(m_EntityHandle);
     }
 }
 
@@ -621,7 +623,8 @@ void Entity::SetLightDirection(const glm::vec3& direction)
     }
 }
 
-void Entity::ConfigurePathFollower(bool lockXPitch, bool lockYYaw, bool lockZRoll, bool lockMoveX, bool lockMoveY, bool lockMoveZ, bool recordDebugPath, int criteria)
+void Entity::ConfigurePathFollower(bool lockXPitch, bool lockYYaw, bool lockZRoll, bool lockMoveX, bool lockMoveY,
+                                   bool lockMoveZ, bool recordDebugPath, int criteria)
 {
     if (IsValid() && m_Scene->GetRegistry().all_of<PathFollowerComponent>(m_EntityHandle))
     {

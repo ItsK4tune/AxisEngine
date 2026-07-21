@@ -1,12 +1,14 @@
 #include <ecs/logic/planar_reflection_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
+#include <core/type/app_config.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_skybox_service.h>
 #include <ecs/interface/i_lighting_service.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/reflection_components.h>
+#include <ecs/unit/render_components.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
@@ -17,8 +19,9 @@
 #include <scene/logic/scene_manager.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <render/logic/render_core.h>
+#include <algorithm>
+#include <cmath>
 
-REGISTER_SYSTEM(PlanarReflectionSystem)
 
 void PlanarReflectionSystem::Initialize()
 {
@@ -28,6 +31,20 @@ void PlanarReflectionSystem::Initialize()
 
 void PlanarReflectionSystem::Shutdown()
 {
+    ReleaseSceneResources();
+    m_Context = nullptr;
+    m_RenderService = nullptr;
+    m_NextReflectionIndex = 0;
+    m_Candidates.clear();
+}
+
+void PlanarReflectionSystem::Reset()
+{
+    ReleaseSceneResources();
+}
+
+void PlanarReflectionSystem::ReleaseSceneResources()
+{
     if (!m_Context)
         return;
 
@@ -36,8 +53,10 @@ void PlanarReflectionSystem::Shutdown()
 
     // Get the global scene/registry to clean up resources
     auto& sl = ServiceLocator::Instance();
-    auto& scene = sl.Require<Scene>();
-    auto view = scene.View<PlanarReflectionComponent>();
+    auto* scene = sl.Resolve<Scene>();
+    if (!scene)
+        return;
+    auto view = scene->View<PlanarReflectionComponent>();
     for (auto entity : view)
     {
         auto& comp = view.get<PlanarReflectionComponent>(entity);
@@ -45,9 +64,15 @@ void PlanarReflectionSystem::Shutdown()
             rtm.DeleteFramebuffer(comp.reflectionFBO);
         if (comp.reflectionTextureID)
             tm.DeleteTexture(comp.reflectionTextureID);
+        if (comp.reflectionDepthRBO)
+            rtm.DeleteRenderbuffer(comp.reflectionDepthRBO);
         comp.reflectionFBO = 0;
         comp.reflectionTextureID = 0;
+        comp.reflectionDepthRBO = 0;
+        comp.isRendered = false;
+        comp.framesUntilUpdate = 0;
     }
+    m_NextReflectionIndex = 0;
 }
 
 void PlanarReflectionSystem::Render(Scene& scene)
@@ -75,33 +100,69 @@ void PlanarReflectionSystem::Render(Scene& scene)
     auto& dc = m_Context->GetDrawContext();
 
     uint32_t currentFBO = m_RenderService->GetMainFBO();
-    const glm::mat4 savedView = m_RenderService->GetViewMatrix();
-    const glm::mat4 savedProjection = m_RenderService->GetProjectionMatrix();
-    const glm::vec3 savedCameraPos = m_RenderService->GetCameraPosition();
-
     int screenWidth = m_RenderService->GetLastWidth();
     int screenHeight = m_RenderService->GetLastHeight();
     if (screenWidth <= 0 || screenHeight <= 0)
         return;
 
+    m_Candidates.clear();
+    m_Candidates.reserve(view.size_hint());
+    m_MainViewVisibleEntities.clear();
+    const auto collectVisible = [this](const std::vector<RenderItem>& queue) {
+        for (const auto& item : queue)
+            m_MainViewVisibleEntities.insert(item.entityId);
+    };
+    const auto& mainQueue = m_RenderService->GetRenderQueueObj();
+    collectVisible(mainQueue.GetDeferredOpaqueQueue());
+    collectVisible(mainQueue.GetForwardOpaqueQueue());
+    collectVisible(mainQueue.GetTransparentQueue());
+    collectVisible(mainQueue.GetDepthOverlayQueue());
     for (auto entity : view)
     {
+        auto& reflection = view.get<PlanarReflectionComponent>(entity);
+        if (const auto* info = scene.TryGetComponent<InfoComponent>(entity); info && !info->isActive)
+            continue;
+        if (scene.HasAllComponents<MeshRendererComponent>(entity) &&
+            !m_MainViewVisibleEntities.contains(static_cast<uint32_t>(entt::to_entity(entity))))
+            continue;
+        if (reflection.framesUntilUpdate > 0 && reflection.reflectionFBO != 0 && !reflection.isDirty)
+        {
+            --reflection.framesUntilUpdate;
+            continue;
+        }
+        m_Candidates.push_back(entity);
+    }
+    if (m_Candidates.empty())
+        return;
+
+    const size_t captureCount = m_CaptureBudgetEnabled
+                                    ? (std::min)(m_MaxCapturesPerFrame, m_Candidates.size())
+                                    : m_Candidates.size();
+    const size_t first = m_NextReflectionIndex % m_Candidates.size();
+    for (size_t offset = 0; offset < captureCount; ++offset)
+    {
+        const entt::entity entity = m_Candidates[(first + offset) % m_Candidates.size()];
         auto& prc = view.get<PlanarReflectionComponent>(entity);
         auto& pos = view.get<PositionComponent>(entity);
         auto& rot = view.get<RotationComponent>(entity);
 
+        const float resolutionScale = glm::clamp(prc.resolutionScale, 0.1f, 1.0f);
+        const int targetWidth = (std::max)(16, static_cast<int>(screenWidth * resolutionScale));
+        const int targetHeight = (std::max)(16, static_cast<int>(screenHeight * resolutionScale));
+
         // Dynamic resizing to match screen aspect ratio and resolution
-        if (prc.reflectionFBO == 0 || prc.resolution != (uint32_t)screenWidth ||
-            prc.resolution_y != (uint32_t)screenHeight)
+        if (prc.reflectionFBO == 0 || prc.resolution != targetWidth || prc.resolution_y != targetHeight)
         {
             if (prc.reflectionFBO != 0)
             {
                 rtm.DeleteFramebuffer(prc.reflectionFBO);
                 tm.DeleteTexture(prc.reflectionTextureID);
+                if (prc.reflectionDepthRBO)
+                    rtm.DeleteRenderbuffer(prc.reflectionDepthRBO);
             }
 
-            prc.resolution = screenWidth;
-            prc.resolution_y = screenHeight;
+            prc.resolution = targetWidth;
+            prc.resolution_y = targetHeight;
 
             prc.reflectionTextureID = tm.GenTexture();
             tm.BindTexture(TextureType::Texture2D, prc.reflectionTextureID);
@@ -113,15 +174,16 @@ void PlanarReflectionSystem::Render(Scene& scene)
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, (int)TextureFilter::Linear);
             tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, (int)TextureFilter::Linear);
 
-            uint32_t rbo = rtm.CreateRenderbuffer();
-            rtm.BindRenderbuffer(rbo);
+            prc.reflectionDepthRBO = rtm.CreateRenderbuffer();
+            rtm.BindRenderbuffer(prc.reflectionDepthRBO);
             rtm.RenderbufferStorage(InternalFormat::DepthComponent24, prc.resolution, prc.resolution_y);
 
             prc.reflectionFBO = rtm.CreateFramebuffer();
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, prc.reflectionFBO);
             rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0,
                                      TextureType::Texture2D, prc.reflectionTextureID, 0);
-            rtm.FramebufferRenderbuffer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, rbo);
+            rtm.FramebufferRenderbuffer(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth,
+                                        prc.reflectionDepthRBO);
             rtm.BindFramebuffer(FramebufferTarget::Framebuffer, currentFBO);
             prc.isDirty = false;
         }
@@ -176,7 +238,16 @@ void PlanarReflectionSystem::Render(Scene& scene)
                                 (clipPlane.y > 0.0f ? 1.0f : (clipPlane.y < 0.0f ? -1.0f : 0.0f)), 1.0f, 1.0f);
 
         // Scale clip plane
-        glm::vec4 c = clipPlane * (2.0f / glm::dot(clipPlane, q));
+        const float clipDenominator = glm::dot(clipPlane, q);
+        if (std::abs(clipDenominator) <= 0.00001f)
+        {
+            rsm.SetCullFace(CullMode::Back);
+            m_RenderService->SetMainFBO(tempFB);
+            rtm.BindFramebuffer(FramebufferTarget::Framebuffer, tempFB);
+            rsm.SetViewport(0, 0, screenWidth, screenHeight);
+            continue;
+        }
+        glm::vec4 c = clipPlane * (2.0f / clipDenominator);
 
         // Replace the third row of the projection matrix (the near plane)
         obliqueProj[0][2] = c.x;
@@ -197,6 +268,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
         reflParams.cullingMask = cam.cullingMask;
         reflParams.isCapturingProbe = true;
         reflParams.excludeEntity = entity;
+        m_RenderService->PushRenderViewContext();
         m_RenderService->BuildRenderQueuesWithCamera(scene, reflParams);
 
         if (auto* skyboxService = ServiceLocator::Instance().Resolve<ISkyboxService>())
@@ -211,7 +283,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
             sceneData.viewMatrix = refViewMat;
             sceneData.projMatrix = obliqueProj;
             sceneData.cameraPosition = refCamPos;
-            sceneData.lights = m_RenderService->GetRenderQueueObj().GetLights();
+            sceneData.lightView = &m_RenderService->GetRenderQueueObj().GetLights();
             lightingService->UploadLightData(sceneData);
         }
 
@@ -223,6 +295,7 @@ void PlanarReflectionSystem::Render(Scene& scene)
 
         const auto& fwdQ = m_RenderService->GetRenderQueueObj().GetForwardOpaqueQueue();
         m_RenderService->ExecuteQueue(fwdQ, RenderQueuePass::ForwardOpaque, nullptr, matRenderer, nullptr);
+        m_RenderService->PopRenderViewContext();
 
         rsm.SetCullFace(CullMode::Back);
         m_RenderService->SetMainFBO(tempFB);
@@ -230,8 +303,16 @@ void PlanarReflectionSystem::Render(Scene& scene)
         rsm.SetViewport(0, 0, screenWidth, screenHeight);
 
         prc.isRendered = true;
+        prc.isDirty = false;
+        prc.framesUntilUpdate = (std::max)(1u, prc.updateIntervalFrames) - 1u;
     }
 
-    m_RenderService->RestoreCameraState(savedView, savedProjection, savedCameraPos, cam.nearPlane, cam.farPlane);
-    m_RenderService->BuildRenderQueues(scene, 1.0f, screenWidth, screenHeight);
+    m_NextReflectionIndex = (first + captureCount) % m_Candidates.size();
+
+}
+
+void PlanarReflectionSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    SetCaptureBudget(config.reflectionCaptureBudgetEnabled,
+                     static_cast<size_t>(config.maxPlanarReflectionCapturesPerFrame));
 }

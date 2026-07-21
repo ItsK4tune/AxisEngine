@@ -8,7 +8,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-REGISTER_SYSTEM(CameraSystem)
 
 void CameraSystem::Initialize()
 {
@@ -81,10 +80,6 @@ void CameraSystem::Update(Scene& scene, float dt)
             }
         }
     }
-}
-
-void CameraSystem::FixedUpdate(Scene& scene, float dt)
-{
 }
 
 std::vector<entt::id_type> CameraSystem::GetReadComponents() const

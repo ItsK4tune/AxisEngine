@@ -1,4 +1,5 @@
 #include <script/logic/scriptable.h>
+#include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/data_manager.h>
 #include <ecs/unit/core_components.h>

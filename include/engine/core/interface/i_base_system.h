@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <core/type/system_id.h>
 #include <string>
 
 enum class SystemCategory
@@ -81,18 +82,15 @@ public:
 
     virtual bool IsEnabled() const = 0;
     virtual void SetEnabled(bool enabled) = 0;
-    virtual bool IsSleeping() const
-    {
-        return false;
-    }
-    virtual void SetSleep(bool sleep)
-    {
-    }
     virtual int GetPriority() const
     {
         return 0;
     }
     virtual std::string GetName() const = 0;
+    virtual SystemId GetId() const
+    {
+        return SystemId::FromName(GetName());
+    }
     virtual bool WantsFixedUpdate() const
     {
         return false;

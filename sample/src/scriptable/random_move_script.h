@@ -38,8 +38,7 @@ public:
         {
             auto& pos = GetComponent<PositionComponent>();
             pos.value = glm::mix(pos.value, targetPos, speed * dt);
-            if (HasComponent<WorldTransformComponent>())
-                GetComponent<WorldTransformComponent>().isDirty = true;
+            MarkTransformDirty();
         }
     }
 };

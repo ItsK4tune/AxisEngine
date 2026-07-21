@@ -1,5 +1,4 @@
 #version 460 core
-layout (location = 0) out vec3 gPosition;
 layout (location = 1) out vec3 gNormal;
 layout (location = 2) out vec4 gAlbedoSpec;
 layout (location = 3) out uint gEntityID;
@@ -38,10 +37,10 @@ uniform float u_AO;
 uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
 uniform uint u_EntityID;
+flat in uint EntityID;
 
 void main()
 {    
-    gPosition = FragPos;
     gNormal = Normal;
     
     vec4 texColor = texture(u_AlbedoMap, TexCoords);
@@ -50,11 +49,12 @@ void main()
     
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = u_FresnelBias; // Pack FresnelBias here (roughness already in gPBRParams.g)
-    gEntityID = u_EntityID;
+    gEntityID = EntityID;
     gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
     
-    // Packing: Integer part = ProbeIndex + 1, Fractional part = FresnelPower / 100.0
-    float packedReflection = float(u_ProbeIndex + 1) + clamp(u_FresnelPower / 100.0, 0.0, 0.99);
+    // Alpha is UNORM8: high nibble stores ProbeIndex+1, low nibble stores FresnelPower.
+    float packedReflection = (clamp(float(u_ProbeIndex + 1), 0.0, 15.0) * 16.0 +
+                              round(clamp(u_FresnelPower, 0.0, 15.0))) / 255.0;
     gPBRParams = vec4(u_Metallic, _roughness, u_Reflectivity, packedReflection);
 }
 

@@ -1,12 +1,12 @@
 #pragma once
 
 #include <core/interface/i_base_system.h>
-#include <sstream>
+#include <core/interface/i_localization_service.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-class LocalizationSystem : public IBaseSystem
+class LocalizationSystem : public IBaseSystem, public ILocalizationService
 {
 public:
     LocalizationSystem();
@@ -38,32 +38,17 @@ public:
     }
 
     // Localization API
-    void LoadLanguage(const std::string& path, const std::string& name = "");
-    void SetLanguage(const std::string& langCode);
-    std::string GetLanguage() const;
-    std::string Get(const std::string& key) const;
-
-    template <typename... Args>
-    std::string GetFormat(const std::string& key, Args... args) const
-    {
-        std::string raw = Get(key);
-        std::vector<std::string> strArgs = {ToString(args)...};
-        return FormatString(raw, strArgs);
-    }
+    void LoadLanguage(const std::string& path, const std::string& name = "") override;
+    void SetLanguage(const std::string& langCode) override;
+    std::string GetLanguage() const override;
+    std::string Get(const std::string& key) const override;
+    std::string Format(const std::string& key, const std::vector<std::string>& arguments) const override;
 
 private:
     void FlattenNode(const struct YAMLNode& node, const std::string& prefix,
                      std::unordered_map<std::string, std::string>& outEntries);
 
     std::string FormatString(const std::string& format, const std::vector<std::string>& args) const;
-
-    template <typename T>
-    std::string ToString(const T& val) const
-    {
-        std::stringstream ss;
-        ss << val;
-        return ss.str();
-    }
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_Languages;
     std::string m_CurrentLanguage;

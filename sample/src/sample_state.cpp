@@ -6,15 +6,17 @@
 #include <ecs/logic/camera_system.h>
 #include <ecs/logic/post_process_system.h>
 #include <ecs/unit/post_process_component.h>
-#include <platform/logic/input_serializer.h>
-#include <core/logic/data_node_serializer.h>
 #include <network/network_system.h>
 #include <physics/logic/collision_matrix.h>
 #include <physics/logic/physics_query_service.h>
 #include <physics/unit/ray.h>
+#include <audio/interface/i_audio_capture_service.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/backend_registry.h>
 #include <core/logic/config_manager.h>
+#include <core/logic/config_validation.h>
+#include <core/logic/runtime_profiler.h>
+#include <core/interface/i_application_lifecycle.h>
 #include <audio/interface/i_sound.h>
 #include <ecs/unit/media_components.h>
 #include <ecs/unit/network_components.h>
@@ -39,11 +41,6 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <dxgi1_4.h>
-#include <pdh.h>
-
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "pdh.lib")
 
 #ifdef GetCurrentTime
 #undef GetCurrentTime
@@ -57,10 +54,57 @@ constexpr const char* kScenario25DynamicSceneName = "scenario";
 constexpr const char* kScenario31Audio2DName = "Audio2DLoop";
 constexpr const char* kScenario31Audio3DName = "AudioSource3D";
 
+#ifdef ENABLE_EDITOR
+const char* AudioCaptureResultName(AudioCaptureResult result)
+{
+    switch (result)
+    {
+        case AudioCaptureResult::Success:
+            return "Capture started";
+        case AudioCaptureResult::AlreadyRunning:
+            return "Capture already running";
+        case AudioCaptureResult::Unsupported:
+            return "Capture backend unsupported";
+        case AudioCaptureResult::DeviceNotFound:
+            return "No microphone found";
+        case AudioCaptureResult::PermissionDenied:
+            return "Microphone permission denied";
+        case AudioCaptureResult::BackendError:
+            return "Capture backend error";
+    }
+    return "Unknown";
+}
+
+void DrawScenario33Meter(const char* id, const char* label, float value, float threshold)
+{
+    value = std::clamp(value, 0.0f, 1.0f);
+    threshold = std::clamp(threshold, 0.0f, 1.0f);
+    ImGui::TextUnformatted(label);
+    const ImVec2 size((std::max)(ImGui::GetContentRegionAvail().x, 1.0f), 22.0f);
+    const ImVec2 min = ImGui::GetCursorScreenPos();
+    ImGui::InvisibleButton(id, size);
+    const ImVec2 barMax(min.x + size.x, min.y + size.y);
+    auto* draw = ImGui::GetWindowDrawList();
+    draw->AddRectFilled(min, barMax, IM_COL32(20, 25, 34, 255), 4.0f);
+    draw->AddRectFilled(min, ImVec2(min.x + size.x * value, barMax.y),
+                        value >= threshold ? IM_COL32(34, 197, 94, 255) : IM_COL32(14, 165, 233, 255), 4.0f);
+    const float thresholdX = min.x + size.x * threshold;
+    draw->AddLine(ImVec2(thresholdX, min.y), ImVec2(thresholdX, barMax.y), IM_COL32(250, 204, 21, 255), 2.0f);
+
+    char text[48] = {};
+    std::snprintf(text, sizeof(text), "%.3f / %.3f", value, threshold);
+    const ImVec2 textSize = ImGui::CalcTextSize(text);
+    draw->AddText(ImVec2(min.x + (size.x - textSize.x) * 0.5f, min.y + (size.y - textSize.y) * 0.5f), IM_COL32_WHITE,
+                  text);
+}
+#endif
+
 struct PerfStats
 {
     float cpu = 0.0f;
     float gpu = 0.0f;
+    float cpuFrame = 0.0f;
+    float gpuFrame = 0.0f;
     float ram = 0.0f;
     float vram = 0.0f;
 };
@@ -71,109 +115,58 @@ PerfStats QueryPerfStats()
     static PerfStats smoothed;
     static bool hasSmoothed = false;
     static ULONGLONG lastUpdateMs = 0;
-    ULONGLONG nowMs = GetTickCount64();
-    if (lastUpdateMs != 0 && nowMs - lastUpdateMs < 500)
-        return smoothed;
-    lastUpdateMs = nowMs;
-
     PerfStats stats = smoothed;
 
-    static ULARGE_INTEGER prevIdle{}, prevKernel{}, prevUser{};
-    FILETIME idleTime{}, kernelTime{}, userTime{};
-    if (GetSystemTimes(&idleTime, &kernelTime, &userTime))
+    const auto& runtime = RuntimeProfiler::Instance().GetLastCompletedStats();
+    stats.cpuFrame = runtime.cpuFrameMs;
+    stats.gpuFrame = runtime.hasGpuFrameTime ? runtime.gpuFrameMs : 0.0f;
+    const float criticalPathMs = (std::max)(stats.cpuFrame, stats.gpuFrame);
+    stats.gpu = criticalPathMs > 0.0f ? glm::clamp(stats.gpuFrame / criticalPathMs * 100.0f, 0.0f, 100.0f)
+                                      : 0.0f;
+    if (runtime.vramTotalBytes > 0)
+        stats.vram = glm::clamp(static_cast<float>(static_cast<double>(runtime.vramUsedBytes) /
+                                                   static_cast<double>(runtime.vramTotalBytes) * 100.0),
+                                0.0f, 100.0f);
+
+    ULONGLONG nowMs = GetTickCount64();
+    if (lastUpdateMs != 0 && nowMs - lastUpdateMs < 500)
     {
-        ULARGE_INTEGER idle{}, kernel{}, user{};
-        idle.LowPart = idleTime.dwLowDateTime;
-        idle.HighPart = idleTime.dwHighDateTime;
+        smoothed.cpuFrame = stats.cpuFrame;
+        smoothed.gpuFrame = stats.gpuFrame;
+        smoothed.gpu = stats.gpu;
+        smoothed.vram = stats.vram;
+        return smoothed;
+    }
+    lastUpdateMs = nowMs;
+
+    static uint64_t previousProcessTime = 0;
+    static uint64_t previousWallTime = 0;
+    FILETIME creationTime{}, exitTime{}, kernelTime{}, userTime{}, wallTime{};
+    GetSystemTimeAsFileTime(&wallTime);
+    if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
+    {
+        ULARGE_INTEGER kernel{}, user{}, wall{};
         kernel.LowPart = kernelTime.dwLowDateTime;
         kernel.HighPart = kernelTime.dwHighDateTime;
         user.LowPart = userTime.dwLowDateTime;
         user.HighPart = userTime.dwHighDateTime;
-        const auto sysDelta = (kernel.QuadPart - prevKernel.QuadPart) + (user.QuadPart - prevUser.QuadPart);
-        const auto idleDelta = idle.QuadPart - prevIdle.QuadPart;
-        if (prevKernel.QuadPart != 0 && sysDelta > 0)
-            stats.cpu = glm::clamp((1.0f - static_cast<float>(idleDelta) / static_cast<float>(sysDelta)) * 100.0f, 0.0f,
-                                   100.0f);
-        prevIdle = idle;
-        prevKernel = kernel;
-        prevUser = user;
+        wall.LowPart = wallTime.dwLowDateTime;
+        wall.HighPart = wallTime.dwHighDateTime;
+        const uint64_t processTime = kernel.QuadPart + user.QuadPart;
+        const uint64_t wallDelta = wall.QuadPart - previousWallTime;
+        const DWORD processorCount = (std::max<DWORD>)(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS), 1);
+        if (previousProcessTime != 0 && wallDelta > 0)
+            stats.cpu = glm::clamp(static_cast<float>(processTime - previousProcessTime) /
+                                       (static_cast<float>(wallDelta) * processorCount) * 100.0f,
+                                   0.0f, 100.0f);
+        previousProcessTime = processTime;
+        previousWallTime = wall.QuadPart;
     }
 
     MEMORYSTATUSEX mem{};
     mem.dwLength = sizeof(mem);
     if (GlobalMemoryStatusEx(&mem))
         stats.ram = static_cast<float>(mem.dwMemoryLoad);
-
-    static PDH_HQUERY gpuQuery = nullptr;
-    static PDH_HCOUNTER gpuCounter = nullptr;
-    if (!gpuQuery)
-    {
-        if (PdhOpenQueryW(nullptr, 0, &gpuQuery) == ERROR_SUCCESS)
-        {
-            if (PdhAddEnglishCounterW(gpuQuery, L"\\GPU Engine(*)\\Utilization Percentage", 0, &gpuCounter) !=
-                ERROR_SUCCESS)
-            {
-                PdhCloseQuery(gpuQuery);
-                gpuQuery = nullptr;
-                gpuCounter = nullptr;
-            }
-            else
-            {
-                PdhCollectQueryData(gpuQuery);
-            }
-        }
-    }
-    else if (PdhCollectQueryData(gpuQuery) == ERROR_SUCCESS)
-    {
-        DWORD itemCount = 0;
-        DWORD bufferSize = 0;
-        PdhGetFormattedCounterArrayW(gpuCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, nullptr);
-        if (bufferSize > 0 && itemCount > 0)
-        {
-            std::vector<unsigned char> buffer(bufferSize);
-            auto* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_W*>(buffer.data());
-            if (PdhGetFormattedCounterArrayW(gpuCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, items) ==
-                ERROR_SUCCESS)
-            {
-                double total = 0.0;
-                for (DWORD i = 0; i < itemCount; ++i)
-                {
-                    if (items[i].FmtValue.CStatus == ERROR_SUCCESS)
-                        total += items[i].FmtValue.doubleValue;
-                }
-                stats.gpu = glm::clamp(static_cast<float>(total), 0.0f, 100.0f);
-            }
-        }
-    }
-
-    IDXGIFactory1* factory = nullptr;
-    if (CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&factory)) == S_OK && factory)
-    {
-        IDXGIAdapter1* adapter = nullptr;
-        for (UINT i = 0; factory->EnumAdapters1(i, &adapter) != DXGI_ERROR_NOT_FOUND; ++i)
-        {
-            DXGI_ADAPTER_DESC1 desc{};
-            adapter->GetDesc1(&desc);
-            if ((desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0)
-                break;
-            adapter->Release();
-            adapter = nullptr;
-        }
-
-        IDXGIAdapter3* adapter3 = nullptr;
-        if (adapter && adapter->QueryInterface(__uuidof(IDXGIAdapter3), reinterpret_cast<void**>(&adapter3)) == S_OK)
-        {
-            DXGI_QUERY_VIDEO_MEMORY_INFO info{};
-            if (adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &info) == S_OK && info.Budget > 0)
-                stats.vram = glm::clamp(static_cast<float>(static_cast<double>(info.CurrentUsage) /
-                                                           static_cast<double>(info.Budget) * 100.0),
-                                        0.0f, 100.0f);
-            adapter3->Release();
-        }
-        if (adapter)
-            adapter->Release();
-        factory->Release();
-    }
 
     if (!hasSmoothed)
     {
@@ -187,6 +180,8 @@ PerfStats QueryPerfStats()
         smoothed.gpu = glm::mix(smoothed.gpu, stats.gpu, alpha);
         smoothed.ram = glm::mix(smoothed.ram, stats.ram, alpha);
         smoothed.vram = glm::mix(smoothed.vram, stats.vram, alpha);
+        smoothed.cpuFrame = stats.cpuFrame;
+        smoothed.gpuFrame = stats.gpuFrame;
     }
 
     return smoothed;
@@ -378,7 +373,7 @@ void SetUITextByName(Scene& scene, const std::string& name, const std::string& t
     }
 }
 
-void UpdateScenario29LocalizedUI(Scene& scene, LocalizationSystem& l10n)
+void UpdateScenario29LocalizedUI(Scene& scene, ILocalizationService& l10n)
 {
     const int entityCount = static_cast<int>(scene.View<InfoComponent>().size());
 
@@ -389,7 +384,8 @@ void UpdateScenario29LocalizedUI(Scene& scene, LocalizationSystem& l10n)
                     l10n.GetFormat("scenario.active_entities", std::to_string(entityCount)));
     SetUITextByName(scene, "L10nTestWelcomeText", l10n.Get("l10n.test.welcome"));
     SetUITextByName(scene, "L10nTestParameterizedText", l10n.GetFormat("l10n.test.parameterized", "42", "HelloWorld"));
-    SetUITextByName(scene, "L10nTestMultiLineText", l10n.Get("l10n.test.multi_line") + "\n\n" + l10n.Get("menu.reload_scenario"));
+    SetUITextByName(scene, "L10nTestMultiLineText",
+                    l10n.Get("l10n.test.multi_line") + "\n\n" + l10n.Get("menu.reload_scenario"));
 }
 
 struct Scenario30SpawnCommand
@@ -554,6 +550,8 @@ void SampleState::OnUpdate(float dt)
         auto* follower = GetScene().TryGetComponent<PathFollowerComponent>(m_NavFollower);
         if (follower)
         {
+            const bool replanFollowers =
+                m_S23LastPathfindingCriteria != m_S23PathfindingCriteria || m_S23RepathRequested;
             follower->moveSpeed = m_S23FollowerSpeed;
             follower->lockXPitch = m_S23LockXPitch;
             follower->lockYYaw = m_S23LockYYaw;
@@ -563,12 +561,10 @@ void SampleState::OnUpdate(float dt)
             follower->lockMoveZ = m_S23LockMoveZ;
             ConfigureScenario23PathOptions(*follower, m_S23PathfindingCriteria);
 
-            if (m_S23LastPathfindingCriteria != m_S23PathfindingCriteria || m_S23RepathRequested)
+            if (replanFollowers)
             {
                 navSystem.StopMoving(GetScene(), m_NavFollower);
                 navSystem.MoveTo(GetScene(), m_NavFollower, follower->targetPosition);
-                m_S23LastPathfindingCriteria = m_S23PathfindingCriteria;
-                m_S23RepathRequested = false;
             }
 
             if (!follower->pathPending && !follower->isMoving)
@@ -576,6 +572,25 @@ void SampleState::OnUpdate(float dt)
                 m_CurrentWaypointIndex = (m_CurrentWaypointIndex + 1) % m_NavWaypoints.size();
                 navSystem.MoveTo(GetScene(), m_NavFollower, m_NavWaypoints[m_CurrentWaypointIndex]);
             }
+
+            for (entt::entity crowdEntity : m_S23CrowdFollowers)
+            {
+                auto* crowdFollower = GetScene().TryGetComponent<PathFollowerComponent>(crowdEntity);
+                if (!crowdFollower)
+                    continue;
+                ConfigureScenario23PathOptions(*crowdFollower, m_S23PathfindingCriteria);
+                if (replanFollowers)
+                {
+                    navSystem.StopMoving(GetScene(), crowdEntity);
+                    navSystem.MoveTo(GetScene(), crowdEntity, crowdFollower->targetPosition);
+                }
+                else if (!crowdFollower->pathPending && !crowdFollower->isMoving)
+                {
+                    navSystem.MoveTo(GetScene(), crowdEntity, m_NavWaypoints[m_CurrentWaypointIndex]);
+                }
+            }
+            m_S23LastPathfindingCriteria = m_S23PathfindingCriteria;
+            m_S23RepathRequested = false;
         }
     }
 
@@ -729,15 +744,13 @@ void SampleState::OnUpdate(float dt)
                     {
                         auto* pos = scene.TryGetComponent<PositionComponent>(m_S24GrabbedEntity);
                         auto* rot = scene.TryGetComponent<RotationComponent>(m_S24GrabbedEntity);
-                        auto* world = scene.TryGetComponent<WorldTransformComponent>(m_S24GrabbedEntity);
                         auto* rb = scene.TryGetComponent<RigidBodyComponent>(m_S24GrabbedEntity);
                         if (pos)
                         {
                             pos->value = targetPoint + m_S24GrabOffset;
                             if (rot)
                                 rot->value = glm::quat(glm::vec3(0.0f));
-                            if (world)
-                                world->isDirty = true;
+                            scene.MarkTransformDirty(m_S24GrabbedEntity);
                             if (rb && rb->body)
                             {
                                 rb->body->Activate(true);
@@ -800,7 +813,8 @@ void SampleState::OnUpdate(float dt)
                 flex->direction = (m_S16LayoutMode == 2) ? FlexDirection::Column : FlexDirection::Row;
                 flex->spacing = (m_S16LayoutMode == 1) ? 18.0f : 10.0f;
                 // Add top padding in Column (stacked) layout to prevent title text overflow
-                flex->padding = (m_S16LayoutMode == 2) ? glm::vec4(16.0f, 40.0f, 16.0f, 16.0f) : glm::vec4(16.0f, 16.0f, 16.0f, 16.0f);
+                flex->padding = (m_S16LayoutMode == 2) ? glm::vec4(16.0f, 40.0f, 16.0f, 16.0f)
+                                                       : glm::vec4(16.0f, 16.0f, 16.0f, 16.0f);
             }
         }
 
@@ -977,8 +991,7 @@ void SampleState::OnUpdate(float dt)
                 light.direction = glm::normalize(glm::vec3(cos(a) * 0.65f, -1.0f, sin(a) * 0.65f));
                 if (auto* rot = scene.TryGetComponent<RotationComponent>(entity))
                     rot->value = RotationFromNegativeY(light.direction);
-                if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
-                    world->isDirty = true;
+                scene.MarkTransformDirty(entity);
             }
             if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
@@ -1006,8 +1019,7 @@ void SampleState::OnUpdate(float dt)
                 pos.value = glm::vec3(sin(a) * m_S3PointOrbitRadius, m_S3PointMotionHeight + sin(a * 1.7f) * 6.0f,
                                       sin(a * 2.0f) * m_S3PointOrbitRadius * 0.5f);
 
-            if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(entity))
-                world->isDirty = true;
+            GetScene().MarkTransformDirty(entity);
 
             auto& light = view.get<PointLightComponent>(entity);
             light.color = m_S3PointColor;
@@ -1048,8 +1060,7 @@ void SampleState::OnUpdate(float dt)
             glm::vec3 target = glm::vec3(0.0f, 1.0f, 0.0f);
             light.direction = glm::normalize(target - pos.value);
             rot.value = RotationFromNegativeY(light.direction);
-            if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
-                world->isDirty = true;
+            scene.MarkTransformDirty(entity);
             if (auto* mat = scene.TryGetComponent<MaterialComponent>(entity))
             {
                 mat->desc.emission = m_S3SpotColor * (m_S3SpotIntensity * 1.25f);
@@ -1183,39 +1194,32 @@ void SampleState::OnUpdate(float dt)
                 auto& scale = view.get<ScaleComponent>(entity);
                 renderer.color = pressed ? glm::vec4(0.0f, 0.85f, 0.25f, 1.0f) : glm::vec4(0.18f, 0.2f, 0.24f, 1.0f);
                 scale.value.y = pressed ? 0.35f : 0.15f;
-                view.get<WorldTransformComponent>(entity).isDirty = true;
+                GetScene().MarkTransformDirty(entity);
             }
         }
     }
 
     if (m_CurrentScenario == 29)
     {
-        auto& l10n = GetSystem<LocalizationSystem>();
+        auto& l10n = Get<ILocalizationService>();
         UpdateScenario29LocalizedUI(GetScene(), l10n);
     }
 
     // Scenario 30 Network Update
     if (m_CurrentScenario == 30)
     {
-        auto* sysMgr = Resolve<SystemManager>();
-        if (sysMgr)
+        if (auto* netSystem = Resolve<INetworkService>(); netSystem && netSystem->IsRunning())
         {
-            auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr->GetSystem("NetworkSystem"));
-            if (netSystem && netSystem->IsRunning())
+            if (!netSystem->IsServer())
             {
-                if (!netSystem->IsServer())
+                m_S30SendTimer += dt;
+                if (m_S30SendTimer >= 1.5f)
                 {
-                    m_S30SendTimer += dt;
-                    if (m_S30SendTimer >= 1.5f)
-                    {
-                        m_S30SendTimer = 0.0f;
-                        static int pingCount = 0;
-                        std::string msg = "Ping #" + std::to_string(++pingCount) + " from Client!";
-                        if (auto* peer = netSystem->GetServerPeer())
-                        {
-                            netSystem->SendPacket(peer, msg.c_str(), msg.size() + 1);
-                        }
-                    }
+                    m_S30SendTimer = 0.0f;
+                    static int pingCount = 0;
+                    std::string msg = "Ping #" + std::to_string(++pingCount) + " from Client!";
+                    if (const auto peer = netSystem->GetServerPeer(); peer != InvalidNetworkPeer)
+                        netSystem->SendPacket(peer, msg.c_str(), msg.size() + 1);
                 }
             }
         }
@@ -1234,8 +1238,7 @@ void SampleState::OnUpdate(float dt)
             if (info.name == kScenario31Audio3DName)
             {
                 view.get<PositionComponent>(entity).value = soundPos;
-                if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(entity))
-                    world->isDirty = true;
+                GetScene().MarkTransformDirty(entity);
                 break;
             }
         }
@@ -1256,8 +1259,7 @@ void SampleState::OnUpdate(float dt)
                 if (auto* rot = GetScene().TryGetComponent<RotationComponent>(m_S32PortalTarget))
                 {
                     rot->value = glm::angleAxis(m_S32PortalAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-                    if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(m_S32PortalTarget))
-                        world->isDirty = true;
+                    GetScene().MarkTransformDirty(m_S32PortalTarget);
                 }
             }
             if (m_S32PortalTargetVirtual != entt::null)
@@ -1265,10 +1267,45 @@ void SampleState::OnUpdate(float dt)
                 if (auto* rot = GetScene().TryGetComponent<RotationComponent>(m_S32PortalTargetVirtual))
                 {
                     rot->value = glm::angleAxis(m_S32PortalAngle, glm::vec3(0.0f, 1.0f, 0.0f));
-                    if (auto* world = GetScene().TryGetComponent<WorldTransformComponent>(m_S32PortalTargetVirtual))
-                        world->isDirty = true;
+                    GetScene().MarkTransformDirty(m_S32PortalTargetVirtual);
                 }
             }
+        }
+    }
+
+    // Scenario 33 microphone history and in-world level bars.
+    if (m_CurrentScenario == 33)
+    {
+        if (auto* capture = Resolve<IAudioCaptureService>())
+            m_S33Snapshot = capture->GetSnapshot();
+        else
+            m_S33Snapshot = {};
+
+        m_S33History[m_S33HistoryOffset] = m_S33Snapshot.level.intensity;
+        m_S33HistoryOffset = (m_S33HistoryOffset + 1) % m_S33History.size();
+
+        auto& scene = GetScene();
+        for (size_t index = 0; index < m_S33VisualizerBars.size(); ++index)
+        {
+            const entt::entity entity = m_S33VisualizerBars[index];
+            if (!scene.IsValid(entity))
+                continue;
+
+            const size_t sample =
+                (m_S33HistoryOffset + index * m_S33History.size() / m_S33VisualizerBars.size()) % m_S33History.size();
+            const float level = m_S33History[sample];
+            const float height = 0.15f + level * 6.0f;
+            if (auto* position = scene.TryGetComponent<PositionComponent>(entity))
+                position->value.y = height;
+            if (auto* scale = scene.TryGetComponent<ScaleComponent>(entity))
+                scale->value.y = height;
+            if (auto* renderer = scene.TryGetComponent<MeshRendererComponent>(entity))
+            {
+                const glm::vec4 quietColor(0.05f, 0.45f, 0.95f, 1.0f);
+                const glm::vec4 activeColor(1.0f, 0.25f, 0.08f, 1.0f);
+                renderer->color = glm::mix(quietColor, activeColor, level);
+            }
+            scene.MarkTransformDirty(entity);
         }
     }
 
@@ -1283,7 +1320,7 @@ void SampleState::OnUpdate(float dt)
             {
                 auto& pos = view.get<PositionComponent>(entity);
                 pos.value.x = sin(m_S31OrbitAngle) * 7.5f;
-                view.get<WorldTransformComponent>(entity).isDirty = true;
+                GetScene().MarkTransformDirty(entity);
             }
         }
     }
@@ -1333,8 +1370,7 @@ void SampleState::OnUpdate(float dt)
             }
             if (auto* rot = scene.TryGetComponent<RotationComponent>(m_S4LightEntity))
                 rot->value = glm::quat(glm::radians(glm::vec3(m_S4LightPitch, m_S4LightYaw, 0.0f)));
-            if (auto* world = scene.TryGetComponent<WorldTransformComponent>(m_S4LightEntity))
-                world->isDirty = true;
+            scene.MarkTransformDirty(m_S4LightEntity);
         }
     }
 
@@ -1425,8 +1461,6 @@ void SampleState::OnUpdate(float dt)
 
 void SampleState::OnRender()
 {
-    OnRenderDebug();
-
     if (m_CurrentScenario == 32)
     {
         auto& scene = GetScene();
@@ -1461,11 +1495,12 @@ void SampleState::OnRender()
 
             // Step B: Draw outline (scaled up sphere) where stencil != 1
             SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
-            SetStencilMask(0x00); // disable write
+            SetStencilMask(0x00);  // disable write
             SetRenderStateEnabled(ServerCapability::DepthTest, false);
 
             glm::mat4 scaleMtx = glm::scale(sphere.GetWorldMatrix(), glm::vec3(m_S32OutlineWidth));
-            DrawEntityMesh(sphere, "forward_unlit", scaleMtx, glm::vec4(m_S32OutlineColor[0], m_S32OutlineColor[1], m_S32OutlineColor[2], 1.0f));
+            DrawEntityMesh(sphere, "forward_unlit", scaleMtx,
+                           glm::vec4(m_S32OutlineColor[0], m_S32OutlineColor[1], m_S32OutlineColor[2], 1.0f));
 
             // Restore culling/stencil settings
             SetRenderStateEnabled(ServerCapability::DepthTest, true);
@@ -1491,7 +1526,7 @@ void SampleState::OnRender()
 
             // Step B: Draw portal outline where stencil != 1 (colored border)
             SetStencilFunc(CompareFunc::NotEqual, 1, 0xFF);
-            SetStencilMask(0x00); // disable write
+            SetStencilMask(0x00);  // disable write
             SetColorWriteMask(true, true, true, true);
 
             // Scale slightly on X and Z for the border (Z is height due to X rotation)
@@ -1500,7 +1535,7 @@ void SampleState::OnRender()
 
             // Step C: Set stencil test to pass only inside portal mask (stencil == 1)
             SetStencilFunc(CompareFunc::Equal, 1, 0xFF);
-            SetStencilMask(0x00); // disable write
+            SetStencilMask(0x00);  // disable write
             SetRenderStateEnabled(ServerCapability::DepthTest, true);
             SetDepthWriteMask(true);
 
@@ -1526,9 +1561,9 @@ void SampleState::OnRender()
 
             // Construct perfect rotation-preserving view matrix
             glm::mat4 portalView = mainView;
-            glm::vec3 col3 = - (glm::vec3(mainView[0]) * portalCameraPosVal.x +
-                                glm::vec3(mainView[1]) * portalCameraPosVal.y +
-                                glm::vec3(mainView[2]) * portalCameraPosVal.z);
+            glm::vec3 col3 =
+                -(glm::vec3(mainView[0]) * portalCameraPosVal.x + glm::vec3(mainView[1]) * portalCameraPosVal.y +
+                  glm::vec3(mainView[2]) * portalCameraPosVal.z);
             portalView[3] = glm::vec4(col3, 1.0f);
 
             SetCameraRenderState(portalView, mainProj, portalCameraPosVal, originalNear, originalFar);
@@ -1555,14 +1590,6 @@ void SampleState::OnRender()
         }
     }
 
-#ifdef ENABLE_EDITOR
-    if (m_EditorImGuiLayer && !m_EditorSystemEnabled)
-    {
-        m_EditorImGuiLayer->BeginFrame();
-        DrawGUI();
-        m_EditorImGuiLayer->EndFrame();
-    }
-#endif
 }
 
 void SampleState::OnRenderDebug()
@@ -1683,11 +1710,23 @@ void SampleState::OnRenderDebug()
             {
             }
     }
+
+#ifdef ENABLE_EDITOR
+    // Submit the standalone dashboard after world/debug primitives so physics
+    // and navigation lines can never draw over ImGui.
+    if (m_EditorImGuiLayer && !m_EditorSystemEnabled)
+    {
+        m_EditorImGuiLayer->BeginFrame();
+        DrawGUI();
+        m_EditorImGuiLayer->EndFrame();
+    }
+#endif
 }
 
 void SampleState::OnExit()
 {
     StopScenario31Audio();
+    StopScenario33Capture();
 
     // Clean up scene entities
     auto* sceneMgr = Resolve<SceneManager>();
@@ -1704,6 +1743,8 @@ void SampleState::LoadScenario(int index)
 {
     if (m_CurrentScenario == 31)
         StopScenario31Audio();
+    if (m_CurrentScenario == 33)
+        StopScenario33Capture();
 
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
@@ -1786,7 +1827,9 @@ void SampleState::LoadScenario(int index)
     m_PPPartialW = 0;
     m_PPPartialH = 0;
     m_S21ChainEntities.clear();
+    m_S23CrowdFollowers.clear();
     m_S25RandomEntities.clear();
+    m_S33VisualizerBars.clear();
     if (auto* physics = Resolve<IPhysicsWorld>())
         physics->SetSolverIterations(10);
     if (auto* collisionMatrix = Resolve<CollisionMatrix>())
@@ -1899,6 +1942,9 @@ void SampleState::LoadScenario(int index)
         case 32:
             LoadScene32();
             break;
+        case 33:
+            LoadScene33();
+            break;
         default:
             break;
     }
@@ -1987,7 +2033,8 @@ void SampleState::DrawGUI()
     ImGui::Text("FPS: %.1f", m_CurrentFps);
     ImGui::Text("Frame Time: %.2f ms", 1000.0f / (m_CurrentFps > 0.0f ? m_CurrentFps : 60.0f));
     ImGui::Text("Active Entities: %d", (int)GetScene().View<InfoComponent>().size());
-    ImGui::Text("CPU: %.0f%%  GPU: %.0f%%", perf.cpu, perf.gpu);
+    ImGui::Text("Process CPU: %.1f%%  GPU frame occupancy: %.0f%%", perf.cpu, perf.gpu);
+    ImGui::Text("CPU/GPU frame: %.2f / %.2f ms", perf.cpuFrame, perf.gpuFrame);
     ImGui::Text("RAM: %.0f%%  VRAM: %.0f%%", perf.ram, perf.vram);
 
     // Physics rigid bodies count
@@ -2088,7 +2135,10 @@ void SampleState::DrawGUI()
     AddScenarioButton(29, "Scenario 29: Localization (l10n)", "Test load/apply localizations from vi.axs/en.axs");
     AddScenarioButton(30, "Scenario 30: Network Messaging", "Test local network client/server packet transmission");
     AddScenarioButton(31, "Scenario 31: Audio 2D & 3D Test", "Test irrKlang audio play/orbit using sample.wav");
-    AddScenarioButton(32, "Scenario 32: Outline & Portal Rendering", "Custom stencil outline and virtual room portal rendering");
+    AddScenarioButton(32, "Scenario 32: Outline & Portal Rendering",
+                      "Custom stencil outline and virtual room portal rendering");
+    AddScenarioButton(33, "Scenario 33: Microphone Input",
+                      "Detect capture devices and visualize RMS, peak, threshold, voice intensity, and pulses");
 
     ImGui::EndChild();
 
@@ -2102,6 +2152,8 @@ void SampleState::DrawGUI()
         ImGui::Combo("Mesh Type", &m_S1MeshType, "Sphere\0Cube\0Cylinder\0Capsule\0");
         ImGui::Checkbox("Unique Tint (break batches)", &m_S1UniqueTint);
         ImGui::Checkbox("Randomize Positions", &m_S1RandomizePositions);
+        ImGui::TextWrapped("Opaque items are sorted by exact render state, then submitted as contiguous instance "
+                           "batches. Selection IDs remain per instance; unique tint intentionally splits batches.");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
     }
     else if (m_CurrentScenario == 3)
@@ -2156,6 +2208,7 @@ void SampleState::DrawGUI()
     else if (m_CurrentScenario == 23)
     {
         ImGui::SliderInt("Obstacles count", &m_S23ObstacleCount, 0, 50);
+        ImGui::SliderInt("Crowd agents", &m_S23CrowdCount, 0, 128);
         ImGui::SliderFloat("Obstacle Size", &m_S23ObstacleSize, 1.0f, 10.0f);
         ImGui::SliderFloat("Follower Speed", &m_S23FollowerSpeed, 1.0f, 25.0f);
         if (ImGui::Combo("Pathfinding Method", &m_S23PathfindingCriteria,
@@ -2164,6 +2217,7 @@ void SampleState::DrawGUI()
             m_S23RepathRequested = true;
         }
         ImGui::Text("Green: planned path. Yellow: actual traveled path.");
+        ImGui::Text("Crowd agents use spatial-hash local avoidance (reload to resize crowd).");
         ImGui::Spacing();
         ImGui::Text("Axis / Rotation Locks:");
         ImGui::Checkbox("Lock X (Pitch)", &m_S23LockXPitch);
@@ -2243,6 +2297,8 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Min Speed", &m_S15MinSpeed, 0.0f, 20.0f);
         ImGui::SliderFloat("Max Speed", &m_S15MaxSpeed, 0.0f, 30.0f);
         ImGui::SliderFloat("Vertical Speed", &m_S15VerticalSpeed, -10.0f, 20.0f);
+        ImGui::TextWrapped("Emitters use dense active/free index lists, bounded spawning, and one reused instance "
+                           "scratch buffer instead of scanning every particle slot each frame.");
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Click 'Reload Scenario' to apply changes.");
     }
     else if (m_CurrentScenario == 10)
@@ -2442,7 +2498,7 @@ void SampleState::DrawGUI()
         }
         if (ImGui::Button("Save Current Scene (Serialize)", ImVec2(360, 24)))
         {
-            auto* phys  = Resolve<IPhysicsWorld>();
+            auto* phys = Resolve<IPhysicsWorld>();
             auto* audio = Resolve<AudioService>();
             SceneSerializer serializer(Get<ResourceManager>(), phys, audio);
             bool ok = serializer.Serialize(kScenario25ScenePath, GetScene(), "scenario");
@@ -2476,28 +2532,15 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "Step 1 - Persist bindings:");
         if (ImGui::Button("Load binding.axs", ImVec2(175, 24)))
         {
-            auto* io = Resolve<IOHandler>();
-            if (io)
-            {
-                InputSerializer serializer;
-                const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S28Status = serializer.Deserialize(bindingPath, io->GetInputManager())
-                                  ? "Loaded sample/resource/binding/binding.axs."
-                                  : "Failed to load binding.axs.";
-            }
+            const std::string bindingPath = "sample/resource/binding/binding.axs";
+            m_S28Status = LoadInputBindings(bindingPath) ? "Loaded sample/resource/binding/binding.axs."
+                                                         : "Failed to load binding.axs.";
         }
         ImGui::SameLine();
         if (ImGui::Button("Save binding.axs", ImVec2(175, 24)))
         {
-            auto* io = Resolve<IOHandler>();
-            if (io)
-            {
-                InputSerializer serializer;
-                const std::string bindingPath = "sample/resource/binding/binding.axs";
-                m_S28Status = serializer.Serialize(bindingPath, io->GetInputManager())
-                                  ? "Saved bindings to binding.axs."
-                                  : "Failed to save.";
-            }
+            const std::string bindingPath = "sample/resource/binding/binding.axs";
+            m_S28Status = SaveInputBindings(bindingPath) ? "Saved bindings to binding.axs." : "Failed to save.";
         }
         if (ImGui::Button("Flush Bindings (Clear All)", ImVec2(360, 24)))
         {
@@ -2584,7 +2627,7 @@ void SampleState::DrawGUI()
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Localization (l10n)");
         ImGui::Spacing();
 
-        auto& l10n = GetSystem<LocalizationSystem>();
+        auto& l10n = Get<ILocalizationService>();
         ImGui::Text("Current Language: %s", l10n.GetLanguage().c_str());
 
         if (ImGui::Button("Switch to Vietnamese (vi)", ImVec2(360, 24)))
@@ -2619,15 +2662,12 @@ void SampleState::DrawGUI()
 
         if (ImGui::Button("Save data.axs", ImVec2(360, 24)))
         {
-            std::unordered_map<std::string, DataNode> dataMap;
             DataNode dataNote;
             dataNote.attributes["EntityCount"] = std::to_string(m_S27EntityCount);
             dataNote.attributes["EntitySize"] = std::to_string(m_S27EntitySize);
             dataNote.value = "DataNote";
-            dataMap["DataNote"] = dataNote;
-
-            DataNodeSerializer serializer;
-            if (serializer.Serialize(kScenario27DataPath, dataMap))
+            SetDataNode("DataNote", dataNote);
+            if (SaveDataNodes(kScenario27DataPath))
             {
                 m_S27Status = "Serialized data to data.axs successfully.";
             }
@@ -2638,22 +2678,18 @@ void SampleState::DrawGUI()
         }
         if (ImGui::Button("Load data.axs", ImVec2(360, 24)))
         {
-            std::unordered_map<std::string, DataNode> dataMap;
-            DataNodeSerializer serializer;
             const char* path =
                 std::filesystem::exists(kScenario27DataPath) ? kScenario27DataPath : kScenario27DataLegacyPath;
-            if (serializer.Deserialize(path, dataMap))
+            if (LoadDataNodes(path))
             {
-                auto it = dataMap.find("DataNote");
-                if (it == dataMap.end())
-                    it = dataMap.find("PlayerStats");
-                if (it != dataMap.end())
+                const std::string key = HasDataNode("DataNote") ? "DataNote" : "PlayerStats";
+                if (HasDataNode(key))
                 {
-                    auto& stats = it->second;
-                    if (stats.attributes.find("EntityCount") != stats.attributes.end())
-                        m_S27EntityCount = std::stoi(stats.attributes["EntityCount"]);
-                    if (stats.attributes.find("EntitySize") != stats.attributes.end())
-                        m_S27EntitySize = std::stof(stats.attributes["EntitySize"]);
+                    const DataNode stats = GetDataNode(key);
+                    if (const auto it = stats.attributes.find("EntityCount"); it != stats.attributes.end())
+                        m_S27EntityCount = std::stoi(it->second);
+                    if (const auto it = stats.attributes.find("EntitySize"); it != stats.attributes.end())
+                        m_S27EntitySize = std::stof(it->second);
                 }
                 m_S27Status = "Deserialized data successfully. Reload Scenario to apply entity count/size.";
             }
@@ -2672,17 +2708,13 @@ void SampleState::DrawGUI()
         ImGui::InputInt("Port", &m_S30Port);
         m_S30Port = glm::clamp(m_S30Port, 1024, 65535);
 
-        auto* sysMgr = Resolve<SystemManager>();
-        if (sysMgr)
+        if (auto* netSystem = Resolve<INetworkService>())
         {
-            auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr->GetSystem("NetworkSystem"));
-            if (netSystem)
-            {
                 ImGui::Text("Running: %s | Mode: %s | Connected peers: %zu", netSystem->IsRunning() ? "yes" : "no",
                             netSystem->IsServer() ? "server" : (netSystem->IsClient() ? "client" : "idle"),
                             netSystem->GetConnectedPeerCount());
                 if (netSystem->IsClient())
-                    ImGui::Text("Client peer state: %s", netSystem->GetClientPeerState());
+                    ImGui::Text("Client peer state: %s", netSystem->GetClientPeerState().c_str());
                 if (ImGui::Button("Start Connection", ImVec2(170, 24)))
                 {
                     if (netSystem->IsRunning())
@@ -2690,22 +2722,21 @@ void SampleState::DrawGUI()
                     NetworkConfig config;
                     config.port = static_cast<uint16_t>(m_S30Port);
                     config.maxClients = 32;
-                    config.useIPv6 = false;
                     m_S30Messages.clear();
 
                     if (m_S30IsServer)
                     {
                         config.host.clear();
-                        netSystem->SetOnConnect([this](ENetPeer*) {
+                        netSystem->SetOnConnect([this](NetworkPeerId) {
                             m_S30Status = "Server: client connected.";
                             m_S30Messages.push_back("Client connected.");
                         });
-                        netSystem->SetOnDisconnect([this](ENetPeer*) {
+                        netSystem->SetOnDisconnect([this](NetworkPeerId) {
                             m_S30Status = "Server: client disconnected.";
                             m_S30Messages.push_back("Client disconnected.");
                         });
                         netSystem->SetOnMessage(
-                            [this, netSystem](ENetPeer* peer, const uint8_t* data, size_t size, uint8_t) {
+                            [this, netSystem](NetworkPeerId peer, const uint8_t* data, size_t size, uint8_t) {
                                 std::string msg((const char*)data, size);
                                 if (!msg.empty() && msg.back() == '\0')
                                     msg.pop_back();
@@ -2720,16 +2751,16 @@ void SampleState::DrawGUI()
                     else
                     {
                         config.host = m_S30Host;
-                        netSystem->SetOnConnect([this](ENetPeer*) {
+                        netSystem->SetOnConnect([this](NetworkPeerId) {
                             m_S30Status =
                                 "Client connected to " + std::string(m_S30Host) + ":" + std::to_string(m_S30Port) + ".";
                             m_S30Messages.push_back("Connected to server.");
                         });
-                        netSystem->SetOnDisconnect([this](ENetPeer*) {
+                        netSystem->SetOnDisconnect([this](NetworkPeerId) {
                             m_S30Status = "Client disconnected.";
                             m_S30Messages.push_back("Disconnected from server.");
                         });
-                        netSystem->SetOnMessage([this](ENetPeer*, const uint8_t* data, size_t size, uint8_t) {
+                        netSystem->SetOnMessage([this](NetworkPeerId, const uint8_t* data, size_t size, uint8_t) {
                             std::string msg((const char*)data, size);
                             if (!msg.empty() && msg.back() == '\0')
                                 msg.pop_back();
@@ -2759,55 +2790,49 @@ void SampleState::DrawGUI()
                     netSystem->Stop();
                     m_S30Status = "Stopped.";
                 }
-            }
         }
 
         ImGui::Separator();
         ImGui::InputText("Message", m_S30MessageText, sizeof(m_S30MessageText));
         if (ImGui::Button("Send Message", ImVec2(360, 24)))
         {
-            if (auto* sysMgr2 = Resolve<SystemManager>())
+            if (auto* netSystem = Resolve<INetworkService>())
             {
-                if (auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr2->GetSystem("NetworkSystem")))
+                std::string msg = m_S30MessageText;
+                if (netSystem->IsServer())
                 {
-                    std::string msg = m_S30MessageText;
-                    if (netSystem->IsServer())
+                    if (netSystem->GetConnectedPeerCount() > 0)
                     {
-                        if (netSystem->GetConnectedPeerCount() > 0)
-                        {
-                            netSystem->BroadcastPacket(msg.c_str(), msg.size() + 1);
-                            m_S30Messages.push_back("Server sent: " + msg);
-                        }
-                        else
-                        {
-                            m_S30Messages.push_back("Server has no connected clients.");
-                        }
-                    }
-                    else if (auto* peer = netSystem->GetServerPeer())
-                    {
-                        netSystem->SendPacket(peer, msg.c_str(), msg.size() + 1);
-                        m_S30Messages.push_back("Client sent: " + msg);
+                        netSystem->BroadcastPacket(msg.c_str(), msg.size() + 1);
+                        m_S30Messages.push_back("Server sent: " + msg);
                     }
                     else
                     {
-                        m_S30Messages.push_back(std::string("No connected peer. State: ") +
-                                                netSystem->GetClientPeerState());
+                        m_S30Messages.push_back("Server has no connected clients.");
                     }
+                }
+                else if (const auto peer = netSystem->GetServerPeer(); peer != InvalidNetworkPeer)
+                {
+                    netSystem->SendPacket(peer, msg.c_str(), msg.size() + 1);
+                    m_S30Messages.push_back("Client sent: " + msg);
+                }
+                else
+                {
+                    m_S30Messages.push_back(std::string("No connected peer. State: ") +
+                                            netSystem->GetClientPeerState());
                 }
             }
         }
         if (ImGui::Button("Server Spawn Entity For Clients", ImVec2(360, 24)))
         {
-            if (auto* sysMgr2 = Resolve<SystemManager>())
+            if (auto* netSystem = Resolve<INetworkService>())
             {
-                if (auto* netSystem = dynamic_cast<NetworkSystem*>(sysMgr2->GetSystem("NetworkSystem")))
+                if (!netSystem->IsRunning() || !netSystem->IsServer())
                 {
-                    if (!netSystem->IsRunning() || !netSystem->IsServer())
-                    {
-                        m_S30Messages.push_back("Spawn requires a running server.");
-                    }
-                    else
-                    {
+                    m_S30Messages.push_back("Spawn requires a running server.");
+                }
+                else
+                {
                         Scenario30SpawnCommand cmd;
                         cmd.id = ++m_S30SpawnCounter;
                         cmd.position = glm::vec3(static_cast<float>(rand() % 260 - 130) / 10.0f,
@@ -2824,7 +2849,6 @@ void SampleState::DrawGUI()
                             netSystem->BroadcastPacket(payload.c_str(), payload.size() + 1);
                         m_S30Messages.push_back("Server spawned entity #" + std::to_string(cmd.id) +
                                                 " and broadcast to " + std::to_string(peerCount) + " clients.");
-                    }
                 }
             }
         }
@@ -2839,7 +2863,7 @@ void SampleState::DrawGUI()
         std::string backendName = "Unknown";
         if (auto* configMgr = Resolve<ConfigManager>())
         {
-            backendName = BackendRegistry::ToString(configMgr->GetConfig().audioBackend);
+            backendName = BackendRegistry::ToString(configMgr->GetConfig().audio.audioBackend);
         }
         std::string title = backendName + " Audio Test";
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "%s", title.c_str());
@@ -2875,15 +2899,136 @@ void SampleState::DrawGUI()
         ImGui::SliderFloat("Outline Width", &m_S32OutlineWidth, 1.001f, 1.15f);
         ImGui::Checkbox("Rotate Portal Target", &m_S32PortalRotationActive);
     }
+    else if (m_CurrentScenario == 33)
+    {
+        ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Scenario 33: Microphone Input Test");
+        auto* capture = Resolve<IAudioCaptureService>();
+        if (!capture)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.2f, 1.0f),
+                               "Audio capture service is not registered in this build.");
+        }
+        else
+        {
+            const auto devices = capture->GetDevices();
+            if (devices.empty())
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.25f, 0.2f, 1.0f), "No microphone input device was detected.");
+                ImGui::TextWrapped(
+                    "Connect or enable a microphone, grant Windows microphone permission, then press "
+                    "Refresh Devices.");
+            }
+            else
+            {
+                ImGui::Text("Detected microphones: %zu", devices.size());
+                std::string preview = "System Default";
+                for (const auto& device : devices)
+                    if (device.id == m_S33SelectedDeviceId)
+                        preview = device.name;
+
+                if (ImGui::BeginCombo("Microphone Device", preview.c_str()))
+                {
+                    if (ImGui::Selectable("System Default", m_S33SelectedDeviceId.empty()))
+                    {
+                        capture->Stop();
+                        m_S33StartedCapture = false;
+                        m_S33SelectedDeviceId.clear();
+                        RefreshScenario33Capture(true);
+                    }
+                    for (const auto& device : devices)
+                    {
+                        const std::string label = device.name + (device.isDefault ? " (Default)" : "");
+                        if (ImGui::Selectable(label.c_str(), device.id == m_S33SelectedDeviceId))
+                        {
+                            capture->Stop();
+                            m_S33StartedCapture = false;
+                            m_S33SelectedDeviceId = device.id;
+                            RefreshScenario33Capture(true);
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+
+            if (ImGui::Button("Refresh Devices"))
+                RefreshScenario33Capture(false);
+            ImGui::SameLine();
+            ImGui::BeginDisabled(capture->IsCapturing() || devices.empty());
+            if (ImGui::Button("Start Capture"))
+                RefreshScenario33Capture(true);
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!capture->IsCapturing());
+            if (ImGui::Button("Stop Capture"))
+            {
+                capture->Stop();
+                m_S33StartedCapture = false;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Calibrate"))
+                capture->BeginCalibration(m_S33CalibrationSeconds);
+            ImGui::EndDisabled();
+
+            ImGui::Text("Status: %s | %s", capture->IsCapturing() ? "Capturing" : "Stopped",
+                        AudioCaptureResultName(m_S33LastResult));
+            ImGui::SeparatorText("Live Microphone Settings");
+            bool settingsChanged = false;
+            settingsChanged |= ImGui::SliderFloat("Mic Input Volume", &m_S33InputVolume, 0.0f, 4.0f, "%.2fx");
+            settingsChanged |= ImGui::SliderFloat("Mic Input Threshold", &m_S33NoiseGate, 0.0f, 0.25f, "%.3f");
+            settingsChanged |= ImGui::SliderFloat("Voice Gain", &m_S33Gain, 0.0f, 20.0f, "%.2fx");
+            settingsChanged |=
+                ImGui::SliderFloat("Attack", &m_S33AttackSeconds, 0.001f, 1.0f, "%.3f s", ImGuiSliderFlags_Logarithmic);
+            settingsChanged |= ImGui::SliderFloat("Release", &m_S33ReleaseSeconds, 0.001f, 2.0f, "%.3f s",
+                                                  ImGuiSliderFlags_Logarithmic);
+            settingsChanged |= ImGui::SliderFloat("Peak Decay", &m_S33PeakDecaySeconds, 0.01f, 3.0f, "%.3f s",
+                                                  ImGuiSliderFlags_Logarithmic);
+            settingsChanged |= ImGui::SliderFloat("Pulse Threshold", &m_S33PulseThreshold, 0.0f, 1.0f, "%.3f");
+            if (ImGui::TreeNode("Pulse & Calibration Advanced"))
+            {
+                settingsChanged |=
+                    ImGui::SliderFloat("Calibration Time", &m_S33CalibrationSeconds, 0.0f, 5.0f, "%.2f s");
+                settingsChanged |= ImGui::SliderFloat("Pulse Cooldown", &m_S33PulseCooldown, 0.0f, 1.0f, "%.3f s");
+                settingsChanged |= ImGui::SliderFloat("Pulse Duration", &m_S33PulseDuration, 0.01f, 5.0f, "%.2f s");
+                ImGui::TreePop();
+            }
+            if (settingsChanged)
+                ApplyScenario33CaptureSettings();
+
+            ImGui::SeparatorText("Live Signal");
+            const float effectiveGate = (std::max)(m_S33NoiseGate, m_S33Snapshot.level.noiseFloor * 1.5f);
+            DrawScenario33Meter("##S33Rms", "Input RMS", m_S33Snapshot.level.rms, effectiveGate);
+            DrawScenario33Meter("##S33Peak", "Input Peak", m_S33Snapshot.level.peak, effectiveGate);
+            DrawScenario33Meter("##S33Intensity", "Processed Voice Intensity", m_S33Snapshot.level.intensity,
+                                m_S33PulseThreshold);
+            ImGui::Text("Noise floor %.4f | Effective gate %.4f | Active pulses %zu", m_S33Snapshot.level.noiseFloor,
+                        effectiveGate, m_S33Snapshot.pulses.size());
+            ImGui::TextDisabled("Yellow line = threshold; green = signal has crossed it.");
+            ImGui::PlotLines("Voice History", m_S33History.data(), static_cast<int>(m_S33History.size()),
+                             static_cast<int>(m_S33HistoryOffset), nullptr, 0.0f, 1.0f, ImVec2(0.0f, 100.0f));
+
+            if (!m_S33Snapshot.pulses.empty() && ImGui::TreeNode("Detected Pulses"))
+            {
+                for (size_t index = 0; index < m_S33Snapshot.pulses.size(); ++index)
+                {
+                    const auto& pulse = m_S33Snapshot.pulses[index];
+                    ImGui::Text("#%zu intensity %.3f peak %.3f age %.2f / %.2f s", index + 1, pulse.intensity,
+                                pulse.peak, pulse.age, pulse.duration);
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
     else if (m_CurrentScenario == 18)
     {
         ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Video Mesh & UI Playback");
-        ImGui::Checkbox("Loop Video", &m_S18VideoPlaying);
+        const bool loopChanged = ImGui::Checkbox("Loop Video", &m_S18VideoPlaying);
 
         auto view = GetScene().View<VideoPlayerComponent>();
         for (auto entity : view)
         {
             auto& video = view.get<VideoPlayerComponent>(entity);
+            if (loopChanged)
+                video.isLooping = m_S18VideoPlaying;
             if (video.decoder)
             {
                 ImGui::PushID(static_cast<int>(static_cast<uint32_t>(entity)));
@@ -2960,8 +3105,12 @@ void SampleState::DrawGUI()
             if (auto* probe = scene.TryGetComponent<ReflectionProbeComponent>(probeEntity))
             {
                 ImGui::SliderInt("Probe Resolution", &probe->resolution, 64, 2048);
+                ImGui::Text("Time-sliced capture face: %u / 6", probe->currentFace + 1);
                 if (ImGui::Button("Capture Selected Probe", ImVec2(360, 24)))
+                {
                     probe->isDirty = true;
+                    probe->currentFace = 0;
+                }
                 m_S11ProbeResolution = probe->resolution;
             }
         }
@@ -2978,10 +3127,16 @@ void SampleState::DrawGUI()
             }
             if (auto* planar = scene.TryGetComponent<PlanarReflectionComponent>(m_S11PlanarMirror))
             {
-                ImGui::SliderInt("Mirror Resolution X", &planar->resolution, 256, 2048);
-                ImGui::SliderInt("Mirror Resolution Y", &planar->resolution_y, 256, 2048);
+                ImGui::SliderFloat("Mirror Resolution Scale", &planar->resolutionScale, 0.1f, 1.0f, "%.2fx");
+                int updateFrames = static_cast<int>(planar->updateIntervalFrames);
+                if (ImGui::SliderInt("Mirror Update Interval", &updateFrames, 1, 12, "%d frames"))
+                    planar->updateIntervalFrames = static_cast<uint32_t>(updateFrames);
+                ImGui::Text("Allocated target: %d x %d", planar->resolution, planar->resolution_y);
                 if (ImGui::Button("Mark Mirror Dirty", ImVec2(360, 24)))
+                {
                     planar->isDirty = true;
+                    planar->framesUntilUpdate = 0;
+                }
             }
         }
 
@@ -2990,7 +3145,9 @@ void SampleState::DrawGUI()
             auto view = scene.View<ReflectionProbeComponent>();
             for (auto entity : view)
             {
-                view.get<ReflectionProbeComponent>(entity).isDirty = true;
+                auto& probe = view.get<ReflectionProbeComponent>(entity);
+                probe.isDirty = true;
+                probe.currentFace = 0;
             }
         }
     }
@@ -3090,6 +3247,10 @@ void SampleState::DrawGUI()
         if (m_S16ShowcaseAnim)
             ImGui::EndDisabled();
         ImGui::Text("This merged scene mixes transform, text, image, flex and anchors.");
+        if (auto font = Get<ResourceManager>().GetFont("time"))
+            ImGui::Text("Font atlas texture: %u (one bind/draw per text entity)", font->GetAtlasTextureID());
+        ImGui::TextWrapped("UTF-8 text is decoded to Unicode codepoints; glyphs share one atlas and each text "
+                           "entity uploads one combined vertex batch.");
     }
     else if (m_CurrentScenario == 17)
     {

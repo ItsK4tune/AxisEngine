@@ -30,13 +30,13 @@ void SampleState::LoadScene16()
                        .Build();
     Entity(content, &scene).SetUIFlexAutoSize(false);
 
-    m_S16TextureEntity = EntityBuilder(scene, res, "scenario")
-                             .WithName("UILogoTile")
-                             .WithUIChild(content, glm::vec2(0.0f), glm::vec2(180.0f, 180.0f), 13)
-                             .WithUITextureResource("ui_logo_28", SamplePath("include/engine/asset/project/logo.png"),
-                                                    glm::vec4(1.0f), "ui_logo_tile_28")
-                             .WithUIFlip(false, true)
-                             .Build();
+    m_S16TextureEntity =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("UILogoTile")
+            .WithUIChild(content, glm::vec2(0.0f), glm::vec2(180.0f, 180.0f), 13)
+            .WithUITextureResource("ui_logo_28", "asset://project/logo.png", glm::vec4(1.0f), "ui_logo_tile_28")
+            .WithUIFlip(false, true)
+            .Build();
 
     m_S16CardEntity = EntityBuilder(scene, res, "scenario")
                           .WithName("UIRotatedCard")
@@ -68,12 +68,12 @@ void SampleState::LoadScene16()
         .WithUITextAlignment(TextAlignment::Left, true, 420.0f)
         .Build();
 
-    auto iconBadge = EntityBuilder(scene, res, "scenario")
-                         .WithName("UIIconBadge")
-                         .WithUIChild(footer, glm::vec2(0.0f), glm::vec2(84.0f, 84.0f), 13)
-                         .WithUITextureResource("ui_icon_28", SamplePath("include/engine/asset/project/icon.png"),
-                                                glm::vec4(1.0f), "ui_icon_badge_28")
-                         .Build();
+    auto iconBadge =
+        EntityBuilder(scene, res, "scenario")
+            .WithName("UIIconBadge")
+            .WithUIChild(footer, glm::vec2(0.0f), glm::vec2(84.0f, 84.0f), 13)
+            .WithUITextureResource("ui_icon_28", "asset://project/icon.png", glm::vec4(1.0f), "ui_icon_badge_28")
+            .Build();
 
     // ─── Part 2: Scenario 29 Responsive UI (Merged into 28) ───
     m_S16RootPanel = EntityBuilder(scene, res, "scenario")
@@ -140,7 +140,7 @@ void SampleState::LoadScene16()
     auto preview = EntityBuilder(scene, res, "scenario")
                        .WithName("ResponsivePreview")
                        .WithUIChild(rightColumn, glm::vec2(0.0f), glm::vec2(220.0f, 170.0f), 10)
-                       .WithUITextureResource("ui_logo_29", SamplePath("include/engine/asset/project/logo.png"),
+                       .WithUITextureResource("ui_logo_29", "asset://project/logo.png",
                                               glm::vec4(0.18f, 0.21f, 0.24f, 0.95f), "ui_preview_29")
                        .WithUIFlip(false, true)
                        .Build();
@@ -156,7 +156,8 @@ void SampleState::LoadScene16()
     // ─── Part 3: UI Animation / Movement Showcase ───
     auto showcasePanel = EntityBuilder(scene, res, "scenario")
                              .WithName("S16_ShowcasePanel")
-                             .WithUIAnchored(glm::vec2(1.0f, 0.0f), glm::vec2(-1472.0f, m_S16ShowcaseX), glm::vec2(m_S16ShowcaseW, m_S16ShowcaseH), 10)
+                             .WithUIAnchored(glm::vec2(1.0f, 0.0f), glm::vec2(-1472.0f, m_S16ShowcaseX),
+                                             glm::vec2(m_S16ShowcaseW, m_S16ShowcaseH), 10)
                              .WithUIRenderer("ui_showcase_panel", glm::vec4(0.07f, 0.09f, 0.13f, 0.94f))
                              .Build();
 

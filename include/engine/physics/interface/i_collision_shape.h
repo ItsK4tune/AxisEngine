@@ -4,7 +4,6 @@
 #include <memory>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 enum class CollisionShapeType
 {
@@ -14,7 +13,6 @@ enum class CollisionShapeType
     Cylinder,
     Mesh,
     Heightfield,
-    ConvexHull,
     CompoundHull
 };
 

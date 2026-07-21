@@ -8,19 +8,19 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/post_process_component.h>
 #include <render/interface/i_graphics_context.h>
-#include <resource/logic/resource_manager.h>
+#include <resource/interface/i_resource_libraries.h>
 #include <scene/logic/scene.h>
-
-REGISTER_SYSTEM(PostProcessSystem)
+#include <algorithm>
 
 void PostProcessSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<PostProcessSystem>(this);
     sl.Register<PostProcessPipeline>(&m_Pipeline);
+    sl.Register<IPostProcessRegistry>(this);
 
     auto* context = sl.Resolve<IGraphicsContext>();
-    auto* resources = sl.Resolve<ResourceManager>();
+    auto* resources = sl.Resolve<IShaderLibrary>();
     auto* configManager = sl.Resolve<ConfigManager>();
     m_EventSubscriptions.Clear();
 
@@ -32,25 +32,25 @@ void PostProcessSystem::Initialize()
 
     auto config = configManager->GetConfig();
 
-    m_Pipeline.Initialize(*context, config.width, config.height, *resources);
+    m_Pipeline.Initialize(*context, config.window.width, config.window.height, *resources);
 
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (!(e.bitmask & (ConfigChangedEvent::Window | ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
+            if (!HasConfigChanged(e, ConfigChangedEvent::Window | ConfigChangedEvent::Graphics))
                 return;
 
             const auto& cfg = e.config;
-            m_Pipeline.SetBloomEnabled(cfg.bloomEnabled);
-            m_Pipeline.SetBloomThreshold(cfg.bloomThreshold);
-            m_Pipeline.SetBloomIntensity(cfg.bloomIntensity);
-            m_Pipeline.SetBloomRadius(cfg.bloomRadius);
-            m_Pipeline.SetExposure(cfg.exposure);
-            m_Pipeline.SetGamma(cfg.gamma);
-            m_Pipeline.SetTonemappingMode((int)cfg.tonemappingMode);
+            m_Pipeline.SetBloomEnabled(cfg.render.bloomEnabled);
+            m_Pipeline.SetBloomThreshold(cfg.render.bloomThreshold);
+            m_Pipeline.SetBloomIntensity(cfg.render.bloomIntensity);
+            m_Pipeline.SetBloomRadius(cfg.render.bloomRadius);
+            m_Pipeline.SetExposure(cfg.render.exposure);
+            m_Pipeline.SetGamma(cfg.render.gamma);
+            m_Pipeline.SetTonemappingMode((int)cfg.render.tonemappingMode);
 
-            if (cfg.width != m_Pipeline.GetWidth() || cfg.height != m_Pipeline.GetHeight())
+            if (cfg.window.width != m_Pipeline.GetWidth() || cfg.window.height != m_Pipeline.GetHeight())
             {
-                m_Pipeline.Resize(cfg.width, cfg.height);
+                m_Pipeline.Resize(cfg.window.width, cfg.window.height);
             }
         }));
 
@@ -69,6 +69,9 @@ void PostProcessSystem::Shutdown()
 {
     m_EventSubscriptions.Clear();
     m_Pipeline.Shutdown();
+    std::lock_guard lock(m_RegistryMutex);
+    m_RegisteredEffects.clear();
+    RebuildRegistrySnapshotLocked();
 }
 
 void PostProcessSystem::RenderCapturePass(Scene& scene, int width, int height)
@@ -91,23 +94,12 @@ void PostProcessSystem::RenderCapturePass(Scene& scene, int width, int height)
         m_RenderService->SetMainFBO(captureFBO);
     }
 
-    static bool firstCaptureLog = true;
-    if (firstCaptureLog && captureFBO != 0)
-    {
-        LOGGER_INFO("PostProcessSystem") << "BeginCapture initialized: FBO=" << captureFBO;
-        firstCaptureLog = false;
-    }
-
     FrameRenderData data;
     data.mainFBO = captureFBO;
     data.width = width;
     data.height = height;
     data.alpha = 1.0f;  // Post process usually full alpha
     EventManager::Instance().Publish<FrameRenderDataEvent>({data});
-}
-
-void PostProcessSystem::RenderAlphaPass(Scene& scene, int width, int height, float alpha)
-{
 }
 
 void PostProcessSystem::Render(Scene& scene)
@@ -122,15 +114,33 @@ void PostProcessSystem::Render(Scene& scene)
 
     if (m_RenderService)
     {
-        m_Pipeline.ApplyAntiAliasing(m_RenderService->GetAntiAliasingMode(), m_RenderService->GetPrevViewProj(),
+        const auto antiAliasingMode = m_RenderService->GetAntiAliasingMode();
+        if (m_LastAntiAliasingMode != static_cast<int>(antiAliasingMode))
+        {
+            m_Pipeline.ResetTemporalHistory();
+            m_LastAntiAliasingMode = static_cast<int>(antiAliasingMode);
+        }
+        m_Pipeline.ApplyAntiAliasing(antiAliasingMode, m_RenderService->GetPrevViewProj(),
                                      m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());
+    }
+
+    auto* res = ServiceLocator::Instance().Resolve<IShaderLibrary>();
+    if (m_EffectsEnabled && res)
+    {
+        const auto registered = m_RegisteredEffectsSnapshot.load(std::memory_order_acquire);
+        for (const auto& effect : *registered)
+        {
+            const auto& descriptor = effect.descriptor;
+            if (auto shader = res->GetShader(descriptor.shaderName))
+                m_Pipeline.AddEffect(shader, descriptor.x, descriptor.y, descriptor.width, descriptor.height,
+                                     descriptor.priority, descriptor.affectUI, descriptor.inputs);
+        }
     }
 
     // Only collect custom component effects if system is enabled
     if (m_EffectsEnabled)
     {
         auto view = scene.View<PostProcessComponent, InfoComponent>();
-        auto* res = ServiceLocator::Instance().Resolve<ResourceManager>();
         if (res)
         {
             for (auto entity : view)
@@ -145,7 +155,8 @@ void PostProcessSystem::Render(Scene& scene)
                     auto shader = res->GetShader(eff.shaderName);
                     if (shader)
                     {
-                        m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority, eff.affectUI);
+                        m_Pipeline.AddEffect(shader, eff.x, eff.y, eff.w, eff.h, eff.priority, eff.affectUI,
+                                             eff.inputs);
                     }
                 }
             }
@@ -154,13 +165,13 @@ void PostProcessSystem::Render(Scene& scene)
 
     m_Pipeline.EndCapture();
 
-    if (m_RenderService && !m_Pipeline.HasUIEffects())
-    {
-        m_RenderService->SetMainFBO(0);
-    }
+    if (m_RenderService)
+        m_RenderService->SetMainFBO(m_Pipeline.HasUIEffects() ? m_Pipeline.GetFinalFBO() : 0);
 
     FrameRenderData data;
-    data.mainFBO = m_Pipeline.HasUIEffects() ? m_Pipeline.GetCaptureFBO() : 0;
+    // UI must be composited into the actual post-HDR current target. FBO 0 is
+    // only the scene-capture target and may no longer own the current color.
+    data.mainFBO = m_Pipeline.HasUIEffects() ? m_Pipeline.GetFinalFBO() : 0;
     data.width = m_Pipeline.GetWidth();
     data.height = m_Pipeline.GetHeight();
     data.alpha = 1.0f;
@@ -188,4 +199,71 @@ std::vector<entt::id_type> PostProcessSystem::GetReadComponents() const
 std::vector<entt::id_type> PostProcessSystem::GetWriteComponents() const
 {
     return {};
+}
+
+PostProcessEffectHandle PostProcessSystem::RegisterEffect(PostProcessEffectDescriptor descriptor)
+{
+    constexpr uint32_t validInputs = static_cast<uint32_t>(PostProcessInput::Standard);
+    if (descriptor.owner.empty() || descriptor.name.empty() || descriptor.shaderName.empty() ||
+        descriptor.width < 0 || descriptor.height < 0 ||
+        (static_cast<uint32_t>(descriptor.inputs) & ~validInputs) != 0)
+        return 0;
+    std::lock_guard lock(m_RegistryMutex);
+    const auto duplicate = std::find_if(m_RegisteredEffects.begin(), m_RegisteredEffects.end(),
+                                        [&](const auto& entry) {
+                                            return entry.second.owner == descriptor.owner &&
+                                                   entry.second.name == descriptor.name;
+                                        });
+    if (duplicate != m_RegisteredEffects.end())
+        return 0;
+    const PostProcessEffectHandle handle = m_NextEffectHandle++;
+    m_RegisteredEffects.emplace(handle, std::move(descriptor));
+    RebuildRegistrySnapshotLocked();
+    return handle;
+}
+
+bool PostProcessSystem::UnregisterEffect(PostProcessEffectHandle handle)
+{
+    if (handle == 0)
+        return false;
+    std::lock_guard lock(m_RegistryMutex);
+    const bool removed = m_RegisteredEffects.erase(handle) != 0;
+    if (removed)
+        RebuildRegistrySnapshotLocked();
+    return removed;
+}
+
+size_t PostProcessSystem::UnregisterOwner(std::string_view owner)
+{
+    std::lock_guard lock(m_RegistryMutex);
+    const size_t removed = std::erase_if(m_RegisteredEffects,
+                                         [owner](const auto& entry) { return entry.second.owner == owner; });
+    if (removed > 0)
+        RebuildRegistrySnapshotLocked();
+    return removed;
+}
+
+std::vector<RegisteredPostProcessEffect> PostProcessSystem::GetRegisteredEffects() const
+{
+    const auto snapshot = m_RegisteredEffectsSnapshot.load(std::memory_order_acquire);
+    return *snapshot;
+}
+
+void PostProcessSystem::RebuildRegistrySnapshotLocked()
+{
+    std::vector<RegisteredPostProcessEffect> effects;
+    effects.reserve(m_RegisteredEffects.size());
+    for (const auto& [handle, descriptor] : m_RegisteredEffects) effects.push_back({handle, descriptor});
+    std::sort(effects.begin(), effects.end(), [](const auto& left, const auto& right) {
+        if (left.descriptor.priority != right.descriptor.priority)
+            return left.descriptor.priority < right.descriptor.priority;
+        if (left.descriptor.owner != right.descriptor.owner)
+            return left.descriptor.owner < right.descriptor.owner;
+        if (left.descriptor.name != right.descriptor.name)
+            return left.descriptor.name < right.descriptor.name;
+        return left.handle < right.handle;
+    });
+    m_RegisteredEffectsSnapshot.store(
+        std::make_shared<const std::vector<RegisteredPostProcessEffect>>(std::move(effects)),
+        std::memory_order_release);
 }

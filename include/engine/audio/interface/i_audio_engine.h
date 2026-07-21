@@ -3,11 +3,26 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
+#include <vector>
 
 class IAudioSource;
 class ISound;
 
-#define GLM_ENABLE_EXPERIMENTAL
+enum class AudioOutputDeviceResult
+{
+    Success,
+    Unsupported,
+    DeviceNotFound,
+    BackendError
+};
+
+struct AudioOutputDevice
+{
+    std::string id;
+    std::string name;
+    bool isDefault = false;
+};
+
 
 class IAudioEngine
 {
@@ -33,4 +48,16 @@ public:
     virtual std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) = 0;
 
     virtual void StopAllSounds() = 0;
+
+    // Endpoint switching is an optional playback-backend capability. The
+    // default implementation is explicit instead of silently accepting a
+    // preference that the backend cannot honor.
+    virtual std::vector<AudioOutputDevice> GetOutputDevices() const
+    {
+        return {};
+    }
+    virtual AudioOutputDeviceResult SetOutputDevice(const std::string&)
+    {
+        return AudioOutputDeviceResult::Unsupported;
+    }
 };

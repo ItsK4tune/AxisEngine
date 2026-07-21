@@ -1,4 +1,5 @@
 #include <render/logic/post_process_pipeline.h>
+#include <audio/interface/i_audio_capture_service.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
@@ -6,6 +7,8 @@
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
+#include <ecs/interface/i_geometry_service.h>
+#include <ecs/interface/i_render_service.h>
 #include <ecs/logic/render_system.h>
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
@@ -13,12 +16,18 @@
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/logic/transient_buffer_ring.h>
+#include <render/type/shader_abi.h>
 #include <resource/logic/resource_manager.h>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 
 namespace
 {
+static_assert(static_cast<size_t>(ShaderABI::MaxAudioPulses) == AudioCaptureLimits::MaxPulses,
+              "Audio capture and shader pulse limits must stay synchronized");
+
 using ProfileClock = std::chrono::steady_clock;
 
 float ElapsedMs(ProfileClock::time_point start, ProfileClock::time_point end)
@@ -52,8 +61,8 @@ PostProcessPipeline::~PostProcessPipeline()
 void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int height, IShaderLibrary& shaderLib)
 {
     m_Context = &context;
-    m_Width = width;
-    m_Height = height;
+    m_Width = (std::max)(1, width);
+    m_Height = (std::max)(1, height);
     m_EventSubscriptions.Clear();
 
     InitQuad();
@@ -70,15 +79,16 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
             const auto& cfg = e.config;
-            m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
-            m_BloomEnabled = cfg.bloomEnabled;
-            m_BloomThreshold = cfg.bloomThreshold;
-            m_BloomIntensity = cfg.bloomIntensity;
-            m_BloomRadius = cfg.bloomRadius;
-            m_HDREnabled = cfg.hdrEnabled;
-            m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
-            m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
-            m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
+            m_ClearColor = glm::vec4(cfg.render.clearColor[0], cfg.render.clearColor[1], cfg.render.clearColor[2],
+                                     cfg.render.clearColor[3]);
+            m_BloomEnabled = cfg.render.bloomEnabled;
+            m_BloomThreshold = cfg.render.bloomThreshold;
+            m_BloomIntensity = cfg.render.bloomIntensity;
+            m_BloomRadius = cfg.render.bloomRadius;
+            m_HDREnabled = cfg.render.hdrEnabled;
+            m_Exposure = cfg.render.hdrEnabled ? cfg.render.exposure : 1.0f;
+            m_Gamma = cfg.render.hdrEnabled ? cfg.render.gamma : 2.2f;
+            m_TonemappingMode = cfg.render.hdrEnabled ? (int)cfg.render.tonemappingMode : 0;
         }));
 }
 
@@ -126,26 +136,32 @@ void PostProcessPipeline::InitFramebuffers()
             LOGGER_ERROR("PostProcess") << "FBO " << i << " is not complete!";
     }
 
-    m_HistoryFBO = std::make_unique<GPUFramebuffer>(*m_Context, rtm.GenFramebuffer());
-    m_HistoryTexture = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
-
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_HistoryFBO->Get());
-    tm.BindTexture(TextureType::Texture2D, m_HistoryTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, m_Width, m_Height, 0, TextureFormat::RGBA,
-                  DataType::Float, NULL);
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter, static_cast<int>(TextureFilter::Linear));
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter, static_cast<int>(TextureFilter::Linear));
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS, static_cast<int>(TextureWrap::ClampToEdge));
-    tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
-    rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0, TextureType::Texture2D,
-                             m_HistoryTexture->Get(), 0);
-
-    if (rtm.CheckFramebufferStatus(FramebufferTarget::Framebuffer) != FramebufferStatus::Complete)
-        LOGGER_ERROR("PostProcess") << "History FBO is not complete!";
+    for (int i = 0; i < 2; ++i)
+    {
+        m_HistoryFBO[i] = std::make_unique<GPUFramebuffer>(*m_Context, rtm.GenFramebuffer());
+        m_HistoryTexture[i] = std::make_unique<GPUTexture>(*m_Context, tm.GenTexture());
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_HistoryFBO[i]->Get());
+        tm.BindTexture(TextureType::Texture2D, m_HistoryTexture[i]->Get());
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, m_Width, m_Height, 0,
+                      TextureFormat::RGBA, DataType::Float, NULL);
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MinFilter,
+                         static_cast<int>(TextureFilter::Linear));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::MagFilter,
+                         static_cast<int>(TextureFilter::Linear));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapS,
+                         static_cast<int>(TextureWrap::ClampToEdge));
+        tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT,
+                         static_cast<int>(TextureWrap::ClampToEdge));
+        rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color0,
+                                 TextureType::Texture2D, m_HistoryTexture[i]->Get(), 0);
+        if (rtm.CheckFramebufferStatus(FramebufferTarget::Framebuffer) != FramebufferStatus::Complete)
+            LOGGER_ERROR("PostProcess") << "History FBO " << i << " is not complete!";
+    }
+    m_HistoryIndex = 0;
 
     m_BloomMips.clear();
-    int bloomW = m_Width / 2;
-    int bloomH = m_Height / 2;
+    int bloomW = std::max(1, m_Width / 2);
+    int bloomH = std::max(1, m_Height / 2);
     for (int i = 0; i < BLOOM_MIP_COUNT; i++)
     {
         BloomMip mip;
@@ -161,10 +177,8 @@ void PostProcessPipeline::InitFramebuffers()
         tm.TexParameteri(TextureType::Texture2D, TextureParameter::WrapT, static_cast<int>(TextureWrap::ClampToEdge));
 
         m_BloomMips.push_back(std::move(mip));
-        bloomW /= 2;
-        bloomH /= 2;
-        if (bloomW <= 0 || bloomH <= 0)
-            break;
+        bloomW = std::max(1, bloomW / 2);
+        bloomH = std::max(1, bloomH / 2);
     }
 
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
@@ -172,16 +186,17 @@ void PostProcessPipeline::InitFramebuffers()
 
 void PostProcessPipeline::UpdateConfig()
 {
-    auto cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfig();
-    m_ClearColor = glm::vec4(cfg.clearColor[0], cfg.clearColor[1], cfg.clearColor[2], cfg.clearColor[3]);
-    m_BloomEnabled = cfg.bloomEnabled;
-    m_BloomThreshold = cfg.bloomThreshold;
-    m_BloomIntensity = cfg.bloomIntensity;
-    m_BloomRadius = cfg.bloomRadius;
-    m_HDREnabled = cfg.hdrEnabled;
-    m_Exposure = cfg.hdrEnabled ? cfg.exposure : 1.0f;
-    m_Gamma = cfg.hdrEnabled ? cfg.gamma : 2.2f;
-    m_TonemappingMode = cfg.hdrEnabled ? (int)cfg.tonemappingMode : 0;
+    const auto cfg = ServiceLocator::Instance().Require<ConfigManager>().GetConfigSnapshot();
+    m_ClearColor = glm::vec4(cfg->render.clearColor[0], cfg->render.clearColor[1], cfg->render.clearColor[2],
+                             cfg->render.clearColor[3]);
+    m_BloomEnabled = cfg->render.bloomEnabled;
+    m_BloomThreshold = cfg->render.bloomThreshold;
+    m_BloomIntensity = cfg->render.bloomIntensity;
+    m_BloomRadius = cfg->render.bloomRadius;
+    m_HDREnabled = cfg->render.hdrEnabled;
+    m_Exposure = cfg->render.hdrEnabled ? cfg->render.exposure : 1.0f;
+    m_Gamma = cfg->render.hdrEnabled ? cfg->render.gamma : 2.2f;
+    m_TonemappingMode = cfg->render.hdrEnabled ? (int)cfg->render.tonemappingMode : 0;
 }
 
 void PostProcessPipeline::Shutdown()
@@ -198,8 +213,13 @@ void PostProcessPipeline::Shutdown()
     m_PingPong.color[0].reset();
     m_PingPong.color[1].reset();
     m_DepthTexture.reset();
-    m_HistoryFBO.reset();
-    m_HistoryTexture.reset();
+    CommitPulseUpload();
+    m_PulseUpload.reset();
+    m_PulseBufferCapacity = 0;
+    m_HistoryFBO[0].reset();
+    m_HistoryFBO[1].reset();
+    m_HistoryTexture[0].reset();
+    m_HistoryTexture[1].reset();
     m_BloomMips.clear();
     if (m_QuadVAO.IsValid())
     {
@@ -211,23 +231,19 @@ void PostProcessPipeline::Shutdown()
         bm.DeleteBuffers(1, &m_QuadVBO.id);
         m_QuadVBO.Reset();
     }
-    if (m_PartialVAO.IsValid())
-    {
-        bm.DeleteVertexArrays(1, &m_PartialVAO.id);
-        m_PartialVAO.Reset();
-    }
-    if (m_PartialVBO.IsValid())
-    {
-        bm.DeleteBuffers(1, &m_PartialVBO.id);
-        m_PartialVBO.Reset();
-    }
+    m_Context = nullptr;
 }
 
 void PostProcessPipeline::Resize(int width, int height)
 {
+    width = std::max(width, 1);
+    height = std::max(height, 1);
+    if (m_Width == width && m_Height == height)
+        return;
     m_Width = width;
     m_Height = height;
-    m_PingPong.currentIndex = 0;
+    m_PingPong.ResetToCapture();
+    m_HistoryIndex = 0;
     m_ResetTemporalHistory = true;
     if (!m_Context)
         return;
@@ -244,12 +260,15 @@ void PostProcessPipeline::Resize(int width, int height)
     tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::DepthComponent24, width, height, 0,
                   TextureFormat::DepthComponent, DataType::Float, NULL);
 
-    tm.BindTexture(TextureType::Texture2D, m_HistoryTexture->Get());
-    tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, width, height, 0, TextureFormat::RGBA,
-                  DataType::Float, NULL);
+    for (auto& historyTexture : m_HistoryTexture)
+    {
+        tm.BindTexture(TextureType::Texture2D, historyTexture->Get());
+        tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, width, height, 0, TextureFormat::RGBA,
+                      DataType::Float, NULL);
+    }
 
-    int bloomW = width / 2;
-    int bloomH = height / 2;
+    int bloomW = std::max(1, width / 2);
+    int bloomH = std::max(1, height / 2);
     for (auto& mip : m_BloomMips)
     {
         mip.width = bloomW;
@@ -257,10 +276,8 @@ void PostProcessPipeline::Resize(int width, int height)
         tm.BindTexture(TextureType::Texture2D, mip.texture->Get());
         tm.TexImage2D(TextureType::Texture2D, 0, InternalFormat::RGBA16F, bloomW, bloomH, 0, TextureFormat::RGBA,
                       DataType::Float, NULL);
-        bloomW /= 2;
-        bloomH /= 2;
-        if (bloomW <= 0 || bloomH <= 0)
-            bloomW = bloomH = 1;
+        bloomW = std::max(1, bloomW / 2);
+        bloomH = std::max(1, bloomH / 2);
     }
 }
 
@@ -272,7 +289,7 @@ void PostProcessPipeline::BeginCapture()
     auto& rsm = m_Context->GetRenderStateManager();
     auto& dc = m_Context->GetDrawContext();
 
-    m_PingPong.currentIndex = 0;
+    m_PingPong.ResetToCapture();
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[0]->Get());
     rsm.SetViewport(0, 0, m_Width, m_Height);
     rsm.Enable(ServerCapability::DepthTest);
@@ -284,6 +301,15 @@ void PostProcessPipeline::EndCapture()
 {
     if (!m_Context)
         return;
+    const auto priorityOrder = [](const auto& left, const auto& right) {
+        return left.priority < right.priority;
+    };
+    if (m_EffectsDirty)
+    {
+        std::stable_sort(m_Effects.begin(), m_Effects.end(), priorityOrder);
+        m_EffectsDirty = false;
+    }
+    PrepareFrameInputs();
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
@@ -296,7 +322,9 @@ void PostProcessPipeline::EndCapture()
     RenderEffectsRange(-9999, -1, false);
 
     // 2. Engine Bloom
-    if (m_BloomEnabled)
+    const bool canRenderBloom = m_BloomEnabled && m_BloomDownsampleShader && m_BloomUpsampleShader &&
+                                !m_BloomMips.empty();
+    if (canRenderBloom)
     {
         RenderBloom(m_PingPong.CurrentColor().Get());
     }
@@ -327,11 +355,43 @@ void PostProcessPipeline::EndCapture()
 
     dc.Clear(BufferBit::Color);
 
+    if (!m_HDRFinalShader)
+    {
+        LOGGER_ERROR("PostProcess") << "Required shader 'hdr_final' is missing; using a direct color blit";
+        const uint32_t fallbackTarget =
+            (hasLateEffects || HasUIEffects()) ? m_PingPong.PreviousFBO().Get() : 0;
+        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, fallbackTarget);
+        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
+                            TextureFilter::Nearest);
+
+        if (hasLateEffects || HasUIEffects())
+        {
+            m_PingPong.Swap();
+            RenderEffectsRange(100, 9999, false);
+            if (!HasUIEffects())
+            {
+                rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+                rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+                rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
+                                    TextureFilter::Nearest);
+            }
+        }
+        bm.BindVertexArray(0);
+        rsm.Enable(ServerCapability::DepthTest);
+        if (!HasUIEffects())
+        {
+            rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+            CommitPulseUpload();
+        }
+        return;
+    }
+
     m_HDRFinalShader->use();
     m_HDRFinalShader->setInt("screenTexture", 0);
     m_HDRFinalShader->setInt("bloomBlur", 1);
     m_HDRFinalShader->setFloat("exposure", m_HDREnabled ? m_Exposure : 1.0f);
-    m_HDRFinalShader->setFloat("bloomIntensity", m_BloomEnabled ? m_BloomIntensity : 0.0f);
+    m_HDRFinalShader->setFloat("bloomIntensity", canRenderBloom ? m_BloomIntensity : 0.0f);
     m_HDRFinalShader->setFloat("gamma", m_HDREnabled ? m_Gamma : 2.2f);
     m_HDRFinalShader->setInt("tonemappingMode", m_HDREnabled ? m_TonemappingMode : 0);
 
@@ -339,7 +399,7 @@ void PostProcessPipeline::EndCapture()
     tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
 
     tm.ActiveTexture(TextureUnit::Texture1);
-    if (m_BloomEnabled && !m_BloomMips.empty())
+    if (canRenderBloom)
     {
         tm.BindTexture(TextureType::Texture2D, m_BloomMips[0].texture->Get());
     }
@@ -373,11 +433,93 @@ void PostProcessPipeline::EndCapture()
     if (!HasUIEffects())
     {
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
+        CommitPulseUpload();
     }
+}
+
+void PostProcessPipeline::PrepareFrameInputs()
+{
+    // Defensive completion for clients that registered UI effects but skipped
+    // the UI render stage in the preceding frame.
+    CommitPulseUpload();
+    m_FrameInputs = {};
+    m_PulseBufferOffset = 0;
+    m_PulseBufferSize = 0;
+    m_FrameInputs.depthTexture = m_DepthTexture ? m_DepthTexture->Get() : 0;
+
+    bool needsDeferredData = false;
+    bool needsCamera = false;
+    bool needsAudio = false;
+    for (const auto& effect : m_Effects)
+    {
+        needsDeferredData = needsDeferredData || HasPostProcessInput(effect.inputs, PostProcessInput::Normal);
+        // World position is deliberately reconstructed from the capture depth.
+        // This keeps it available without restoring a full-resolution G-buffer MRT.
+        needsCamera = needsCamera || HasPostProcessInput(effect.inputs, PostProcessInput::CameraMatrices) ||
+                      HasPostProcessInput(effect.inputs, PostProcessInput::WorldPosition);
+        needsAudio = needsAudio || HasPostProcessInput(effect.inputs, PostProcessInput::AudioPulses);
+    }
+
+    auto& services = ServiceLocator::Instance();
+    if (needsDeferredData)
+    {
+        if (auto* geometry = services.Resolve<IGeometryService>(); geometry && geometry->IsDeferredRenderingEnabled())
+        {
+            m_FrameInputs.normalTexture = geometry->GetGBufferNormal();
+        }
+    }
+    if (needsCamera)
+    {
+        if (auto* renderService = services.Resolve<IRenderService>())
+        {
+            const glm::mat4 viewProjection = renderService->GetCurrViewProj();
+            m_FrameInputs.hasCameraMatrices = IsUsableTemporalMatrix(viewProjection);
+            if (m_FrameInputs.hasCameraMatrices)
+                m_FrameInputs.inverseViewProjection = glm::inverse(viewProjection);
+        }
+    }
+    if (needsAudio)
+    {
+        if (auto* audioCapture = services.Resolve<IAudioCaptureService>(); audioCapture && audioCapture->IsCapturing())
+            m_FrameInputs.audio = audioCapture->GetSnapshot();
+
+        m_FrameInputs.pulseCount =
+            (std::min)(m_FrameInputs.audio.pulses.size(), static_cast<size_t>(ShaderABI::MaxAudioPulses));
+        auto& bm = m_Context->GetBufferManager();
+        if (!m_PulseUpload)
+        {
+            m_PulseUpload = std::make_unique<TransientBufferRing>();
+            m_PulseBufferCapacity = static_cast<size_t>(ShaderABI::MaxAudioPulses) * sizeof(AudioPulse);
+            m_PulseUpload->Initialize(bm, BufferType::ShaderStorageBuffer, m_PulseBufferCapacity);
+        }
+        if (m_FrameInputs.pulseCount > 0)
+        {
+            const auto slice = m_PulseUpload->Upload(m_FrameInputs.audio.pulses.data(),
+                                                     m_FrameInputs.pulseCount * sizeof(AudioPulse));
+            m_PulseBufferOffset = slice.offset;
+            m_PulseBufferSize = m_PulseUpload->GetSegmentCapacity();
+            m_PulseUploadPending = slice.buffer != 0;
+        }
+    }
+    m_FrameInputs.prepared = true;
+}
+
+void PostProcessPipeline::CommitPulseUpload()
+{
+    if (m_PulseUpload && m_PulseUploadPending)
+        m_PulseUpload->Commit();
+    m_PulseUploadPending = false;
 }
 
 void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, bool affectUI)
 {
+    const auto matchesPass = [=](const PostProcessEffect& effect) {
+        return effect.shader && effect.priority >= minPriority && effect.priority <= maxPriority &&
+               effect.affectUI == affectUI;
+    };
+    if (std::none_of(m_Effects.begin(), m_Effects.end(), matchesPass))
+        return;
+
     auto& rtm = m_Context->GetRenderTargetManager();
     auto& rsm = m_Context->GetRenderStateManager();
     auto& tm = m_Context->GetTextureManager();
@@ -393,8 +535,15 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
 
         // If not full-screen, we must preserve the background
-        bool isPartial =
-            effect.width > 0 && effect.height > 0 && (effect.width != m_Width || effect.height != m_Height);
+        const int effectWidth = effect.width > 0 ? effect.width : m_Width;
+        const int effectHeight = effect.height > 0 ? effect.height : m_Height;
+        const int effectX = std::clamp(effect.x, 0, m_Width);
+        const int effectY = std::clamp(effect.y, 0, m_Height);
+        const int clippedWidth = (std::max)(0, (std::min)(effectWidth, m_Width - effectX));
+        const int clippedHeight = (std::max)(0, (std::min)(effectHeight, m_Height - effectY));
+        const bool isPartial = effectX != 0 || effectY != 0 || clippedWidth != m_Width || clippedHeight != m_Height;
+        if (clippedWidth == 0 || clippedHeight == 0)
+            continue;
         if (isPartial)
         {
             rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
@@ -405,47 +554,75 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
         }
 
         effect.shader->use();
-        effect.shader->setInt("screenTexture", 0);
+        const bool wantsColor = HasPostProcessInput(effect.inputs, PostProcessInput::Color);
+        const bool wantsDepth = HasPostProcessInput(effect.inputs, PostProcessInput::Depth);
+        const bool wantsNormal = HasPostProcessInput(effect.inputs, PostProcessInput::Normal);
+        const bool wantsWorldPosition = HasPostProcessInput(effect.inputs, PostProcessInput::WorldPosition);
+        const bool wantsCamera = HasPostProcessInput(effect.inputs, PostProcessInput::CameraMatrices);
+        const bool wantsPulses = HasPostProcessInput(effect.inputs, PostProcessInput::AudioPulses);
+        if (wantsColor)
+        {
+            effect.shader->setInt("screenTexture", ShaderABI::PostProcessColorTexture);
+            effect.shader->setInt("u_ScreenTexture", ShaderABI::PostProcessColorTexture);
+        }
+        const bool canReconstructWorldPosition =
+            wantsWorldPosition && m_FrameInputs.depthTexture != 0 && m_FrameInputs.hasCameraMatrices;
+        if (wantsDepth || canReconstructWorldPosition)
+            effect.shader->setInt("u_DepthTexture", ShaderABI::PostProcessDepthTexture);
+        if (wantsNormal)
+            effect.shader->setInt("u_NormalTexture", ShaderABI::PostProcessNormalTexture);
+        if (wantsWorldPosition)
+            effect.shader->setInt("u_WorldPositionTexture", ShaderABI::PostProcessWorldPositionTexture);
+        if (wantsCamera || wantsWorldPosition)
+            effect.shader->setMat4("u_InverseViewProjection", m_FrameInputs.inverseViewProjection);
+        if (wantsPulses)
+        {
+            const auto& level = m_FrameInputs.audio.level;
+            effect.shader->setVec4("u_AudioLevel", glm::vec4(level.rms, level.peak, level.intensity, level.noiseFloor));
+            effect.shader->setInt("u_PulseCount", static_cast<int>(m_FrameInputs.pulseCount));
+        }
+        effect.shader->setBool("u_HasDepthTexture", wantsDepth && m_FrameInputs.depthTexture != 0);
+        effect.shader->setBool("u_HasNormalTexture", wantsNormal && m_FrameInputs.normalTexture != 0);
+        effect.shader->setBool("u_HasWorldPositionTexture",
+                               wantsWorldPosition && m_FrameInputs.worldPositionTexture != 0);
+        effect.shader->setBool("u_HasWorldPosition",
+                               wantsWorldPosition &&
+                                   (m_FrameInputs.worldPositionTexture != 0 || canReconstructWorldPosition));
+        effect.shader->setBool("u_WorldPositionFromDepth", canReconstructWorldPosition);
+        effect.shader->setBool("u_HasCameraMatrices",
+                               (wantsCamera || wantsWorldPosition) && m_FrameInputs.hasCameraMatrices);
+        effect.shader->setBool("u_HasAudioPulses", wantsPulses && m_FrameInputs.pulseCount > 0);
+        effect.shader->setBool("u_IsPartialEffect", isPartial);
+        effect.shader->setVec4(
+            "u_EffectRect",
+            glm::vec4(static_cast<float>(effectX) / m_Width, static_cast<float>(effectY) / m_Height,
+                      static_cast<float>(clippedWidth) / m_Width,
+                      static_cast<float>(clippedHeight) / m_Height));
 
-        tm.ActiveTexture(TextureUnit::Texture0);
-        tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
+        tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessColorTexture));
+        tm.BindTexture(TextureType::Texture2D, wantsColor ? m_PingPong.CurrentColor().Get() : 0);
+        tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessDepthTexture));
+        tm.BindTexture(TextureType::Texture2D,
+                       (wantsDepth || canReconstructWorldPosition) ? m_FrameInputs.depthTexture : 0);
+        tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessNormalTexture));
+        tm.BindTexture(TextureType::Texture2D, wantsNormal ? m_FrameInputs.normalTexture : 0);
+        tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessWorldPositionTexture));
+        tm.BindTexture(TextureType::Texture2D, wantsWorldPosition ? m_FrameInputs.worldPositionTexture : 0);
+        if (wantsPulses && m_PulseUpload && m_PulseBufferSize > 0)
+            bm.BindBufferRange(BufferType::ShaderStorageBuffer, ShaderABI::PulseSSBOBinding,
+                               m_PulseUpload->GetBuffer(), m_PulseBufferOffset, m_PulseBufferSize);
 
         if (isPartial)
         {
-            // Calculate NDC coordinates for the sub-region quad
-            float x1 = (float)effect.x / m_Width * 2.0f - 1.0f;
-            float y1 = (float)(m_Height - effect.y - effect.height) / m_Height * 2.0f - 1.0f;
-            float x2 = (float)(effect.x + effect.width) / m_Width * 2.0f - 1.0f;
-            float y2 = (float)(m_Height - effect.y) / m_Height * 2.0f - 1.0f;
-
-            // Calculate UV coordinates mapping to the screen texture
-            float u1 = (float)effect.x / m_Width;
-            float v1 = (float)(m_Height - effect.y - effect.height) / m_Height;
-            float u2 = (float)(effect.x + effect.width) / m_Width;
-            float v2 = (float)(m_Height - effect.y) / m_Height;
-
-            float vertices[] = {x1, y2, u1, v2, x1, y1, u1, v1, x2, y1, u2, v1,
-
-                                x1, y2, u1, v2, x2, y1, u2, v1, x2, y2, u2, v2};
-
-            // Use class-managed buffer for this unique quad
-            auto& bm = m_Context->GetBufferManager();
-            if (m_PartialVAO.id == 0)
-            {
-                m_PartialVAO.id = bm.GenVertexArray();
-                m_PartialVBO.id = bm.GenBuffer();
-            }
-            bm.BindVertexArray(m_PartialVAO.id);
-            bm.BindBuffer(BufferType::ArrayBuffer, m_PartialVBO.id);
-            bm.BufferData(BufferType::ArrayBuffer, sizeof(vertices), vertices, BufferUsage::DynamicDraw);
-            bm.EnableVertexAttribArray(0);
-            bm.VertexAttribPointer(0, 2, DataType::Float, false, 4 * sizeof(float), (void*)0);
-            bm.EnableVertexAttribArray(1);
-            bm.VertexAttribPointer(1, 2, DataType::Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
-            dc.SetViewport(0, 0, m_Width, m_Height);  // Keep full viewport for correct NDC mapping
+            // A full-screen quad plus scissor preserves screen-space UVs and
+            // avoids rebuilding/uploading a unique quad for every partial effect.
+            rsm.Enable(ServerCapability::ScissorTest);
+            rsm.SetScissor(effectX, m_Height - effectY - clippedHeight, clippedWidth, clippedHeight);
+            dc.SetViewport(0, 0, m_Width, m_Height);
+            bm.BindVertexArray(m_QuadVAO.id);
             dc.DrawArrays(Primitive::Triangles, 0, 6);
             bm.BindVertexArray(0);
+            rsm.Disable(ServerCapability::ScissorTest);
         }
         else
         {
@@ -556,7 +733,7 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
 
     shader->use();
     tm.ActiveTexture(TextureUnit::Texture0);
-    tm.BindTexture(TextureType::Texture2D, m_PingPong.color[0]->Get());
+    tm.BindTexture(TextureType::Texture2D, m_PingPong.CurrentColor().Get());
     shader->setInt("screenTexture", 0);
 
     if (mode == AntiAliasingMode::TAA)
@@ -571,42 +748,35 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
 
         shader->setInt("historyTexture", 2);
         tm.ActiveTexture(TextureUnit::Texture2);
-        tm.BindTexture(TextureType::Texture2D, m_HistoryTexture->Get());
+        tm.BindTexture(TextureType::Texture2D, m_HistoryTexture[m_HistoryIndex]->Get());
 
         shader->setBool("resetHistory", resetHistory);
         shader->setMat4("invViewProj", resetHistory ? glm::mat4(1.0f) : glm::inverse(currViewProj));
         shader->setMat4("prevViewProj", resetHistory ? safeCurrViewProj : prevViewProj);
         shader->setVec2("jitterOffset", jitterOffset);
 
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
+        const int nextHistory = 1 - m_HistoryIndex;
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_HistoryFBO[nextHistory]->Get());
         dc.Clear(BufferBit::Color);
 
         bm.BindVertexArray(m_QuadVAO.id);
         dc.DrawArrays(Primitive::Triangles, 0, 6);
 
-        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[1]->Get());
-        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_HistoryFBO->Get());
-        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
-
-        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[1]->Get());
-        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_PingPong.fbo[0]->Get());
-        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
-
+        m_HistoryIndex = nextHistory;
+        m_PingPong.SetExternalCurrent(*m_HistoryFBO[m_HistoryIndex], *m_HistoryTexture[m_HistoryIndex]);
         m_ResetTemporalHistory = false;
     }
     else if (mode == AntiAliasingMode::FXAA)
     {
         shader->setVec2("inverseScreenSize", glm::vec2(1.0f / m_Width, 1.0f / m_Height));
 
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.fbo[1]->Get());
+        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
         dc.Clear(BufferBit::Color);
 
         bm.BindVertexArray(m_QuadVAO.id);
         dc.DrawArrays(Primitive::Triangles, 0, 6);
 
-        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.fbo[1]->Get());
-        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, m_PingPong.fbo[0]->Get());
-        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+        m_PingPong.Swap();
     }
 
     bm.BindVertexArray(0);
@@ -614,33 +784,31 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, bool affectUI)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, bool affectUI, PostProcessInput inputs)
 {
-    AddEffect(shader, 0, 0, 0, 0, 0, affectUI);
+    AddEffect(shader, 0, 0, 0, 0, 0, affectUI, inputs);
 }
 
-void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int priority, bool affectUI)
+void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int priority, bool affectUI,
+                                    PostProcessInput inputs)
 {
-    AddEffect(shader, 0, 0, 0, 0, priority, affectUI);
+    AddEffect(shader, 0, 0, 0, 0, priority, affectUI, inputs);
 }
 
 void PostProcessPipeline::AddEffect(std::shared_ptr<Shader> shader, int x, int y, int width, int height, int priority,
-                                    bool affectUI)
+                                    bool affectUI, PostProcessInput inputs)
 {
     if (shader)
     {
-        m_Effects.push_back({shader, x, y, width, height, priority, affectUI});
+        m_Effects.push_back({shader, x, y, width, height, priority, affectUI, inputs});
+        m_EffectsDirty = true;
+        m_HasUIEffects = m_HasUIEffects || affectUI;
     }
 }
 
 bool PostProcessPipeline::HasUIEffects() const
 {
-    for (const auto& eff : m_Effects)
-    {
-        if (eff.affectUI)
-            return true;
-    }
-    return false;
+    return m_HasUIEffects;
 }
 
 void PostProcessPipeline::RenderUIEffects()
@@ -657,17 +825,23 @@ void PostProcessPipeline::RenderUIEffects()
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
     rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+    CommitPulseUpload();
 }
 
 void PostProcessPipeline::ClearEffects()
 {
+    CommitPulseUpload();
     m_Effects.clear();
+    m_EffectsDirty = false;
+    m_HasUIEffects = false;
+    m_FrameInputs = {};
 }
 
 void PostProcessPipeline::ResetTemporalHistory()
 {
     m_ResetTemporalHistory = true;
-    m_PingPong.currentIndex = 0;
+    m_PingPong.ResetToCapture();
+    m_HistoryIndex = 0;
 }
 
 void PostProcessPipeline::InitQuad()
@@ -691,14 +865,4 @@ void PostProcessPipeline::InitQuad()
     bm.VertexAttribPointer(0, 2, DataType::Float, false, 4 * sizeof(float), (void*)0);
     bm.EnableVertexAttribArray(1);
     bm.VertexAttribPointer(1, 2, DataType::Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-}
-
-float PostProcessPipeline::GetGamma() const
-{
-    return m_Gamma;
-}
-
-float PostProcessPipeline::GetExposure() const
-{
-    return m_Exposure;
 }

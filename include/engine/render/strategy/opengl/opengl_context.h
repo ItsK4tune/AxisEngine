@@ -23,6 +23,8 @@ public:
     void SetBlendFunc(BlendFactor src, BlendFactor dst) override;
 
     void Clear(BufferBit flags) override;
+    void InvalidateStateCache() override;
+    void SetStateCacheEnabled(bool enabled) override;
 
     IBufferManager& GetBufferManager() override
     {
@@ -57,8 +59,10 @@ public:
     {
         return "OpenGL";
     }
+    bool TryGetMemoryBudget(uint64_t& usedBytes, uint64_t& totalBytes) const override;
 
 private:
+    bool m_Initialized = false;
     OpenGLBufferManager m_BufferManager;
     OpenGLTextureManager m_TextureManager;
     OpenGLShaderManager m_ShaderManager;

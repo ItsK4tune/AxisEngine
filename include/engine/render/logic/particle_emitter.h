@@ -9,8 +9,8 @@
 class IBufferManager;
 class IDrawContext;
 class ITextureManager;
+class TransientBufferRing;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct Particle
 {
@@ -52,6 +52,12 @@ public:
     void Render(Shader* shader);
 
     unsigned int GetActiveParticleCount() const;
+    const std::vector<ParticleInstanceData>& GetInstanceData() const { return m_InstanceData; }
+    void SetSpawnBudget(bool enabled, unsigned int maxPerFrame)
+    {
+        m_SpawnBudgetEnabled = enabled;
+        m_MaxSpawnPerFrame = maxPerFrame > 0 ? maxPerFrame : 1;
+    }
 
     enum class EmissionShape
     {
@@ -60,7 +66,6 @@ public:
         FIGURE_EIGHT
     };
 
-    glm::vec3 Offset = glm::vec3(0.0f);
     glm::vec3 MinVelocity = glm::vec3(-0.1f, 1.0f, -0.1f);
     glm::vec3 MaxVelocity = glm::vec3(0.1f, 4.0f, 0.1f);
     glm::vec4 StartColor = glm::vec4(1.0f);
@@ -68,28 +73,33 @@ public:
     float StartSize = 1.0f;
     float EndSize = 0.0f;
     float LifeTime = 1.0f;
-    float StartLife = 1.0f;
     float SpawnRate = 10.0f;
     EmissionShape Shape = EmissionShape::DIRECTIONAL;
 
     std::shared_ptr<Texture> texture = nullptr;
 
     static void SetManagers(IBufferManager& bufferManager, ITextureManager& textureManager, IDrawContext& drawContext);
+    static void ClearManagers();
 
 private:
     std::vector<Particle> m_Particles;
-    unsigned int m_MaxParticles;
-    unsigned int m_LastUsedParticle = 0;
+    std::vector<unsigned int> m_ActiveIndices;
+    std::vector<unsigned int> m_FreeIndices;
+    std::vector<ParticleInstanceData> m_InstanceData;
+    unsigned int m_MaxParticles = 0;
     float m_SpawnAccumulator = 0.0f;
+    float m_EmissionPhase = 0.0f;
+    bool m_SpawnBudgetEnabled = true;
+    unsigned int m_MaxSpawnPerFrame = 4096;
 
     unsigned int m_VAO, m_VBO;
     unsigned int m_instanceVBO;
+    std::unique_ptr<TransientBufferRing> m_InstanceUpload;
 
     static IBufferManager* s_BufferManager;
     static ITextureManager* s_TextureManager;
     static IDrawContext* s_DrawContext;
 
-    unsigned int FirstUnusedParticle();
     void RespawnParticle(Particle& particle, const glm::vec3& offset);
 
     static IBufferManager& GetBufferManager();

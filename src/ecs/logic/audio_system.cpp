@@ -9,13 +9,14 @@
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
 
-REGISTER_SYSTEM(AudioSystem)
 
 void AudioSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
     sl.Register<AudioSystem>(this);
     m_EventSubscriptions.Clear();
+    m_AppliedSources.clear();
+    m_AppliedGlobalVolume = std::numeric_limits<float>::quiet_NaN();
     if (m_BoundScene)
     {
         m_BoundScene->GetRegistry().on_destroy<AudioSourceComponent>().disconnect<&AudioSystem::OnAudioSourceDestroyed>(
@@ -26,13 +27,13 @@ void AudioSystem::Initialize()
     auto* configManager = sl.Resolve<ConfigManager>();
     if (configManager)
     {
-        m_GlobalVolume = configManager->GetConfig().masterVolume;
+        m_GlobalVolume = configManager->GetConfigSnapshot()->audio.masterVolume;
 
         m_EventSubscriptions.Add(
             EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-                if (e.bitmask & (ConfigChangedEvent::Audio | ConfigChangedEvent::All))
+                if (HasConfigChanged(e, ConfigChangedEvent::Audio))
                 {
-                    m_GlobalVolume = e.config.masterVolume;
+                    m_GlobalVolume = e.config.audio.masterVolume;
                 }
             }));
     }
@@ -54,6 +55,7 @@ void AudioSystem::Shutdown()
             this);
         m_BoundScene = nullptr;
     }
+    m_AppliedSources.clear();
 }
 
 void AudioSystem::Update(Scene& scene, float dt)
@@ -73,14 +75,24 @@ void AudioSystem::Update(Scene& scene, float dt)
         auto& camPos = scene.GetRegistry().get<PositionComponent>(camEntity);
         auto& camRot = scene.GetRegistry().get<RotationComponent>(camEntity);
 
+        glm::vec3 listenerPosition = camPos.value;
         glm::vec3 lookDir = camRot.value * glm::vec3(0.0f, 0.0f, -1.0f);
+        if (auto* world = scene.TryGetComponent<WorldTransformComponent>(camEntity))
+        {
+            listenerPosition = glm::vec3(world->worldMatrix[3]);
+            lookDir = glm::normalize(-glm::vec3(world->worldMatrix[2]));
+        }
 
-        audioService->UpdateListener(camPos.value, lookDir);
+        audioService->UpdateListener(listenerPosition, lookDir);
     }
 
     auto view = scene.GetRegistry().view<AudioSourceComponent, InfoComponent>();
 
-    engine->SetGlobalVolume(m_GlobalVolume);
+    if (m_AppliedGlobalVolume != m_GlobalVolume)
+    {
+        engine->SetGlobalVolume(m_GlobalVolume);
+        m_AppliedGlobalVolume = m_GlobalVolume;
+    }
 
     for (auto entity : view)
     {
@@ -93,6 +105,7 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 audio.sound->Stop();
                 audio.sound = nullptr;
+                m_AppliedSources.erase(entity);
             }
             continue;
         }
@@ -111,15 +124,20 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 audio.sound->Stop();
                 audio.sound = nullptr;
+                m_AppliedSources.erase(entity);
             }
+
+            glm::vec3 sourcePosition(0.0f);
+            if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
+                sourcePosition = glm::vec3(world->worldMatrix[3]);
+            else if (auto* posComp = scene.TryGetComponent<PositionComponent>(entity))
+                sourcePosition = posComp->value;
 
             if (audio.source)
             {
                 if (audio.is3D)
                 {
-                    PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
-                    glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-                    audio.sound = engine->Play3D(audio.source.get(), pos, audio.loop);
+                    audio.sound = engine->Play3D(audio.source.get(), sourcePosition, audio.loop);
                 }
                 else
                 {
@@ -130,9 +148,7 @@ void AudioSystem::Update(Scene& scene, float dt)
             {
                 if (audio.is3D)
                 {
-                    PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
-                    glm::vec3 pos = posComp ? posComp->value : glm::vec3(0.0f);
-                    audio.sound = engine->Play3D(audio.filePath, pos, audio.loop);
+                    audio.sound = engine->Play3D(audio.filePath, sourcePosition, audio.loop);
                 }
                 else
                 {
@@ -142,46 +158,77 @@ void AudioSystem::Update(Scene& scene, float dt)
 
             if (audio.sound)
             {
-                audio.sound->SetVolume(audio.volume);
-                audio.sound->SetPitch(audio.pitch * audio.speed);
-                if (audio.is3D)
-                {
-                    audio.sound->SetMinDistance(audio.minDistance);
-                    audio.sound->SetMaxDistance(audio.maxDistance);
-                    audio.sound->SetVelocity(audio.velocity);
-                }
-                else
-                {
-                    audio.sound->SetPan(audio.pan);
-                }
+                m_AppliedSources.erase(entity);
             }
         }
 
-        if (audio.sound && !audio.sound->IsFinished())
+        if (audio.sound)
         {
-            audio.sound->SetVolume(audio.volume);
-            audio.sound->SetPitch(audio.pitch * audio.speed);
+            const bool finished = audio.sound->IsFinished();
+            if (finished)
+            {
+                audio.sound = nullptr;
+                m_AppliedSources.erase(entity);
+                continue;
+            }
+
+            auto& applied = m_AppliedSources[entity];
+            if (applied.sound != audio.sound.get())
+            {
+                applied = {};
+                applied.sound = audio.sound.get();
+            }
+            if (applied.volume != audio.volume)
+            {
+                audio.sound->SetVolume(audio.volume);
+                applied.volume = audio.volume;
+            }
+            const float effectivePitch = audio.pitch * audio.speed;
+            if (applied.pitch != effectivePitch)
+            {
+                audio.sound->SetPitch(effectivePitch);
+                applied.pitch = effectivePitch;
+            }
 
             if (audio.is3D)
             {
-                PositionComponent* posComp = scene.GetRegistry().try_get<PositionComponent>(entity);
-                if (posComp)
+                glm::vec3 sourcePosition(0.0f);
+                uint32_t transformVersion = 0;
+                if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))
                 {
-                    audio.sound->SetPosition(posComp->value);
+                    sourcePosition = glm::vec3(world->worldMatrix[3]);
+                    transformVersion = world->version;
                 }
-                audio.sound->SetVelocity(audio.velocity);
-                audio.sound->SetMinDistance(audio.minDistance);
-                audio.sound->SetMaxDistance(audio.maxDistance);
+                else if (auto* posComp = scene.TryGetComponent<PositionComponent>(entity))
+                    sourcePosition = posComp->value;
+                if (applied.transformVersion != transformVersion ||
+                    glm::any(glm::notEqual(applied.position, sourcePosition)))
+                {
+                    audio.sound->SetPosition(sourcePosition);
+                    applied.position = sourcePosition;
+                    applied.transformVersion = transformVersion;
+                }
+                if (glm::any(glm::notEqual(applied.velocity, audio.velocity)))
+                {
+                    audio.sound->SetVelocity(audio.velocity);
+                    applied.velocity = audio.velocity;
+                }
+                if (applied.minDistance != audio.minDistance)
+                {
+                    audio.sound->SetMinDistance(audio.minDistance);
+                    applied.minDistance = audio.minDistance;
+                }
+                if (applied.maxDistance != audio.maxDistance)
+                {
+                    audio.sound->SetMaxDistance(audio.maxDistance);
+                    applied.maxDistance = audio.maxDistance;
+                }
             }
-            else
+            else if (applied.pan != audio.pan)
             {
                 audio.sound->SetPan(audio.pan);
+                applied.pan = audio.pan;
             }
-        }
-
-        if (audio.sound && audio.sound->IsFinished())
-        {
-            audio.sound = nullptr;
         }
     }
 
@@ -196,6 +243,7 @@ void AudioSystem::OnAudioSourceDestroyed(entt::registry& registry, entt::entity 
         audio.sound->Stop();
         audio.sound = nullptr;
     }
+    m_AppliedSources.erase(entity);
 }
 
 void AudioSystem::StopAll(Scene& scene)
@@ -208,6 +256,7 @@ void AudioSystem::StopAll(Scene& scene)
         {
             audio.sound->Stop();
             audio.sound = nullptr;
+            m_AppliedSources.erase(entity);
         }
     }
 }
@@ -232,10 +281,12 @@ void AudioSystem::SetEnabled(bool enable)
         if (!enable)
         {
             audioService->GetEngine()->SetGlobalVolume(0.0f);
+            m_AppliedGlobalVolume = 0.0f;
         }
         else
         {
             audioService->GetEngine()->SetGlobalVolume(m_GlobalVolume);
+            m_AppliedGlobalVolume = m_GlobalVolume;
         }
     }
 }

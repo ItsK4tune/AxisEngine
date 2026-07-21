@@ -14,6 +14,11 @@ void TextureAtlas::SetTextureManager(ITextureManager& textureManager)
     s_TextureManager = &textureManager;
 }
 
+void TextureAtlas::ClearTextureManager()
+{
+    s_TextureManager = nullptr;
+}
+
 ITextureManager& TextureAtlas::GetTextureManager()
 {
     if (!s_TextureManager)

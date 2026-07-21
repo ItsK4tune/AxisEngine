@@ -6,11 +6,11 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <ecs/logic/entity.h>
 
 class SceneManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 struct Scene
 {
@@ -48,8 +48,25 @@ struct Scene
     }
 
     bool IsOctreeDirty() const { return m_OctreeDirty; }
-    void SetOctreeDirty(bool dirty) { m_OctreeDirty = dirty; }
-    void OnOctreeDirty(entt::registry&, entt::entity) { m_OctreeDirty = true; }
+    // A caller without an entity-level change list requests a full rebuild.
+    // Prefer MarkOctreeEntityDirty for ordinary transform/mesh changes.
+    void SetOctreeDirty(bool dirty)
+    {
+        m_OctreeDirty = dirty;
+        if (dirty)
+            m_OctreeFullRebuildRequired = true;
+        else
+        {
+            m_OctreeFullRebuildRequired = false;
+            m_DirtyOctreeEntities.clear();
+        }
+    }
+    void MarkOctreeEntityDirty(entt::entity entity);
+    bool ConsumeOctreeChanges(std::vector<entt::entity>& output);
+    void OnOctreeDirty(entt::registry&, entt::entity entity) { MarkOctreeEntityDirty(entity); }
+
+    void MarkTransformDirty(entt::entity entity);
+    void ConsumeDirtyTransforms(std::vector<entt::entity>& output);
 
     void InitializeManagers();
     void ShutdownManagers();
@@ -193,6 +210,9 @@ struct Scene
 private:
     std::unique_ptr<Octree> m_Octree;
     bool m_OctreeDirty = true;
+    bool m_OctreeFullRebuildRequired = true;
+    std::unordered_set<entt::entity> m_DirtyOctreeEntities;
+    std::unordered_set<entt::entity> m_DirtyTransforms;
 
     entt::entity m_ActiveSkybox = entt::null;
     entt::entity m_ActiveCamera = entt::null;

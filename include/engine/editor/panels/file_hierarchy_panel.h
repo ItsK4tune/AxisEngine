@@ -25,7 +25,6 @@ public:
     }
 
 private:
-    void DrawPreview();
     void OpenInSystemEditor(const std::filesystem::path& path);
 
     std::filesystem::path m_CurrentPath;

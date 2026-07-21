@@ -1,0 +1,30 @@
+#pragma once
+
+// Contracts intended for replaceable engine modules and backend providers.
+#include <audio/interface/i_audio_capture_service.h>
+#include <audio/interface/i_audio_engine.h>
+#include <core/app/app_builder.h>
+#include <core/interface/i_application_lifecycle.h>
+#include <core/interface/i_base_system.h>
+#include <core/interface/i_localization_service.h>
+#include <core/interface/i_optimization_configurable.h>
+#include <ecs/interface/i_render_runtime_control.h>
+#include <ecs/interface/i_render_service.h>
+#include <ecs/interface/i_script_registry.h>
+#include <ecs/interface/i_system_registry.h>
+#include <editor/i_editor_extension_registry.h>
+#include <physics/interface/i_physics_world.h>
+#include <network/interface/i_network_service.h>
+#include <navigation/interface/i_navigation_service.h>
+#include <platform/interface/i_window.h>
+#include <platform/interface/i_ui_input_capture.h>
+#include <platform/interface/i_platform_filesystem.h>
+#include <platform/interface/i_platform_runtime.h>
+#include <platform/logic/platform_services.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_post_process_registry.h>
+#include <render/type/post_process_input.h>
+#include <resource/interface/i_resource_libraries.h>
+#include <scene/interface/i_component_loader_factory.h>
+#include <scene/interface/i_component_serializer_factory.h>
+#include <scene/interface/i_component_codec_registry.h>

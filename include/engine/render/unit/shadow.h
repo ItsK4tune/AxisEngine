@@ -11,7 +11,6 @@ class IGraphicsContext;
 class IRenderTargetManager;
 class ITextureManager;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class Shadow
 {

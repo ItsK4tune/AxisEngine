@@ -9,9 +9,8 @@
 #include <ecs/unit/reflection_components.h>
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/ui_components.h>
-#include <render/logic/render_service_impl.h>
+#include <ecs/interface/i_render_runtime_control.h>
 
-REGISTER_SYSTEM(RenderSystem)
 
 RenderSystem::RenderSystem()
 {
@@ -20,11 +19,7 @@ RenderSystem::~RenderSystem() = default;
 
 void RenderSystem::Initialize()
 {
-    m_RenderService = ServiceLocator::Instance().Resolve<RenderServiceImpl>();
-}
-
-void RenderSystem::Shutdown()
-{
+    m_RenderService = ServiceLocator::Instance().Resolve<IRenderRuntimeControl>();
 }
 
 void RenderSystem::Update(Scene& scene, float dt)

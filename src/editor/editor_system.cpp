@@ -18,6 +18,7 @@
 #include <ecs/unit/core_components.h>
 #include <physics/interface/i_physics_world.h>
 #include <platform/logic/input_manager.h>
+#include <platform/interface/i_ui_input_capture.h>
 #include <platform/logic/io_handler.h>
 #include <platform/logic/monitor_manager.h>
 #include <render/interface/i_graphics_context.h>
@@ -31,6 +32,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <imgui.h>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -53,18 +56,29 @@
 #include <editor/panels/network_panel.h>
 #include <editor/panels/tools_panel.h>
 
-EditorSystem::EditorSystem() : m_PreHoverCursorMode(CursorMode::Normal)
+namespace
 {
-}
-EditorSystem::~EditorSystem()
-{
-}
+std::vector<std::string> s_UndoStack;
+std::vector<std::string> s_RedoStack;
 
-REGISTER_SYSTEM(EditorSystem)
+std::filesystem::path MakeEditorTempPath(const char* purpose)
+{
+    static std::atomic_uint64_t counter{0};
+    const auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    return std::filesystem::temp_directory_path() /
+           ("axis_editor_" + std::string(purpose) + "_" + std::to_string(timestamp) + "_" +
+            std::to_string(counter.fetch_add(1, std::memory_order_relaxed)) + ".axs");
+}
+}  // namespace
+
+EditorSystem::EditorSystem() = default;
+EditorSystem::~EditorSystem() = default;
 
 void EditorSystem::Initialize()
 {
     auto& sl = ServiceLocator::Instance();
+    sl.Register<IEditorExtensionRegistry>(this);
+    sl.Register<IUIInputCapture>(&m_ImGuiLayer);
     auto* res = sl.Resolve<ResourceManager>();
     if (!res)
     {
@@ -80,37 +94,48 @@ void EditorSystem::Initialize()
     auto textShader = res->GetShader("debug_text");
     auto textQuad = res->GetUIModel("debug_sys_model");
 
-    LOGGER_INFO("EditorSystem") << "Initializing legacy debug modules for backend...";
+    LOGGER_INFO("EditorSystem") << "Initializing built-in editor modules...";
 
     auto generalModule = std::make_unique<GeneralEditorModule>();
     generalModule->Initialize();
     m_Modules.push_back(std::move(generalModule));
+    m_ModuleOwners.push_back("axis.editor");
+    m_Extensions.push_back({"axis.editor", "General", EditorExtensionKind::Module});
 
     auto renderModule = std::make_unique<RenderEditorModule>();
     renderModule->Initialize();
     m_Modules.push_back(std::move(renderModule));
+    m_ModuleOwners.push_back("axis.editor");
+    m_Extensions.push_back({"axis.editor", "Render", EditorExtensionKind::Module});
 
     auto physicsModule = std::make_unique<PhysicsEditorModule>();
     physicsModule->Initialize();
     m_Modules.push_back(std::move(physicsModule));
+    m_ModuleOwners.push_back("axis.editor");
+    m_Extensions.push_back({"axis.editor", "Physics", EditorExtensionKind::Module});
 
     auto gizmoModule = std::make_unique<GizmoEditorModule>();
     gizmoModule->Initialize();
     gizmoModule->SetSharedResources(debugFont, textShader, textQuad);
     m_Modules.push_back(std::move(gizmoModule));
+    m_ModuleOwners.push_back("axis.editor");
+    m_Extensions.push_back({"axis.editor", "Gizmo", EditorExtensionKind::Module});
 
     auto cameraModule = std::make_unique<CameraEditorModule>();
     cameraModule->Initialize();
     m_Modules.push_back(std::move(cameraModule));
+    m_ModuleOwners.push_back("axis.editor");
+    m_Extensions.push_back({"axis.editor", "Camera", EditorExtensionKind::Module});
 
     // Wait, let's setup ImGui
     auto* ioHandler = sl.Resolve<IOHandler>();
     if (ioHandler)
     {
         auto* window = ioHandler->GetMonitorManager().GetWindow();
-        if (window && window->GetNativeWindow())
+        auto* graphicsContext = sl.Resolve<IGraphicsContext>();
+        if (window && graphicsContext)
         {
-            m_ImGuiLayer.Initialize(reinterpret_cast<GLFWwindow*>(window->GetNativeWindow()));
+            m_ImGuiLayer.Initialize(*window, *graphicsContext);
         }
     }
 
@@ -125,16 +150,23 @@ void EditorSystem::Initialize()
     m_Panels.push_back(std::make_unique<StatePanel>());
     m_Panels.push_back(std::make_unique<NetworkPanel>());
     m_Panels.push_back(std::make_unique<HelpPanel>());
+    m_PanelOwners.assign(m_Panels.size(), "axis.editor");
+
+    const char* defaultPanelNames[] = {"Scene Hierarchy", "Resource Browser", "File Hierarchy", "Tools",   "Settings",
+                                       "Profiler",        "Console",          "State",          "Network", "Help"};
+    for (const char* name : defaultPanelNames)
+        m_Extensions.push_back({"axis.editor", name, EditorExtensionKind::Panel});
 
     for (auto& panel : m_Panels)
     {
         panel->Initialize();
     }
+    m_Initialized = true;
 
     LOGGER_INFO("EditorSystem") << "Initialized completely.";
 
     // Wire log callback to console panel
-    LogManager::Instance().SetEditorLogCallback([](LogType type, const std::string& tag, const std::string& msg) {
+    LogManager::Instance().SetLogCallback([](LogType type, const std::string& tag, const std::string& msg) {
         if (ConsolePanel::s_Instance)
         {
             ConsolePanel::s_Instance->PushLog(type, tag, msg);
@@ -147,7 +179,20 @@ void EditorSystem::Initialize()
 
 void EditorSystem::Shutdown()
 {
+    LogManager::Instance().SetLogCallback({});
+    for (auto it = m_Panels.rbegin(); it != m_Panels.rend(); ++it) (*it)->Shutdown();
+    for (auto it = m_Modules.rbegin(); it != m_Modules.rend(); ++it) (*it)->Shutdown();
+    m_Modules.clear();
+    m_PanelOwners.clear();
+    m_ModuleOwners.clear();
+    m_Extensions.clear();
+    m_Initialized = false;
+    m_Panels.clear();
     m_ImGuiLayer.Shutdown();
+    s_UndoStack.clear();
+    s_RedoStack.clear();
+    m_NumberKeyPressed.fill(false);
+    m_NudgeTimer = 0.0f;
 }
 
 void EditorSystem::OnUpdate(float dt)
@@ -158,7 +203,7 @@ void EditorSystem::OnUpdate(float dt)
         return;
 
     KeyboardManager& kb = ioHandler->GetKeyboard();
-    // Proxy legacy keys
+    // Built-in editor module shortcuts.
     for (auto& module : m_Modules)
     {
         module->ProcessInput(kb);
@@ -225,10 +270,9 @@ void EditorSystem::OnUpdate(float dt)
         m_CtrlSPressed = false;
 
     // Ctrl+Z — Undo
-    static bool z_pressed = false;
-    if (ctrl && kb.GetKey(Key::Z) && !z_pressed)
+    if (ctrl && kb.GetKey(Key::Z) && !m_ZPressed)
     {
-        z_pressed = true;
+        m_ZPressed = true;
         auto& globalScene = sl.Require<Scene>();
         if (shift)
             PerformRedo(globalScene);
@@ -236,26 +280,24 @@ void EditorSystem::OnUpdate(float dt)
             PerformUndo(globalScene);
     }
     if (!kb.GetKey(Key::Z))
-        z_pressed = false;
+        m_ZPressed = false;
 
-    static bool y_pressed = false;
-    if (ctrl && kb.GetKey(Key::Y) && !y_pressed)
+    if (ctrl && kb.GetKey(Key::Y) && !m_YPressed)
     {
-        y_pressed = true;
+        m_YPressed = true;
         auto& globalScene = sl.Require<Scene>();
         PerformRedo(globalScene);
     }
     if (!kb.GetKey(Key::Y))
-        y_pressed = false;
+        m_YPressed = false;
 
     // Ctrl+D — Duplicate selected entity
     // (handled in SceneHierarchyPanel via shared selection)
 
     // --- Nudge Tool ---
-    static float s_NudgeTimer = 0.0f;
-    s_NudgeTimer -= dt;
+    m_NudgeTimer -= dt;
     bool alt = kb.GetKey(Key::LeftAlt) || kb.GetKey(Key::RightAlt);
-    if (alt && SceneHierarchyPanel::s_SelectedEntity != entt::null && s_NudgeTimer <= 0.0f)
+    if (alt && SceneHierarchyPanel::s_SelectedEntity != entt::null && m_NudgeTimer <= 0.0f)
     {
         auto& globalScene = sl.Require<Scene>();
         auto& reg = globalScene.GetRegistry();
@@ -468,58 +510,52 @@ void EditorSystem::OnUpdate(float dt)
 
                 if (nudged)
                 {
-                    s_NudgeTimer = 0.15f;  // debounce
-                    if (auto* wt = reg.try_get<WorldTransformComponent>(SceneHierarchyPanel::s_SelectedEntity))
-                    {
-                        wt->isDirty = true;
-                    }
+                    m_NudgeTimer = 0.15f;
+                    globalScene.MarkTransformDirty(SceneHierarchyPanel::s_SelectedEntity);
                 }
             }
         }
     }
 
     // --- Debug & System Toggles ---
-    static bool f1_pressed = false, f2_pressed = false, f3_pressed = false;
-    static bool f4_pressed = false, f5_pressed = false, f11_pressed = false, f12_pressed = false;
-    static bool g_pressed = false;
     auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
     if (cm)
     {
         auto conf = cm->GetConfig();
         bool changed = false;
 
-        if (kb.GetKey(Key::F1) && !f1_pressed)
+        if (kb.GetKey(Key::F1) && !m_F1Pressed)
         {
-            f1_pressed = true;
+            m_F1Pressed = true;
             conf.debug.entityNames = !conf.debug.entityNames;
             changed = true;
         }
         else if (!kb.GetKey(Key::F1))
-            f1_pressed = false;
+            m_F1Pressed = false;
 
-        if (kb.GetKey(Key::F2) && !f2_pressed)
+        if (kb.GetKey(Key::F2) && !m_F2Pressed)
         {
-            f2_pressed = true;
+            m_F2Pressed = true;
             conf.debug.gizmos = !conf.debug.gizmos;
             changed = true;
         }
         else if (!kb.GetKey(Key::F2))
-            f2_pressed = false;
+            m_F2Pressed = false;
 
-        if (kb.GetKey(Key::F3) && !f3_pressed)
+        if (kb.GetKey(Key::F3) && !m_F3Pressed)
         {
-            f3_pressed = true;
+            m_F3Pressed = true;
             conf.debug.lightGizmos = !conf.debug.lightGizmos;
             changed = true;
         }
         else if (!kb.GetKey(Key::F3))
-            f3_pressed = false;
+            m_F3Pressed = false;
 
         if (kb.GetKey(Key::G))
         {
-            if (!g_pressed)
+            if (!m_GPressed)
             {
-                g_pressed = true;
+                m_GPressed = true;
                 if (ctrl)
                 {
                     conf.debug.gridSnapEnabled = !conf.debug.gridSnapEnabled;
@@ -528,26 +564,24 @@ void EditorSystem::OnUpdate(float dt)
             }
         }
         else if (!kb.GetKey(Key::G))
-            g_pressed = false;
+            m_GPressed = false;
 
-        static bool h_pressed = false;
-        if (ctrl && kb.GetKey(Key::H) && !h_pressed)
+        if (ctrl && kb.GetKey(Key::H) && !m_HPressed)
         {
-            h_pressed = true;
+            m_HPressed = true;
             conf.debug.gridIndicatorEnabled = !conf.debug.gridIndicatorEnabled;
             changed = true;
         }
         else if (!kb.GetKey(Key::H))
-            h_pressed = false;
+            m_HPressed = false;
 
         if (changed)
             cm->UpdateConfig(conf, ConfigChangedEvent::Debug);
 
         // Reload Active Scene (Ctrl+R)
-        static bool r_pressed = false;
-        if (ctrl && kb.GetKey(Key::R) && !r_pressed)
+        if (ctrl && kb.GetKey(Key::R) && !m_RPressed)
         {
-            r_pressed = true;
+            m_RPressed = true;
             auto& sm = ServiceLocator::Instance().Require<SceneManager>();
             std::string activeName = sm.GetActiveScene();
             auto* rec = sm.GetSceneByName(activeName);
@@ -562,13 +596,13 @@ void EditorSystem::OnUpdate(float dt)
         }
         else if (!kb.GetKey(Key::R))
         {
-            r_pressed = false;
+            m_RPressed = false;
         }
 
         // Toggle Audio System (F4)
-        if (kb.GetKey(Key::F4) && !f4_pressed)
+        if (kb.GetKey(Key::F4) && !m_F4Pressed)
         {
-            f4_pressed = true;
+            m_F4Pressed = true;
             auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
             if (sysMgr)
             {
@@ -580,12 +614,12 @@ void EditorSystem::OnUpdate(float dt)
             }
         }
         else if (!kb.GetKey(Key::F4))
-            f4_pressed = false;
+            m_F4Pressed = false;
 
         // Toggle Post Process (F5)
-        if (kb.GetKey(Key::F5) && !f5_pressed)
+        if (kb.GetKey(Key::F5) && !m_F5Pressed)
         {
-            f5_pressed = true;
+            m_F5Pressed = true;
             auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
             if (sysMgr)
             {
@@ -597,13 +631,12 @@ void EditorSystem::OnUpdate(float dt)
             }
         }
         else if (!kb.GetKey(Key::F5))
-            f5_pressed = false;
+            m_F5Pressed = false;
 
         // Toggle Force Free Cursor (F6)
-        static bool f6_pressed = false;
-        if (kb.GetKey(Key::F6) && !shift && !f6_pressed)
+        if (kb.GetKey(Key::F6) && !shift && !m_F6Pressed)
         {
-            f6_pressed = true;
+            m_F6Pressed = true;
             auto& mouse = ioHandler->GetMouse();
             bool nextForceFree = !mouse.IsForceFree();
             mouse.SetForceFree(nextForceFree);
@@ -634,37 +667,36 @@ void EditorSystem::OnUpdate(float dt)
             }
         }
         else if (!kb.GetKey(Key::F6))
-            f6_pressed = false;
+            m_F6Pressed = false;
     }
 
     // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for HelpPanel)
-    static bool s_NumKeysPressed[10] = {false};
     Key numKeys[] = {Key::_1, Key::_2, Key::_3, Key::_4, Key::_5, Key::_6, Key::_7, Key::_8, Key::_9, Key::_0};
 
     if (ctrl)
     {
         for (int i = 0; i < std::min((int)m_Panels.size(), 10); ++i)
         {
-            if (kb.GetKey(numKeys[i]) && !s_NumKeysPressed[i])
+            if (kb.GetKey(numKeys[i]) && !m_NumberKeyPressed[i])
             {
-                s_NumKeysPressed[i] = true;
+                m_NumberKeyPressed[i] = true;
                 m_Panels[i]->SetOpen(!m_Panels[i]->IsOpen());
             }
             else if (!kb.GetKey(numKeys[i]))
             {
-                s_NumKeysPressed[i] = false;
+                m_NumberKeyPressed[i] = false;
             }
         }
     }
     else
     {
-        for (int i = 0; i < 10; ++i) s_NumKeysPressed[i] = false;
+        m_NumberKeyPressed.fill(false);
     }
 }
 
 void EditorSystem::Render(Scene& scene)
 {
-    // Legacy modules that render into main 3D scene
+    // Modules may contribute overlays to the main 3D scene.
     for (auto& module : m_Modules)
     {
         if (module->IsEnabled())
@@ -679,8 +711,7 @@ void EditorSystem::RenderUIPass(Scene& scene, float width, float height, IRender
     if (!m_ImGuiLayer.IsInitialized())
         return;
 
-    // We can also allow legacy UI render pass (e.g. Gizmos/Overlay) if needed
-    // But now we prefer ImGui
+    // Panels and module UI share the ImGui pass.
     m_ImGuiLayer.BeginFrame();
 
     // Enable dockspace
@@ -832,9 +863,6 @@ void EditorSystem::DrawMenuBar()
     }
 }
 
-static std::vector<std::string> s_UndoStack;
-static std::vector<std::string> s_RedoStack;
-
 static std::string CaptureEditorSceneState(Scene& scene)
 {
     auto& sl = ServiceLocator::Instance();
@@ -842,16 +870,20 @@ static std::string CaptureEditorSceneState(Scene& scene)
     if (!rm)
         return {};
 
-    const std::string tempFile = "temp_undo.axs";
+    const auto tempFile = MakeEditorTempPath("undo");
     auto* phys = sl.Resolve<IPhysicsWorld>();
     auto* audio = sl.Resolve<AudioService>();
     SceneSerializer serializer(*rm, phys, audio);
-    if (!serializer.Serialize(tempFile, scene))
+    if (!serializer.Serialize(tempFile.string(), scene))
         return {};
 
     std::ifstream f(tempFile, std::ios::binary);
     if (!f.is_open())
+    {
+        std::error_code ec;
+        std::filesystem::remove(tempFile, ec);
         return {};
+    }
 
     std::string content((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
     f.close();
@@ -874,7 +906,7 @@ static void RestoreEditorSceneState(Scene& scene, const std::string& state)
     if (!rm)
         return;
 
-    const std::string tempRestoreFile = "temp_restore.axs";
+    const auto tempRestoreFile = MakeEditorTempPath("restore");
     std::ofstream f(tempRestoreFile, std::ios::binary);
     if (!f.is_open())
         return;
@@ -884,7 +916,7 @@ static void RestoreEditorSceneState(Scene& scene, const std::string& state)
 
     scene.GetRegistry().clear();
     SceneSerializer serializer(*rm, phys, audio);
-    serializer.Deserialize(tempRestoreFile, scene);
+    serializer.Deserialize(tempRestoreFile.string(), scene);
     if (sceneMgr)
         sceneMgr->RebuildEntityRecords(scene);
 
@@ -949,5 +981,83 @@ void EditorSystem::PerformRedo(Scene& scene)
         s_UndoStack.erase(s_UndoStack.begin(), s_UndoStack.begin() + (s_UndoStack.size() - 50));
 
     RestoreEditorSceneState(scene, redoState);
+}
+
+bool EditorSystem::RegisterModule(std::string owner, std::string name, ModuleFactory factory)
+{
+    if (owner.empty() || name.empty() || !factory)
+        return false;
+    if (std::any_of(m_Extensions.begin(), m_Extensions.end(), [&](const auto& extension) {
+            return extension.owner == owner && extension.name == name && extension.kind == EditorExtensionKind::Module;
+        }))
+        return false;
+    auto module = factory();
+    if (!module)
+        return false;
+    if (m_Initialized)
+        module->Initialize();
+    m_Modules.push_back(std::move(module));
+    m_ModuleOwners.push_back(owner);
+    m_Extensions.push_back({std::move(owner), std::move(name), EditorExtensionKind::Module});
+    return true;
+}
+
+bool EditorSystem::RegisterPanel(std::string owner, std::string name, PanelFactory factory)
+{
+    if (owner.empty() || name.empty() || !factory)
+        return false;
+    if (std::any_of(m_Extensions.begin(), m_Extensions.end(), [&](const auto& extension) {
+            return extension.owner == owner && extension.name == name && extension.kind == EditorExtensionKind::Panel;
+        }))
+        return false;
+    auto panel = factory();
+    if (!panel)
+        return false;
+    if (m_Initialized)
+        panel->Initialize();
+    m_Panels.push_back(std::move(panel));
+    m_PanelOwners.push_back(owner);
+    m_Extensions.push_back({std::move(owner), std::move(name), EditorExtensionKind::Panel});
+    return true;
+}
+
+size_t EditorSystem::UnregisterOwner(std::string_view owner)
+{
+    size_t removed = 0;
+    for (size_t index = m_Modules.size(); index-- > 0;)
+    {
+        if (m_ModuleOwners[index] != owner)
+            continue;
+        if (m_Initialized)
+            m_Modules[index]->Shutdown();
+        m_Modules.erase(m_Modules.begin() + static_cast<std::ptrdiff_t>(index));
+        m_ModuleOwners.erase(m_ModuleOwners.begin() + static_cast<std::ptrdiff_t>(index));
+        ++removed;
+    }
+    for (size_t index = m_Panels.size(); index-- > 0;)
+    {
+        if (m_PanelOwners[index] != owner)
+            continue;
+        if (m_Initialized)
+            m_Panels[index]->Shutdown();
+        m_Panels.erase(m_Panels.begin() + static_cast<std::ptrdiff_t>(index));
+        m_PanelOwners.erase(m_PanelOwners.begin() + static_cast<std::ptrdiff_t>(index));
+        ++removed;
+    }
+    std::erase_if(m_Extensions, [owner](const auto& extension) { return extension.owner == owner; });
+    return removed;
+}
+
+std::vector<EditorExtensionInfo> EditorSystem::GetExtensions() const
+{
+    auto extensions = m_Extensions;
+    std::sort(extensions.begin(), extensions.end(), [](const auto& left, const auto& right) {
+        if (left.owner != right.owner)
+            return left.owner < right.owner;
+        if (left.kind != right.kind)
+            return left.kind < right.kind;
+        return left.name < right.name;
+    });
+    return extensions;
 }
 #endif

@@ -4,17 +4,15 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/event_types.h>
+#include <core/type/app_config.h>
 #include <ecs/interface/i_render_service.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/render_components.h>
 #include <render/interface/i_graphics_context.h>
-#include <render/logic/frustum_culler.h>
 #include <render/unit/render_queue.h>
-#include <resource/logic/resource_manager.h>
-
-REGISTER_SYSTEM(ShadowSystem)
+#include <resource/interface/i_resource_libraries.h>
 
 void ShadowSystem::Initialize()
 {
@@ -23,7 +21,7 @@ void ShadowSystem::Initialize()
     sl.Register<ShadowSystem>(this);
 
     auto* context = sl.Resolve<IGraphicsContext>();
-    auto* resources = sl.Resolve<ResourceManager>();
+    auto* resources = sl.Resolve<IShaderLibrary>();
     auto* configManager = sl.Resolve<ConfigManager>();
     m_EventSubscriptions.Clear();
 
@@ -36,41 +34,48 @@ void ShadowSystem::Initialize()
     auto config = configManager->GetConfig();
 
     m_ShadowRenderer.Initialize(*context, *resources);
-    m_ShadowRenderer.GetShadow().Initialize(*context, config.shadowMapResolution, config.shadowMapResolution);
+    m_ShadowRenderer.GetShadow().Initialize(*context, config.shadow.shadowMapResolution,
+                                            config.shadow.shadowMapResolution);
 
-    m_ShadowRenderer.SetEnableShadows(config.shadowsEnabled);
-    m_ShadowRenderer.SetShadowMode(config.shadowMode);
-    m_ShadowRenderer.SetShadowBias(config.shadowBias);
-    m_ShadowRenderer.SetShadowSoftness(config.shadowSoftness);
-    m_ShadowRenderer.SetShadowProjectionSize(config.shadowProjectionSize);
-    m_ShadowRenderer.SetShadowFrustumCulling(config.shadowFrustumCullingEnabled);
-    m_ShadowRenderer.SetShadowDistanceCulling(config.shadowDistanceCulling);
+    m_ShadowRenderer.SetEnableShadows(config.shadow.shadowsEnabled);
+    m_ShadowRenderer.SetShadowMode(config.shadow.shadowMode);
+    m_ShadowRenderer.SetShadowBias(config.shadow.shadowBias);
+    m_ShadowRenderer.SetShadowSoftness(config.shadow.shadowSoftness);
+    m_ShadowRenderer.SetShadowProjectionSize(config.shadow.shadowProjectionSize);
+    m_ShadowRenderer.SetShadowFrustumCulling(config.shadow.shadowFrustumCullingEnabled);
+    m_ShadowRenderer.SetShadowDistanceCulling(config.shadow.shadowDistanceCulling);
 
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-            if (!(e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All)))
+            if (!HasConfigChanged(e, ConfigChangedEvent::Graphics))
                 return;
 
             const auto& cfg = e.config;
-            m_ShadowRenderer.SetEnableShadows(cfg.shadowsEnabled);
-            m_ShadowRenderer.SetShadowMode(cfg.shadowMode);
-            m_ShadowRenderer.SetShadowBias(cfg.shadowBias);
-            m_ShadowRenderer.SetShadowSoftness(cfg.shadowSoftness);
-            m_ShadowRenderer.SetShadowProjectionSize(cfg.shadowProjectionSize);
-            m_ShadowRenderer.SetShadowFrustumCulling(cfg.shadowFrustumCullingEnabled);
-            m_ShadowRenderer.SetShadowDistanceCulling(cfg.shadowDistanceCulling);
+            m_ShadowRenderer.SetEnableShadows(cfg.shadow.shadowsEnabled);
+            m_ShadowRenderer.SetShadowMode(cfg.shadow.shadowMode);
+            m_ShadowRenderer.SetShadowBias(cfg.shadow.shadowBias);
+            m_ShadowRenderer.SetShadowSoftness(cfg.shadow.shadowSoftness);
+            m_ShadowRenderer.SetShadowProjectionSize(cfg.shadow.shadowProjectionSize);
+            m_ShadowRenderer.SetShadowFrustumCulling(cfg.shadow.shadowFrustumCullingEnabled);
+            m_ShadowRenderer.SetShadowDistanceCulling(cfg.shadow.shadowDistanceCulling);
 
-            if (cfg.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth())
+            if (cfg.shadow.shadowMapResolution != m_ShadowRenderer.GetShadow().GetShadowWidth())
             {
                 auto& sl_inner = ServiceLocator::Instance();
                 auto* context_inner = sl_inner.Resolve<IGraphicsContext>();
                 if (context_inner)
                 {
-                    m_ShadowRenderer.GetShadow().Initialize(*context_inner, cfg.shadowMapResolution,
-                                                            cfg.shadowMapResolution);
+                    m_ShadowRenderer.GetShadow().Initialize(*context_inner, cfg.shadow.shadowMapResolution,
+                                                            cfg.shadow.shadowMapResolution);
                 }
             }
         }));
+}
+
+void ShadowSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    m_ShadowRenderer.SetParallelBuildConfig(config.shadowParallelBuildEnabled,
+                                            static_cast<size_t>(config.shadowParallelThreshold));
 }
 
 void ShadowSystem::Shutdown()
@@ -92,8 +97,8 @@ void ShadowSystem::Render(Scene& scene)
     PrepareShadowLights(scene);
 
     RenderSceneData sceneData;
-    sceneData.shadowQueue = rs->GetRenderQueueObj().GetShadowQueue();
-    sceneData.lights = rs->GetRenderQueueObj().GetLights();
+    sceneData.shadowQueueView = &rs->GetRenderQueueObj().GetShadowQueue();
+    sceneData.lightView = &rs->GetRenderQueueObj().GetLights();
     sceneData.cameraPosition = rs->GetCameraPosition();
     sceneData.viewMatrix = rs->GetViewMatrix();
     sceneData.projMatrix = rs->GetProjectionMatrix();

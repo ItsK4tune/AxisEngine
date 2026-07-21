@@ -4,6 +4,7 @@
 #include <core/logic/service_locator.h>
 #include <core/logic/runtime_profiler.h>
 #include <ecs/interface/i_render_service.h>
+#include <render/interface/i_graphics_context.h>
 #include <ecs/unit/decal_component.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/media_components.h>
@@ -16,14 +17,12 @@
 #include <ecs/unit/ui_components.h>
 #include <render/unit/render_queue.h>
 #include <scene/logic/scene.h>
-#include <glad/glad.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -42,15 +41,6 @@
 
 namespace
 {
-#ifndef GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX
-#define GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX 0x9047
-#endif
-#ifndef GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX
-#define GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX 0x9048
-#endif
-#ifndef GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX
-#define GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX 0x9049
-#endif
 
 struct RenderPanelStats
 {
@@ -285,43 +275,6 @@ bool TryReadLinuxVram(uint64_t& usedBytes, uint64_t& totalBytes)
     }
 #endif
     return false;
-}
-
-bool HasOpenGLExtension(const char* name)
-{
-    if (!glGetIntegerv || !glGetStringi || !name)
-        return false;
-
-    GLint extensionCount = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &extensionCount);
-    for (GLint i = 0; i < extensionCount; ++i)
-    {
-        const char* extension = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
-        if (extension && std::strcmp(extension, name) == 0)
-            return true;
-    }
-    return false;
-}
-
-bool TryReadOpenGLVram(uint64_t& usedBytes, uint64_t& totalBytes)
-{
-    if (!glGetIntegerv || !HasOpenGLExtension("GL_NVX_gpu_memory_info"))
-        return false;
-
-    GLint dedicatedKb = 0;
-    GLint totalKb = 0;
-    GLint availableKb = 0;
-    glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicatedKb);
-    glGetIntegerv(GL_GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, &totalKb);
-    glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &availableKb);
-
-    const GLint effectiveTotalKb = dedicatedKb > 0 ? dedicatedKb : totalKb;
-    if (effectiveTotalKb <= 0 || availableKb < 0)
-        return false;
-
-    totalBytes = static_cast<uint64_t>(effectiveTotalKb) * 1024ULL;
-    usedBytes = static_cast<uint64_t>((std::max)(effectiveTotalKb - availableKb, 0)) * 1024ULL;
-    return true;
 }
 
 float GetSmoothingAlpha(float dt, float smoothingWindowSeconds)
@@ -667,6 +620,7 @@ void ProfilerPanel::UpdateSystemStats(float dt)
     }
 
     auto& runtimeProfiler = RuntimeProfiler::Instance();
+    runtimeProfiler.SetRamUsage(m_ProcessRamBytes);
     float gpuUsage = 0.0f;
     if (TryReadLinuxGpuUsage(gpuUsage))
     {
@@ -675,7 +629,9 @@ void ProfilerPanel::UpdateSystemStats(float dt)
 
     uint64_t vramUsedBytes = 0;
     uint64_t vramTotalBytes = 0;
-    if (TryReadLinuxVram(vramUsedBytes, vramTotalBytes) || TryReadOpenGLVram(vramUsedBytes, vramTotalBytes))
+    auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>();
+    if (TryReadLinuxVram(vramUsedBytes, vramTotalBytes) ||
+        (graphics && graphics->TryGetMemoryBudget(vramUsedBytes, vramTotalBytes)))
     {
         runtimeProfiler.SetVramUsage(vramUsedBytes, vramTotalBytes);
     }
@@ -719,7 +675,12 @@ void ProfilerPanel::OnImGui(Scene& scene)
     DrawMetric("Frame Time (3s avg)", "%.2f ms", m_AvgFrameTime);
     DrawMetric("CPU Frame Time (3s)", "%.2f ms", cpuFrameMs);
     DrawMetric("GPU Frame Time (3s)", "%.2f ms%s", gpuFrameMs, runtimeStats.hasGpuFrameTime ? "" : " est.");
-    DrawMetric("CPU Usage", "%.1f%% total", m_CpuUsageTotal);
+    DrawMetric("CPU p50 / p95 / p99", "%.2f / %.2f / %.2f ms", runtimeStats.cpuP50Ms,
+               runtimeStats.cpuP95Ms, runtimeStats.cpuP99Ms);
+    DrawMetric("GPU p50 / p95 / p99", "%.2f / %.2f / %.2f ms", runtimeStats.gpuP50Ms,
+               runtimeStats.gpuP95Ms, runtimeStats.gpuP99Ms);
+    DrawMetric("Frame Hitches", "%llu", static_cast<unsigned long long>(runtimeStats.frameHitchCount));
+    DrawMetric("System CPU Usage", "%.1f%% total", m_CpuUsageTotal);
     DrawMetric("GPU Usage", "%.1f%%%s", gpuUsage, runtimeStats.hasGpuUsage ? "" : " est.");
     DrawMetricText("RAM Usage", FormatBytePair(m_RamUsedBytes, m_RamTotalBytes));
     DrawMetricText("VRAM Usage", FormatBytePair(runtimeStats.vramUsedBytes, runtimeStats.vramTotalBytes));
@@ -804,17 +765,50 @@ void ProfilerPanel::OnImGui(Scene& scene)
         ImGui::Columns(1);
 
         ImGui::Separator();
+        ImGui::Text("Runtime Telemetry");
+        ImGui::Columns(2, "RuntimeTelemetryStats", false);
+        ImGui::SetColumnWidth(0, 180.0f);
+        DrawMetric("Queue Builds", "%llu", static_cast<unsigned long long>(runtimeStats.queueBuildCount));
+        DrawMetric("Submitted Draw Calls", "%llu", static_cast<unsigned long long>(runtimeStats.drawCalls));
+        DrawMetric("Instanced Batches", "%llu", static_cast<unsigned long long>(runtimeStats.instancedBatches));
+        DrawMetric("Submitted Triangles", "%llu", static_cast<unsigned long long>(runtimeStats.submittedTriangles));
+        DrawMetric("Culled Entities", "%llu", static_cast<unsigned long long>(runtimeStats.culledEntities));
+        DrawMetric("Graphics State Changes", "%llu", static_cast<unsigned long long>(runtimeStats.stateChanges));
+        DrawMetric("Uniform Updates", "%llu", static_cast<unsigned long long>(runtimeStats.uniformUpdates));
+        DrawMetricText("GPU Uploads", FormatBytes(runtimeStats.uploadBytes));
+        DrawMetric("Transient Allocations", "%llu",
+                   static_cast<unsigned long long>(runtimeStats.transientAllocations));
+        DrawMetric("Job Wait", "%.2f ms", runtimeStats.jobWaitMs);
+        ImGui::Columns(1);
+
+        ImGui::Separator();
         ImGui::Text("Pass Times");
         ImGui::Columns(2, "PassTimeStats", false);
         ImGui::SetColumnWidth(0, 180.0f);
+        DrawMetric("Input", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Input)]);
+        DrawMetric("Resource Update", "%.2f ms",
+                   m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::ResourceUpdate)]);
+        DrawMetric("Game Update", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::GameUpdate)]);
+        DrawMetric("Fixed Update", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::FixedUpdate)]);
+        DrawMetric("Physics", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Physics)]);
+        DrawMetric("Navigation", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Navigation)]);
+        DrawMetric("Queue Build", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::QueueBuild)]);
         DrawMetric("Shadow Pass Time", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Shadow)]);
+        DrawMetric("Capture Pass Time", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Capture)]);
         DrawMetric("Geometry Pass Time", "%.2f ms",
                    m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Geometry)]);
         DrawMetric("Lighting Pass Time", "%.2f ms",
                    m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Lighting)]);
+        DrawMetric("Alpha Pass Time", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Alpha)]);
+        DrawMetric("Transparent Pass Time", "%.2f ms",
+                   m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Transparent)]);
         DrawMetric("Bloom Time", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Bloom)]);
         DrawMetric("Post Process Time", "%.2f ms",
                    m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::PostProcess)]);
+        DrawMetric("UI", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::UI)]);
+        DrawMetric("Swap", "%.2f ms", m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::Swap)]);
+        DrawMetric("Frame Limiter", "%.2f ms",
+                   m_SmoothedPassMs[static_cast<size_t>(ProfiledRenderPass::FrameLimiter)]);
         ImGui::Columns(1);
         ImGui::TextDisabled(
             "Pass timings are CPU wall-clock times; GPU frame time uses OpenGL timer query when available.");

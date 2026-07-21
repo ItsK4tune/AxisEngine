@@ -2,21 +2,32 @@
 
 #include <platform/interface/i_platform_filesystem.h>
 #include <platform/logic/platform_services.h>
+#include <filesystem>
 #include <string>
+#include <vector>
 
 class FileSystem
 {
 public:
+    static void setEngineAssetRoot(const std::string& path)
+    {
+        s_EngineAssetRoot = AcquirePlatformFileSystem()->NormalizePath(path);
+    }
+
     static std::string getPath(const std::string& path)
     {
-        auto& platform = GetNativePlatformFileSystem();
-        std::string root = getRoot();
-        std::string normPath = platform.NormalizePath(path);
+        static constexpr const char* AssetPrefix = "asset://";
+        if (path.rfind(AssetPrefix, 0) == 0)
+            return getEngineAssetPath(path.substr(std::char_traits<char>::length(AssetPrefix)));
 
-        if (!root.empty() && normPath.find(root) == 0)
+        auto platform = AcquirePlatformFileSystem();
+        std::string root = getRoot();
+        std::string normPath = platform->NormalizePath(path);
+
+        if (!root.empty() && (normPath == root || normPath.rfind(root + "/", 0) == 0))
             return normPath;
 
-        if (platform.IsAbsolutePath(normPath))
+        if (platform->IsAbsolutePath(normPath))
             return normPath;
 
         if (!root.empty())
@@ -25,16 +36,37 @@ public:
         return normPath;
     }
 
+    static std::string getEngineAssetPath(const std::string& relativePath)
+    {
+        auto platform = AcquirePlatformFileSystem();
+        const std::string root = getRoot();
+        const std::string relative = platform->NormalizePath(relativePath);
+        const std::string separator = root.empty() ? "" : "/";
+        std::vector<std::string> candidates;
+        if (!s_EngineAssetRoot.empty())
+            candidates.push_back(s_EngineAssetRoot + "/" + relative);
+        candidates.push_back(root + separator + "share/AxisEngine/assets/" + relative);
+        candidates.push_back(root + separator + "assets/" + relative);
+        candidates.push_back(root + separator + "include/engine/asset/" + relative);
+
+        for (const auto& candidate : candidates)
+        {
+            if (std::filesystem::exists(std::filesystem::u8path(candidate)))
+                return platform->NormalizePath(candidate);
+        }
+        return platform->NormalizePath(candidates[0]);
+    }
+
     static std::string getRelativePath(const std::string& path)
     {
-        auto& platform = GetNativePlatformFileSystem();
+        auto platform = AcquirePlatformFileSystem();
         std::string root = getRoot();
         if (root.empty())
             return path;
 
-        std::string normPath = platform.NormalizePath(path);
+        std::string normPath = platform->NormalizePath(path);
 
-        if (normPath.find(root) == 0)
+        if (normPath == root || normPath.rfind(root + "/", 0) == 0)
         {
             std::string rel = normPath.substr(root.length());
             if (!rel.empty() && rel[0] == '/')
@@ -45,46 +77,31 @@ public:
     }
 
 private:
+    static inline std::string s_EngineAssetRoot;
+
     static std::string getRoot()
     {
-        static std::string cachedRoot;
-        static bool initialized = false;
+        static const std::string cachedRoot = [] {
+            auto platform = AcquirePlatformFileSystem();
+            const std::string executable = platform->NormalizePath(platform->GetExecutablePath());
+            if (executable.empty())
+                return std::string{};
 
-        if (initialized)
-            return cachedRoot;
-
-        initialized = true;
-
-        auto& platform = GetNativePlatformFileSystem();
-        std::string path = platform.NormalizePath(platform.GetExecutablePath());
-        if (path.empty())
-            return cachedRoot;
-
-        size_t binPos = path.rfind("/bin/");
-        if (binPos != std::string::npos)
-        {
-            cachedRoot = path.substr(0, binPos);
-            return cachedRoot;
-        }
-
-        size_t buildPos = path.rfind("/build/");
-        if (buildPos != std::string::npos)
-        {
-            cachedRoot = path.substr(0, buildPos);
-            return cachedRoot;
-        }
-
-        size_t bundlePos = path.find(".app/Contents/MacOS/");
-        if (bundlePos != std::string::npos)
-        {
-            size_t bundleSlash = path.rfind('/', bundlePos);
-            if (bundleSlash != std::string::npos)
+            std::filesystem::path directory = std::filesystem::u8path(executable).parent_path();
+            for (std::filesystem::path cursor = directory; !cursor.empty(); cursor = cursor.parent_path())
             {
-                cachedRoot = path.substr(0, bundleSlash);
-                return cachedRoot;
+                const bool sourceRoot = std::filesystem::exists(cursor / "include" / "engine" / "asset");
+                const bool installRoot = std::filesystem::exists(cursor / "share" / "AxisEngine" / "assets");
+                if (sourceRoot || installRoot)
+                    return platform->NormalizePath(cursor.generic_string());
+                if (cursor == cursor.root_path())
+                    break;
             }
-        }
 
+            if (directory.filename() == "bin")
+                directory = directory.parent_path();
+            return platform->NormalizePath(directory.generic_string());
+        }();
         return cachedRoot;
     }
 };

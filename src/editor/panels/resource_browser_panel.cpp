@@ -7,6 +7,8 @@
 #include <audio/interface/i_sound.h>
 #include <core/logic/service_locator.h>
 #include <render/logic/video_decoder.h>
+#include <render/interface/i_graphics_context.h>
+#include <render/interface/i_texture_manager.h>
 #include <render/type/graphics_types.h>
 #include <render/unit/skybox.h>
 #include <resource/logic/resource_manager.h>
@@ -14,7 +16,6 @@
 #include <resource/unit/animation.h>
 #include <resource/unit/font.h>
 #include <resource/unit/model.h>
-#include <glad/glad.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
@@ -461,11 +462,7 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                         if (idx0 >= mesh.m_VertexCount || idx1 >= mesh.m_VertexCount || idx2 >= mesh.m_VertexCount)
                             continue;
 
-                        auto getPos = [&](size_t idx) -> glm::vec3 {
-                            const float* ptr =
-                                reinterpret_cast<const float*>(mesh.m_VertexData.data() + idx * mesh.m_VertexStride);
-                            return glm::vec3(ptr[0], ptr[1], ptr[2]);
-                        };
+                        auto getPos = [&](size_t idx) -> glm::vec3 { return mesh.GetPosition(idx); };
                         glm::vec3 p0 = getPos(idx0) - center;
                         glm::vec3 p1 = getPos(idx1) - center;
                         glm::vec3 p2 = getPos(idx2) - center;
@@ -727,13 +724,13 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
 
                             ImGui::SetCursorPos(ImVec2(currentX, topY));
 
-                            // Apply swizzle mask so standard RGBA shader reads GL_RED properly!
-                            glBindTexture(GL_TEXTURE_2D, ch.textureID);
-                            GLint swizzleMask[] = {GL_RED, GL_RED, GL_RED, GL_RED};
-                            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+                            if (auto* graphics = ServiceLocator::Instance().Resolve<IGraphicsContext>())
+                                graphics->GetTextureManager().SetTextureSwizzle(
+                                    TextureType::Texture2D, ch.textureID, TextureSwizzle::RedToRGBA);
 
                             // Render with standard OpenGL texture coordinates & custom cyan/blue tinting
-                            ImGui::Image((void*)(intptr_t)ch.textureID, glyphSize, ImVec2(0, 0), ImVec2(1, 1),
+                            ImGui::Image((void*)(intptr_t)ch.textureID, glyphSize,
+                                         ImVec2(ch.uvMin.x, ch.uvMin.y), ImVec2(ch.uvMax.x, ch.uvMax.y),
                                          ImVec4(0.0f, 0.8f, 1.0f, 1.0f), ImVec4(0.1f, 0.1f, 0.15f, 1.0f));
 
                             // Advance X cursor

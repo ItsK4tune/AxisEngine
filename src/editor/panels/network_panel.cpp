@@ -1,38 +1,26 @@
 #include <editor/panels/network_panel.h>
 #ifdef ENABLE_EDITOR
 #include <core/logic/service_locator.h>
-#include <ecs/logic/system_manager.h>
-#include <engine/network/network_system.h>
+#include <network/interface/i_network_service.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/network_components.h>
 #include <editor/panels/scene_hierarchy_panel.h>
 #include <scene/logic/scene.h>
 #include <imgui.h>
+#include <algorithm>
 #include <cstdio>
 
 void NetworkPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
 
-    auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
-    if (!sysMgr)
-    {
-        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "SystemManager offline");
-        ImGui::End();
-        return;
-    }
-
-    auto* netSys = sysMgr->GetSystem<NetworkSystem>();
+    auto* netSys = ServiceLocator::Instance().Resolve<INetworkService>();
     if (!netSys)
     {
         ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "NetworkSystem not registered");
         ImGui::End();
         return;
     }
-
-    static char ip_address[128] = "127.0.0.1";
-    static int port = 12345;
-    static int max_clients = 32;
 
     if (ImGui::BeginTabBar("NetworkPanelTabs"))
     {
@@ -44,24 +32,24 @@ void NetworkPanel::OnImGui(Scene& scene)
                 if (netSys->IsServer())
                 {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Server Running");
-                    ImGui::Text("Port: %d", port);
+                    ImGui::Text("Port: %d", m_Port);
                 }
                 else if (netSys->IsClient())
                 {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Client Connected");
-                    ImGui::Text("Connected to: %s:%d", ip_address, port);
+                    ImGui::Text("Connected to: %s:%d", m_IpAddress, m_Port);
                 }
 
-                ENetHost* host = netSys->GetHost();
-                if (host)
+                const NetworkStats stats = netSys->GetStats();
+                if (netSys->IsRunning())
                 {
                     ImGui::Separator();
                     ImGui::Text("Performance Metrics:");
-                    ImGui::Text("- Connected Peers: %zu", host->connectedPeers);
-                    ImGui::Text("- Total Sent: %.2f KB (%u packets)", (float)host->totalSentData / 1024.0f,
-                                host->totalSentPackets);
-                    ImGui::Text("- Total Received: %.2f KB (%u packets)", (float)host->totalReceivedData / 1024.0f,
-                                host->totalReceivedPackets);
+                    ImGui::Text("- Connected Peers: %zu", stats.connectedPeers);
+                    ImGui::Text("- Total Sent: %.2f KB (%u packets)", (float)stats.totalSentBytes / 1024.0f,
+                                stats.totalSentPackets);
+                    ImGui::Text("- Total Received: %.2f KB (%u packets)",
+                                (float)stats.totalReceivedBytes / 1024.0f, stats.totalReceivedPackets);
                 }
 
                 ImGui::Separator();
@@ -75,25 +63,27 @@ void NetworkPanel::OnImGui(Scene& scene)
                 ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Status: Disconnected");
                 ImGui::Separator();
 
-                ImGui::InputText("IP Address", ip_address, sizeof(ip_address));
-                ImGui::InputInt("Port", &port);
-                ImGui::InputInt("Max Clients", &max_clients);
+                ImGui::InputText("IP Address", m_IpAddress, sizeof(m_IpAddress));
+                ImGui::InputInt("Port", &m_Port);
+                ImGui::InputInt("Max Clients", &m_MaxClients);
+                m_Port = std::clamp(m_Port, 1, 65535);
+                m_MaxClients = std::clamp(m_MaxClients, 1, 4096);
 
                 ImGui::Separator();
                 if (ImGui::Button("Start Server", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 4.0f, 0)))
                 {
                     NetworkConfig config;
                     config.host = "";
-                    config.port = static_cast<uint16_t>(port);
-                    config.maxClients = static_cast<size_t>(max_clients);
+                    config.port = static_cast<uint16_t>(m_Port);
+                    config.maxClients = static_cast<size_t>(m_MaxClients);
                     netSys->StartServer(config);
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Connect as Client", ImVec2(-1, 0)))
                 {
                     NetworkConfig config;
-                    config.host = ip_address;
-                    config.port = static_cast<uint16_t>(port);
+                    config.host = m_IpAddress;
+                    config.port = static_cast<uint16_t>(m_Port);
                     netSys->StartClient(config);
                 }
             }
@@ -103,10 +93,11 @@ void NetworkPanel::OnImGui(Scene& scene)
         // TAB 2: PEERS LIST (Server Only)
         if (ImGui::BeginTabItem("Connected Peers"))
         {
-            ENetHost* host = netSys->GetHost();
-            if (host && netSys->IsServer())
+            const auto peers = netSys->GetPeers();
+            const auto stats = netSys->GetStats();
+            if (netSys->IsRunning() && netSys->IsServer())
             {
-                ImGui::Text("Connected Clients (%zu/%zu):", host->connectedPeers, host->peerCount);
+                ImGui::Text("Connected Clients (%zu/%zu):", stats.connectedPeers, stats.peerCapacity);
                 if (ImGui::BeginTable("PeersTable", 6,
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable))
                 {
@@ -118,35 +109,31 @@ void NetworkPanel::OnImGui(Scene& scene)
                     ImGui::TableSetupColumn("Actions");
                     ImGui::TableHeadersRow();
 
-                    for (size_t i = 0; i < host->peerCount; ++i)
+                    for (size_t i = 0; i < peers.size(); ++i)
                     {
-                        ENetPeer* peer = &host->peers[i];
-                        if (peer->state != ENET_PEER_STATE_CONNECTED)
-                            continue;
+                        const auto& peer = peers[i];
 
                         ImGui::TableNextRow();
                         ImGui::TableSetColumnIndex(0);
                         ImGui::Text("%zu", i);
 
                         ImGui::TableSetColumnIndex(1);
-                        char peerIp[64] = "Unknown";
-                        enet_address_get_host_ip(&peer->address, peerIp, sizeof(peerIp));
-                        ImGui::Text("%s:%d", peerIp, peer->address.port);
+                        ImGui::Text("%s:%d", peer.address.c_str(), peer.port);
 
                         ImGui::TableSetColumnIndex(2);
-                        ImGui::Text("%d ms", peer->roundTripTime);
+                        ImGui::Text("%u ms", peer.roundTripTimeMs);
 
                         ImGui::TableSetColumnIndex(3);
-                        ImGui::Text("%.1f%%", (float)peer->packetLoss * 100.0f / 65536.0f);
+                        ImGui::Text("%.1f%%", peer.packetLossPercent);
 
                         ImGui::TableSetColumnIndex(4);
-                        ImGui::Text("%u", peer->packetThrottle);
+                        ImGui::Text("%u", peer.throttle);
 
                         ImGui::TableSetColumnIndex(5);
                         ImGui::PushID(static_cast<int>(i));
                         if (ImGui::Button("Kick"))
                         {
-                            enet_peer_disconnect(peer, 0);
+                            netSys->DisconnectPeer(peer.id);
                         }
                         ImGui::PopID();
                     }

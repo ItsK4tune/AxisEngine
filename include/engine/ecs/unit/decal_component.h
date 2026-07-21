@@ -7,12 +7,10 @@
 
 struct DecalComponent
 {
+    // Asset name/path is the serializable source of truth; albedoMap is the
+    // runtime GPU handle and may also be supplied directly by procedural code.
+    std::string albedoTexture;
     uint32_t albedoMap = 0;
-    uint32_t normalMap = 0;
-
-    glm::mat4 projection = glm::mat4(1.0f);
-    glm::mat4 view = glm::mat4(1.0f);
-    glm::mat4 invModel = glm::mat4(1.0f);
 
     float opacity = 1.0f;
     float roughness = 1.0f;

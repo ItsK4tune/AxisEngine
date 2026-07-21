@@ -9,10 +9,87 @@
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <physics/interface/i_physics_world.h>
+#include <physics/logic/constraint_lifecycle.h>
 #include <scene/logic/scene_manager.h>
 #include <glm/gtc/quaternion.hpp>
 #include <algorithm>
+#include <cmath>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <vector>
+
+namespace
+{
+glm::mat4 LocalTransform(entt::registry& registry, entt::entity entity, bool previous)
+{
+    const auto* position = registry.try_get<PositionComponent>(entity);
+    const auto* rotation = registry.try_get<RotationComponent>(entity);
+    const auto* scale = registry.try_get<ScaleComponent>(entity);
+    if (!position || !rotation || !scale)
+        return glm::mat4(1.0f);
+
+    const glm::vec3& p = previous ? position->prev : position->value;
+    const glm::quat& r = previous ? rotation->prev : rotation->value;
+    const glm::vec3& s = previous ? scale->prev : scale->value;
+    return glm::translate(glm::mat4(1.0f), p) * glm::toMat4(r) * glm::scale(glm::mat4(1.0f), s);
+}
+
+glm::mat4 CalculateWorldTransform(entt::registry& registry, entt::entity entity, bool previous)
+{
+    std::vector<entt::entity> chain;
+    for (entt::entity current = entity; registry.valid(current);)
+    {
+        chain.push_back(current);
+        const auto* hierarchy = registry.try_get<HierarchyComponent>(current);
+        if (!hierarchy || hierarchy->parent == entt::null || !registry.valid(hierarchy->parent))
+            break;
+        current = hierarchy->parent;
+    }
+
+    glm::mat4 world(1.0f);
+    for (auto it = chain.rbegin(); it != chain.rend(); ++it) world *= LocalTransform(registry, *it, previous);
+    return world;
+}
+
+void ApplyLocalTransform(entt::registry& registry, entt::entity entity, const glm::mat4& matrix, bool previous)
+{
+    auto* position = registry.try_get<PositionComponent>(entity);
+    auto* rotation = registry.try_get<RotationComponent>(entity);
+    auto* scale = registry.try_get<ScaleComponent>(entity);
+    if (!position || !rotation || !scale)
+        return;
+
+    glm::vec3 localScale(glm::length(glm::vec3(matrix[0])), glm::length(glm::vec3(matrix[1])),
+                         glm::length(glm::vec3(matrix[2])));
+    const float determinant = glm::determinant(glm::mat3(matrix));
+    if (determinant < 0.0f)
+        localScale.x = -localScale.x;
+
+    glm::mat3 rotationMatrix(1.0f);
+    constexpr float epsilon = 0.000001f;
+    if (std::abs(localScale.x) > epsilon)
+        rotationMatrix[0] = glm::vec3(matrix[0]) / localScale.x;
+    if (std::abs(localScale.y) > epsilon)
+        rotationMatrix[1] = glm::vec3(matrix[1]) / localScale.y;
+    if (std::abs(localScale.z) > epsilon)
+        rotationMatrix[2] = glm::vec3(matrix[2]) / localScale.z;
+
+    const glm::vec3 localPosition(matrix[3]);
+    const glm::quat localRotation = glm::normalize(glm::quat_cast(rotationMatrix));
+    if (previous)
+    {
+        position->prev = localPosition;
+        rotation->prev = localRotation;
+        scale->prev = localScale;
+    }
+    else
+    {
+        position->value = localPosition;
+        rotation->value = localRotation;
+        scale->value = localScale;
+    }
+}
+}  // namespace
 
 Scene::Scene()
 {
@@ -26,6 +103,8 @@ void Scene::InitializeManagers()
 {
     m_Octree = std::make_unique<Octree>(AABB(glm::vec3(-1000.0f), glm::vec3(1000.0f)));
     m_OctreeDirty = true;
+    m_OctreeFullRebuildRequired = true;
+    m_DirtyOctreeEntities.clear();
 
     registry.on_update<PositionComponent>().connect<&Scene::OnOctreeDirty>(this);
     registry.on_update<RotationComponent>().connect<&Scene::OnOctreeDirty>(this);
@@ -43,6 +122,10 @@ void Scene::ShutdownManagers()
     registry.on_destroy<MeshRendererComponent>().disconnect<&Scene::OnOctreeDirty>(this);
 
     m_Octree.reset();
+    m_DirtyOctreeEntities.clear();
+    m_DirtyTransforms.clear();
+    m_OctreeDirty = true;
+    m_OctreeFullRebuildRequired = true;
 }
 
 void Scene::Destroy(Entity entity)
@@ -87,8 +170,7 @@ Entity Scene::FindByNameAndTag(const std::string& name, const std::string& tag)
     return Entity();
 }
 
-Entity Scene::FindByNameTagAndScene(const std::string& name, const std::string& tag,
-                                    const std::string& sceneName)
+Entity Scene::FindByNameTagAndScene(const std::string& name, const std::string& tag, const std::string& sceneName)
 {
     auto view = registry.view<InfoComponent>();
     for (auto entity : view)
@@ -168,53 +250,73 @@ std::vector<Entity> Scene::GetAllCameras()
 
 Entity Scene::GetActiveCamera()
 {
+    if (registry.valid(m_ActiveCamera) && registry.all_of<CameraComponent>(m_ActiveCamera) &&
+        registry.get<CameraComponent>(m_ActiveCamera).isPrimary)
+        return Entity(m_ActiveCamera, this);
+
     auto view = registry.view<CameraComponent>();
     for (auto entity : view)
     {
         if (view.get<CameraComponent>(entity).isPrimary)
         {
+            m_ActiveCamera = entity;
             return Entity(entity, this);
         }
     }
     for (auto entity : view)
     {
+        m_ActiveCamera = entity;
         return Entity(entity, this);
     }
+    m_ActiveCamera = entt::null;
     return Entity();
 }
 
 void Scene::SetActiveCamera(Entity entity)
 {
+    m_ActiveCamera = entt::null;
     auto view = registry.view<CameraComponent>();
     for (auto camEntity : view)
     {
         view.get<CameraComponent>(camEntity).isPrimary = (camEntity == entity);
+        if (camEntity == entity)
+            m_ActiveCamera = camEntity;
     }
 }
 
 Entity Scene::GetActiveSkybox()
 {
+    if (registry.valid(m_ActiveSkybox) && registry.all_of<SkyboxRenderComponent>(m_ActiveSkybox) &&
+        registry.get<SkyboxRenderComponent>(m_ActiveSkybox).isPrimary)
+        return Entity(m_ActiveSkybox, this);
+
     auto view = registry.view<SkyboxRenderComponent>();
     for (auto entity : view)
     {
         if (view.get<SkyboxRenderComponent>(entity).isPrimary)
         {
+            m_ActiveSkybox = entity;
             return Entity(entity, this);
         }
     }
     for (auto entity : view)
     {
+        m_ActiveSkybox = entity;
         return Entity(entity, this);
     }
+    m_ActiveSkybox = entt::null;
     return Entity();
 }
 
 void Scene::SetActiveSkybox(Entity entity)
 {
+    m_ActiveSkybox = entt::null;
     auto view = registry.view<SkyboxRenderComponent>();
     for (auto skyEntity : view)
     {
         view.get<SkyboxRenderComponent>(skyEntity).isPrimary = (skyEntity == entity);
+        if (skyEntity == entity)
+            m_ActiveSkybox = skyEntity;
     }
 }
 
@@ -230,8 +332,8 @@ Entity Scene::CreateEntity(const std::string& name, const std::string& tag)
     return Entity(entity, this);
 }
 
-Entity Scene::CreateEntityWithTransform(const std::string& name, const glm::vec3& position,
-                                              const glm::vec3& rotation, const glm::vec3& scale)
+Entity Scene::CreateEntityWithTransform(const std::string& name, const glm::vec3& position, const glm::vec3& rotation,
+                                        const glm::vec3& scale)
 {
     Entity entity = CreateEntity(name);
 
@@ -250,7 +352,6 @@ Entity Scene::CreateEmptyEntity(const std::string& name)
     return CreateEntityWithTransform(name, glm::vec3(0.0f));
 }
 
-
 void Scene::SetParent(Entity child, Entity parent, bool keepWorldTransform)
 {
     entt::entity childHandle = child;
@@ -262,13 +363,11 @@ void Scene::SetParent(Entity child, Entity parent, bool keepWorldTransform)
         return;
     }
 
-    if (!registry.all_of<HierarchyComponent>(childHandle) || !registry.all_of<HierarchyComponent>(parentHandle))
-    {
-        LOGGER_WARN("Scene") << "Child or parent missing HierarchyComponent";
-        return;
-    }
-
-    auto& childH = registry.get<HierarchyComponent>(childHandle);
+    // EntityBuilder deliberately creates components on demand. Parenting is a
+    // core scene operation, so make its required bookkeeping available for any
+    // valid entity instead of silently rejecting otherwise valid builders.
+    auto& childH = registry.get_or_emplace<HierarchyComponent>(childHandle);
+    (void)registry.get_or_emplace<HierarchyComponent>(parentHandle);
     if (childHandle == parentHandle)
     {
         LOGGER_WARN("Scene") << "Attempted to set entity as its own parent: " << (uint32_t)childHandle;
@@ -283,8 +382,8 @@ void Scene::SetParent(Entity child, Entity parent, bool keepWorldTransform)
     {
         if (current == childHandle)
         {
-            LOGGER_WARN("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)childHandle << " as child of "
-                                 << (uint32_t)parentHandle;
+            LOGGER_WARN("Scene") << "Cycle detected in hierarchy! Cannot set " << (uint32_t)childHandle
+                                 << " as child of " << (uint32_t)parentHandle;
             return;
         }
         if (auto* pH = registry.try_get<HierarchyComponent>(current))
@@ -293,19 +392,79 @@ void Scene::SetParent(Entity child, Entity parent, bool keepWorldTransform)
             break;
     }
 
-    if (registry.valid(childH.parent) && registry.all_of<HierarchyComponent>(childH.parent))
+    const glm::mat4 childWorld =
+        keepWorldTransform ? CalculateWorldTransform(registry, childHandle, false) : glm::mat4(1.0f);
+    const glm::mat4 childPreviousWorld =
+        keepWorldTransform ? CalculateWorldTransform(registry, childHandle, true) : glm::mat4(1.0f);
+    const glm::mat4 parentWorld =
+        keepWorldTransform ? CalculateWorldTransform(registry, parentHandle, false) : glm::mat4(1.0f);
+    const glm::mat4 parentPreviousWorld =
+        keepWorldTransform ? CalculateWorldTransform(registry, parentHandle, true) : glm::mat4(1.0f);
+    if (keepWorldTransform && (std::abs(glm::determinant(glm::mat3(parentWorld))) < 0.000001f ||
+                               std::abs(glm::determinant(glm::mat3(parentPreviousWorld))) < 0.000001f))
     {
-        auto& oldParentH = registry.get<HierarchyComponent>(childH.parent);
-        oldParentH.children.erase(std::remove(oldParentH.children.begin(), oldParentH.children.end(), childHandle),
-                                  oldParentH.children.end());
+        LOGGER_WARN("Scene") << "Cannot preserve world transform under a singular parent transform";
+        return;
     }
 
-    childH.parent = parentHandle;
-    auto& parentH = registry.get<HierarchyComponent>(parentHandle);
-    parentH.children.push_back(childHandle);
+    const entt::entity oldParent = childH.parent;
+    if (registry.valid(oldParent) && registry.all_of<HierarchyComponent>(oldParent))
+    {
+        registry.patch<HierarchyComponent>(oldParent, [childHandle](HierarchyComponent& oldParentH) {
+            oldParentH.children.erase(std::remove(oldParentH.children.begin(), oldParentH.children.end(), childHandle),
+                                      oldParentH.children.end());
+        });
+    }
 
-    if (auto* w = registry.try_get<WorldTransformComponent>(childHandle))
-        w->isDirty = true;
+    registry.patch<HierarchyComponent>(
+        childHandle, [parentHandle](HierarchyComponent& hierarchy) { hierarchy.parent = parentHandle; });
+    registry.patch<HierarchyComponent>(parentHandle, [childHandle](HierarchyComponent& hierarchy) {
+        if (std::find(hierarchy.children.begin(), hierarchy.children.end(), childHandle) == hierarchy.children.end())
+            hierarchy.children.push_back(childHandle);
+    });
+
+    if (keepWorldTransform)
+    {
+        ApplyLocalTransform(registry, childHandle, glm::inverse(parentWorld) * childWorld, false);
+        ApplyLocalTransform(registry, childHandle, glm::inverse(parentPreviousWorld) * childPreviousWorld, true);
+    }
+
+    MarkTransformDirty(childHandle);
+}
+
+void Scene::MarkTransformDirty(entt::entity entity)
+{
+    if (!registry.valid(entity))
+        return;
+    if (auto* world = registry.try_get<WorldTransformComponent>(entity))
+    {
+        world->isDirty = true;
+        m_DirtyTransforms.insert(entity);
+        MarkOctreeEntityDirty(entity);
+    }
+}
+
+void Scene::MarkOctreeEntityDirty(entt::entity entity)
+{
+    m_OctreeDirty = true;
+    if (entity != entt::null)
+        m_DirtyOctreeEntities.insert(entity);
+}
+
+bool Scene::ConsumeOctreeChanges(std::vector<entt::entity>& output)
+{
+    output.assign(m_DirtyOctreeEntities.begin(), m_DirtyOctreeEntities.end());
+    m_DirtyOctreeEntities.clear();
+    const bool fullRebuild = m_OctreeFullRebuildRequired;
+    m_OctreeFullRebuildRequired = false;
+    m_OctreeDirty = false;
+    return fullRebuild;
+}
+
+void Scene::ConsumeDirtyTransforms(std::vector<entt::entity>& output)
+{
+    output.assign(m_DirtyTransforms.begin(), m_DirtyTransforms.end());
+    m_DirtyTransforms.clear();
 }
 
 void Scene::AddChild(Entity parent, Entity child, bool keepWorldTransform)
@@ -350,23 +509,16 @@ void Scene::DestroyEntity(Entity entity, SceneManager* manager)
 
     if (auto rb = registry.try_get<RigidBodyComponent>(handle))
     {
-        if (rb->body)
+        IPhysicsWorld* physicsWorld =
+            manager ? manager->GetPhysicsWorld() : ServiceLocator::Instance().Resolve<IPhysicsWorld>();
+        if (physicsWorld)
         {
-            IPhysicsWorld* physicsWorld = manager ? manager->GetPhysicsWorld()
-                                                  : ServiceLocator::Instance().Resolve<IPhysicsWorld>();
-            if (physicsWorld)
-            {
-                for (auto& constraint : rb->constraints)
-                {
-                    if (constraint)
-                        physicsWorld->RemoveConstraint(constraint);
-                }
-                rb->constraints.clear();
+            PhysicsConstraintLifecycle::RemoveAll(registry, *physicsWorld, *rb);
+            if (rb->body)
                 physicsWorld->RemoveRigidBody(rb->body.get());
-            }
-
-            rb->body = nullptr;
         }
+        rb->constraints.clear();
+        rb->body = nullptr;
     }
 
     if (auto mesh = registry.try_get<MeshRendererComponent>(handle))

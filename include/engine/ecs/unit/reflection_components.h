@@ -45,9 +45,15 @@ struct PlanarReflectionComponent
 {
     uint32_t reflectionTextureID = 0;
     uint32_t reflectionFBO = 0;
+    uint32_t reflectionDepthRBO = 0;
     int resolution = 1024;
     int resolution_y = 1024;
+    float resolutionScale = 0.5f;
+    uint32_t updateIntervalFrames = 1;
     bool isDirty = true;
     bool isRendered = false;                // Flag to sync rendering
     glm::vec3 normal = glm::vec3(0, 1, 0);  // World-space normal for shader masking
+
+    // Runtime scheduler state.
+    uint32_t framesUntilUpdate = 0;
 };

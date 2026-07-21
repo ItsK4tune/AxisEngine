@@ -61,6 +61,7 @@ struct UIRendererComponent
     std::shared_ptr<Shader> shader = nullptr;
     std::string shaderName = "";
     std::shared_ptr<Texture> texture = nullptr;
+    std::string textureName;
     glm::vec4 color = glm::vec4(1.0f);
 };
 
@@ -72,6 +73,7 @@ struct UITextComponent
     std::shared_ptr<Shader> shader = nullptr;
     std::string shaderName = "";
     std::shared_ptr<Font> font = nullptr;
+    int fontSize = 60;
     glm::vec4 color = glm::vec4(1.0f);
     float scale = 1.0f;
 

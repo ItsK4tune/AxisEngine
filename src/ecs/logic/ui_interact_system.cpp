@@ -43,10 +43,10 @@ UIRect CalculateUIRect(entt::registry& registry, entt::entity entity, float scre
     glm::vec2 anchorMin = EvalUIVec(transform->anchorMin, transform->anchorMinIsPercent, glm::vec2(1.0f));
     glm::vec2 anchorMax = EvalUIVec(transform->anchorMax, transform->anchorMaxIsPercent, glm::vec2(1.0f));
 
-    glm::vec2 finalMin = parentPos + anchorMin * parentSize +
-                         EvalUIVec(transform->offsetMin, transform->offsetMinIsPercent, parentSize);
-    glm::vec2 finalMax = parentPos + anchorMax * parentSize +
-                         EvalUIVec(transform->offsetMax, transform->offsetMaxIsPercent, parentSize);
+    glm::vec2 finalMin =
+        parentPos + anchorMin * parentSize + EvalUIVec(transform->offsetMin, transform->offsetMinIsPercent, parentSize);
+    glm::vec2 finalMax =
+        parentPos + anchorMax * parentSize + EvalUIVec(transform->offsetMax, transform->offsetMaxIsPercent, parentSize);
 
     glm::vec2 pos = EvalUIVec(transform->position, transform->positionIsPercent, parentSize);
     finalMin += pos;
@@ -78,7 +78,6 @@ UIRect ApplyVisualScale(const UIRect& rect, const UITransformComponent& transfor
 }
 }  // namespace
 
-REGISTER_SYSTEM(UIInteractSystem)
 
 void UIInteractSystem::Initialize()
 {
@@ -100,8 +99,9 @@ void UIInteractSystem::Update(Scene& scene, float dt)
     float referenceHeight = 1080.0f;
     if (auto* config = ServiceLocator::Instance().Resolve<ConfigManager>())
     {
-        referenceWidth = (std::max)(1.0f, config->GetConfig().uiReferenceWidth);
-        referenceHeight = (std::max)(1.0f, config->GetConfig().uiReferenceHeight);
+        const auto snapshot = config->GetConfigSnapshot();
+        referenceWidth = (std::max)(1.0f, snapshot->render.uiReferenceWidth);
+        referenceHeight = (std::max)(1.0f, snapshot->render.uiReferenceHeight);
     }
 
     const float scaleFactor = (std::min)(screenWidth / referenceWidth, screenHeight / referenceHeight);
@@ -126,8 +126,7 @@ void UIInteractSystem::Update(Scene& scene, float dt)
     }
 
     std::sort(entities.begin(), entities.end(), [&](entt::entity a, entt::entity b) {
-        return scene.GetComponent<UITransformComponent>(a).zIndex >
-               scene.GetComponent<UITransformComponent>(b).zIndex;
+        return scene.GetComponent<UITransformComponent>(a).zIndex > scene.GetComponent<UITransformComponent>(b).zIndex;
     });
 
     entt::entity topHovered = entt::null;
@@ -203,12 +202,12 @@ void UIInteractSystem::Update(Scene& scene, float dt)
             }
 
             const float t = glm::clamp(animation->transitionSpeed * safeDt, 0.0f, 1.0f);
-            const glm::vec4 targetColor =
-                interactive.pressed ? animation->pressedColor : (interactive.hovered ? animation->hoverColor
-                                                                                     : animation->normalColor);
-            const float targetScale =
-                interactive.pressed ? animation->pressedScale : (interactive.hovered ? animation->hoverScale
-                                                                                     : animation->normalScale);
+            const glm::vec4 targetColor = interactive.pressed
+                                              ? animation->pressedColor
+                                              : (interactive.hovered ? animation->hoverColor : animation->normalColor);
+            const float targetScale = interactive.pressed
+                                          ? animation->pressedScale
+                                          : (interactive.hovered ? animation->hoverScale : animation->normalScale);
 
             if (animation->animateColor)
             {

@@ -22,6 +22,8 @@ public:
 
     virtual unsigned int GetGBufferDepth() const = 0;
     virtual unsigned int GetGBufferID() const = 0;
-    virtual unsigned int GetGBufferPosition() const = 0;
+    // Request the optional entity-ID attachment for the next geometry pass.
+    // Call each frame while an editor/picking consumer needs it.
+    virtual void RequestEntityIdBuffer() = 0;
     virtual unsigned int GetGBufferNormal() const = 0;
 };

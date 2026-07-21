@@ -1,6 +1,7 @@
 #pragma once
 
 #include <core/logic/service_locator.h>
+#include <core/logic/event_manager.h>
 #include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
 #include <filesystem>
@@ -12,6 +13,7 @@ namespace axis_test_support
 inline void ResetServices()
 {
     ServiceLocator::Instance().ClearAll();
+    EventManager::Instance().Clear();
 }
 
 inline std::filesystem::path TempPath(const std::string& filename)

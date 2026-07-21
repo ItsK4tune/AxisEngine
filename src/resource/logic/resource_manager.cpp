@@ -4,12 +4,15 @@
 #include <core/logic/event_manager.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/job_system.h>
+#include <core/logic/loader_utils.h>
+#include <core/logic/loader_strategies.h>
 #include <core/logic/logger.h>
 #include <core/type/event_types.h>
+#include <core/type/app_config.h>
 #include <resource/type/resource_events.h>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <sstream>
 
 ResourceManager::ResourceManager()
@@ -33,20 +36,45 @@ void ResourceManager::SubscribeReloadEvents()
 
 void ResourceManager::RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy)
 {
+    RegisterLoaderInternal(std::move(strategy), true);
+}
+
+bool ResourceManager::RegisterLoaderInternal(std::unique_ptr<ILoaderStrategy> strategy, bool replaceExisting)
+{
     if (!strategy)
-        return;
+    {
+        LOGGER_WARN("ResourceManager") << "Ignoring null loading strategy";
+        return false;
+    }
     std::string name = strategy->GetName();
-    m_Strategies[name] = std::move(strategy);
+    if (name.empty())
+    {
+        LOGGER_WARN("ResourceManager") << "Ignoring loading strategy with an empty name";
+        return false;
+    }
+    {
+        std::unique_lock lock(m_StrategyMutex);
+        if (!replaceExisting && m_Strategies.contains(name))
+            return false;
+        m_Strategies[name] = std::shared_ptr<ILoaderStrategy>(std::move(strategy));
+    }
     LOGGER_INFO("ResourceManager") << "Registered loading strategy: " << name;
+    return true;
 }
 
 bool ResourceManager::LoadUnified(const std::string& type, const std::string& path)
 {
-    auto it = m_Strategies.find(type);
-    if (it != m_Strategies.end())
+    std::shared_ptr<ILoaderStrategy> strategy;
+    {
+        std::shared_lock lock(m_StrategyMutex);
+        const auto it = m_Strategies.find(type);
+        if (it != m_Strategies.end())
+            strategy = it->second;
+    }
+    if (strategy)
     {
         LOGGER_INFO("ResourceManager") << "Dispatching '" << path << "' to strategy: " << type;
-        return it->second->Load(path);
+        return strategy->Load(path);
     }
 
     LOGGER_ERROR("ResourceManager") << "No strategy found for type: " << type;
@@ -55,16 +83,18 @@ bool ResourceManager::LoadUnified(const std::string& type, const std::string& pa
 
 std::vector<std::string> ResourceManager::GetRegisteredLoaderTypes() const
 {
+    std::shared_lock lock(m_StrategyMutex);
     std::vector<std::string> types;
     for (const auto& pair : m_Strategies)
     {
         types.push_back(pair.first);
     }
+    std::sort(types.begin(), types.end());
     return types;
 }
 
 void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager* textureManager,
-                                 IAudioEngine& audioEngine)
+                                 IAudioEngine* audioEngine)
 {
     m_IsShutdown = false;
     if (m_ReloadListenerId == -1)
@@ -76,14 +106,16 @@ void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager*
     if (textureManager)
         m_TextureManager = std::make_unique<TextureManager>(*textureManager);
 
-    m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
-    m_AudioManager = std::make_unique<AudioAssetManager>(audioEngine);
+    m_ModelManager = std::make_unique<ModelManager>();
+    if (audioEngine)
+        m_AudioManager = std::make_unique<AudioAssetManager>(*audioEngine);
     m_FontManager = std::make_unique<FontManager>();
     m_SkyboxManager = std::make_unique<SkyboxManager>();
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
     m_VideoManager = std::make_unique<VideoManager>();
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
     m_UIModelManager = std::make_unique<UIModelManager>();
+    RegisterDefaultLoaderStrategies(*this);
 
     if (m_ShaderManager)
         m_ShaderManager->Initialize();
@@ -98,9 +130,10 @@ void ResourceManager::InitializeHeadless()
     if (m_ReloadListenerId == -1)
         SubscribeReloadEvents();
     m_HeadlessMode = true;
-    m_ModelManager = std::make_unique<ModelManager>(m_ModelInstanceManager);
+    m_ModelManager = std::make_unique<ModelManager>();
     m_FragmentManager = std::make_unique<FragmentAssetManager>();
     m_AnimationManager = std::make_unique<AnimationManager>(*m_ModelManager);
+    RegisterDefaultLoaderStrategies(*this);
     // No ShaderManager, TextureManager, AudioManager, FontManager, SkyboxManager, VideoManager, UIModelManager in pure
     LOGGER_INFO("ResourceManager") << "Initialized in HEADLESS mode (simulation resources only)";
 }
@@ -120,6 +153,8 @@ void ResourceManager::Shutdown()
 {
     if (m_IsShutdown)
         return;
+
+    m_ResourceWatcher.SetEnabled(false);
 
     if (m_ReloadListenerId != -1)
     {
@@ -151,6 +186,27 @@ void ResourceManager::SetStrictAssetLoading(bool strict)
         m_TextureManager->SetStrictLoading(strict);
     if (m_ModelManager)
         m_ModelManager->SetStrictLoading(strict);
+}
+
+void ResourceManager::SetAsyncUploadBudget(bool enabled, size_t maxModelUploadsPerFrame,
+                                           size_t maxTextureUploadsPerFrame)
+{
+    if (m_ModelManager)
+        m_ModelManager->SetCompletedLoadBudget(enabled, maxModelUploadsPerFrame);
+    if (m_TextureManager)
+        m_TextureManager->SetCompletedLoadBudget(enabled, maxTextureUploadsPerFrame);
+}
+
+void ResourceManager::ApplyOptimizationConfig(const OptimizationConfig& config)
+{
+    m_ResourceWatcher.SetEnabled(config.resourceHotReloadEnabled);
+    SetAsyncUploadBudget(config.resourceUploadBudgetEnabled,
+                         static_cast<size_t>(config.maxModelUploadsPerFrame),
+                         static_cast<size_t>(config.maxTextureUploadsPerFrame));
+    if (m_ModelManager)
+        m_ModelManager->SetDiscardCpuMeshDataAfterUpload(config.discardCpuMeshDataAfterUpload);
+    if (m_TextureManager)
+        m_TextureManager->SetCompressedTextureLoadingEnabled(config.compressedTextureLoadingEnabled);
 }
 
 void ResourceManager::Update(float dt)
@@ -207,6 +263,12 @@ void ResourceManager::AddResourceDefinition(const std::string& type, const std::
     m_ResourceDefinitions.push_back({type, name, props});
 }
 
+std::vector<ResourceManager::ResourceDefinition> ResourceManager::GetResourceDefinitions() const
+{
+    std::lock_guard lock(m_ResourceMutex);
+    return m_ResourceDefinitions;
+}
+
 void ResourceManager::LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath,
                                  const std::string& gsPath)
 {
@@ -234,7 +296,7 @@ void ResourceManager::LoadShader(const std::string& name, const std::string& vsP
                 buffer << f.rdbuf();
                 std::string fsContent = buffer.str();
                 if (fsContent.find("gAlbedoSpec") != std::string::npos ||
-                    fsContent.find("gPosition") != std::string::npos)
+                    fsContent.find("gPBRParams") != std::string::npos)
                 {
                     isDeferred = true;
                 }
@@ -319,7 +381,7 @@ void ResourceManager::LoadFont(const std::string& name, const std::string& path,
     AddResourceDefinition("Font", name, {{"Path", path}, {"Size", std::to_string(fontSize)}});
 }
 
-void ResourceManager::LoadSound(const std::string& name, const std::string& path, IAudioEngine* engine)
+void ResourceManager::LoadSound(const std::string& name, const std::string& path)
 {
     if (!m_AudioManager)
         return;
@@ -553,20 +615,24 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string& nameOrPath
 
     // Check if any existing font has this path and size
     std::string fullPath = FileSystem::getPath(nameOrPath);
+    std::string matchingFont;
     {
         std::lock_guard<std::mutex> lock(m_ResourceMutex);
         for (const auto& def : m_ResourceDefinitions)
         {
-            if (def.type == "Font")
+            const auto path = def.properties.find("Path");
+            const auto size = def.properties.find("Size");
+            if (def.type == "Font" && path != def.properties.end() && size != def.properties.end() &&
+                FileSystem::getPath(path->second) == fullPath &&
+                LoaderUtils::SafeStoi(size->second, -1) == static_cast<int>(fontSize))
             {
-                if (FileSystem::getPath(def.properties.at("Path")) == fullPath &&
-                    std::stoi(def.properties.at("Size")) == (int)fontSize)
-                {
-                    return GetFont(def.name);
-                }
+                matchingFont = def.name;
+                break;
             }
         }
     }
+    if (!matchingFont.empty())
+        return GetFont(matchingFont);
 
     bool looksLikePath = nameOrPath.find('/') != std::string::npos || nameOrPath.find('\\') != std::string::npos ||
                          nameOrPath.find('.') != std::string::npos;
@@ -594,7 +660,7 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string& nameOrPath
     return nullptr;
 }
 
-std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string& nameOrPath, IAudioEngine* engine)
+std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string& nameOrPath)
 {
     if (nameOrPath.empty())
         return nullptr;
@@ -624,7 +690,7 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string& n
         return nullptr;
     if (!std::filesystem::exists(fullPath))
         return nullptr;
-    LoadSound(nameOrPath, nameOrPath, engine);
+    LoadSound(nameOrPath, nameOrPath);
     return GetSound(nameOrPath);
 }
 

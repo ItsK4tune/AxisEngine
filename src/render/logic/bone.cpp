@@ -1,9 +1,8 @@
-#define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/bone.h>
 #include <render/logic/assimp_glm_helpers.h>
 #include <list>
 
-Bone::Bone(const std::string& name, int ID, const aiNodeAnim* channel) : m_Name(name), m_ID(ID)
+Bone::Bone(const std::string& name, const aiNodeAnim* channel) : m_Name(name)
 {
     m_NumPositions = channel->mNumPositionKeys;
 
@@ -65,11 +64,6 @@ std::string Bone::GetBoneName() const
 {
     return m_Name;
 }
-int Bone::GetBoneID() const
-{
-    return m_ID;
-}
-
 int Bone::GetPositionIndex(float animationTime) const
 {
     for (int index = 0; index < m_NumPositions - 1; ++index)

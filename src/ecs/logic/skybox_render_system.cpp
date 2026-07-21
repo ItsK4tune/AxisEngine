@@ -17,7 +17,6 @@
 #include <render/unit/skybox.h>
 #include <resource/unit/shader.h>
 
-REGISTER_SYSTEM(SkyboxRenderSystem)
 
 void SkyboxRenderSystem::Initialize()
 {
@@ -30,15 +29,13 @@ void SkyboxRenderSystem::Initialize()
     auto* configManager = sl.Resolve<ConfigManager>();
     if (configManager)
     {
-        m_Intensity = configManager->GetConfig().skyboxIntensity;
+        m_Intensity = configManager->GetConfigSnapshot()->render.skyboxIntensity;
 
         m_EventSubscriptions.Add(
             EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
-                if (e.bitmask & (ConfigChangedEvent::Graphics | ConfigChangedEvent::All))
+                if (HasConfigChanged(e, ConfigChangedEvent::Graphics))
                 {
-                    auto* cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-                    if (cm)
-                        m_Intensity = cm->GetConfig().skyboxIntensity;
+                    m_Intensity = e.config.render.skyboxIntensity;
                 }
             }));
     }

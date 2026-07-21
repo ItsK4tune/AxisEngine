@@ -7,7 +7,6 @@
 class IBufferManager;
 class IDrawContext;
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class BulletDebugDrawer : public btIDebugDraw
 {
@@ -27,7 +26,7 @@ public:
     virtual void setDebugMode(int debugMode) override;
     virtual int getDebugMode() const override;
 
-    static void SetManagers(IBufferManager& bufferManager, IDrawContext& drawContext);
+    void SetManagers(IBufferManager* bufferManager, IDrawContext* drawContext);
 
 private:
     struct LineVertex
@@ -40,9 +39,9 @@ private:
     unsigned int m_VAO, m_VBO;
     int m_DebugMode;
 
-    static IBufferManager* s_BufferManager;
-    static IDrawContext* s_DrawContext;
+    IBufferManager* m_BufferManager = nullptr;
+    IDrawContext* m_DrawContext = nullptr;
 
-    static IBufferManager& GetBufferManager();
-    static IDrawContext& GetDrawContext();
+    IBufferManager& GetBufferManager();
+    IDrawContext& GetDrawContext();
 };

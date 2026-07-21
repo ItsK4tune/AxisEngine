@@ -2,6 +2,8 @@
 #include <core/logic/logger.h>
 #include <platform/interface/i_window.h>
 #include <resource/logic/stb_image_loader.h>
+#include <algorithm>
+#include <charconv>
 
 MonitorManager::MonitorManager()
     : m_Width(1280),
@@ -20,6 +22,11 @@ MonitorManager::~MonitorManager()
 
 bool MonitorManager::Initialize(std::unique_ptr<IWindow> window)
 {
+    if (!window)
+    {
+        LOGGER_ERROR("MonitorManager") << "Cannot initialize with a null window";
+        return false;
+    }
     m_Window = std::move(window);
 
     if (!m_Window->Initialize(m_Width, m_Height, m_Title))
@@ -159,14 +166,14 @@ DeviceInfo MonitorManager::GetCurrentDevice() const
 
     std::vector<MonitorInfo> monitors = m_Window->GetMonitors();
 
-    if (m_MonitorIndex >= 0 && m_MonitorIndex < monitors.size())
+    const auto current = std::find_if(monitors.begin(), monitors.end(),
+                                      [this](const MonitorInfo& monitor) { return monitor.index == m_MonitorIndex; });
+    if (current != monitors.end())
     {
-        if (monitors[m_MonitorIndex].index == m_MonitorIndex)
-        {
-            info.id = std::to_string(m_MonitorIndex);
-            info.name = monitors[m_MonitorIndex].name;
-            return info;
-        }
+        info.id = std::to_string(current->index);
+        info.name = current->name;
+        info.isDefault = current->isPrimary;
+        return info;
     }
 
     info.id = std::to_string(m_MonitorIndex);
@@ -176,17 +183,22 @@ DeviceInfo MonitorManager::GetCurrentDevice() const
 
 bool MonitorManager::SetActiveDevice(const std::string& deviceId)
 {
-    try
-    {
-        int index = std::stoi(deviceId);
-        m_MonitorIndex = index;
-        SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
-        return true;
-    }
-    catch (...)
-    {
-    }
-    return false;
+    if (!m_Window)
+        return false;
+
+    int index = 0;
+    const auto [end, error] = std::from_chars(deviceId.data(), deviceId.data() + deviceId.size(), index);
+    if (error != std::errc{} || end != deviceId.data() + deviceId.size() || index < 0)
+        return false;
+
+    const auto monitors = m_Window->GetMonitors();
+    if (std::none_of(monitors.begin(), monitors.end(),
+                     [index](const MonitorInfo& monitor) { return monitor.index == index; }))
+        return false;
+
+    m_MonitorIndex = index;
+    SetWindowConfiguration(m_Width, m_Height, m_Mode, m_MonitorIndex, m_RefreshRate);
+    return true;
 }
 
 void MonitorManager::ToggleFullscreen()
@@ -208,7 +220,8 @@ void MonitorManager::ToggleFullscreen()
     }
     else if (m_Mode == WindowMode::BorderlessFullscreen || m_Mode == WindowMode::Borderless)
     {
-        int nativeW = 1920, nativeH = 1080;
+        int nativeW = m_Width;
+        int nativeH = m_Height;
         if (m_Window)
         {
             auto monitors = m_Window->GetMonitors();

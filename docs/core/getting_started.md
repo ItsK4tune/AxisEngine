@@ -22,7 +22,7 @@ This guide will walk you through creating your first game with AXIS Engine. We'l
 - How to use the debug system
 
 **Prerequisites:**
-- AXIS Engine built and ready (see [Build Guide](build_guide.md))
+- AXIS Engine built and ready (see [Build Guide](../guides/build_guide.md))
 - Basic C++ knowledge
 - Text editor for `.axs` files
 
@@ -44,13 +44,13 @@ GameEngine/
 │       └── states/
 │       └── scripts/
 ├── scenes/                    # Your scene files
-├── include/engine/asset/                # Default assets (shaders, fonts, models)
+├── include/engine/asset/                # Source-tree default assets
 └── bin/Release/              # Built executable
 ```
 
 ### Default Assets
 
-The engine automatically loads default assets from `include/engine/asset/load.axs` at startup:
+The engine automatically resolves `asset://load.axs` from the source tree or the installed `share/AxisEngine/assets` directory:
 - Shaders (Phong, PBR, Unlit, UI, Text, Skybox, Particle, VideoMap)
 - Fonts (`time.ttf`)
 - Models (plane, dummy)
@@ -313,41 +313,27 @@ This avoids per-frame overhead and fires exactly when the OS reports a key press
 
 ### Step 3: Register Script
 
-In `game/src/main.cpp` or create `game/src/register_scripts.cpp`:
+Register scripts explicitly on your application instance:
 
 ```cpp
-#include <script/script_registry.h>
-#include "scripts/player_controller.h"
-
-// Register all your custom scripts
-void RegisterGameScripts() {
-    REGISTER_SCRIPT(PlayerController);
-}
-```
-
-Then call in `main.cpp` BEFORE `app.Init()`:
-
-```cpp
-#include <app/application.h>
+#include <axis_app.h>
 #include "states/game_state.h"
 
-void RegisterGameScripts();  // Forward declaration
-
-#include <engine/core/Application.h>
-#include "states/game_state.h"
-
-void RegisterGameScripts();  // Forward declaration
+class GameApplication final : public Application {
+public:
+    void RegisterUserScripts() override {
+        RegisterScript<PlayerController>("PlayerController");
+    }
+};
 
 int main() {
-    RegisterGameScripts();  // Register scripts before init
-    
-    auto app = std::make_shared<Application>();
+    auto app = std::make_shared<GameApplication>();
 
     AppConfig config;
     config.title = "Axis Engine - Game";
-    config.width = 1280;
-    config.height = 720;
-    config.logLevel = LogLevel::Verbose;
+    config.window.width = 1280;
+    config.window.height = 720;
+    config.logLevel = LogLevel::Debug;
 
     if (app->Initialize(config)) {
         app->PushState<GameState>();
@@ -407,7 +393,7 @@ void GameState::OnRender() {
 }
 
 void GameState::OnExit() {
-    GetSceneManager().ClearAllScenes();
+    QueuePopScene();
 }
 ```
 
@@ -522,7 +508,7 @@ Use the `EntityBuilder` to spawn entities at runtime. This is cleaner than manua
 
 ```cpp
 void SpawnerScript::SpawnNPC(const glm::vec3& pos) {
-    auto npc = EntityBuilder(*m_Scene, GetResourceManager())
+    auto npc = EntityBuilder(GetScene(), Get<ResourceManager>())
         .WithName("SpawnedNPC")
         .WithTag("Enemy")
         .WithTransform(pos)
@@ -541,13 +527,14 @@ Create pause menu, health bar, score display using UI components.
 
 ```cpp
 void OnCollisionEnter(entt::entity other) override {
-    GetSoundManager().PlaySound("hitSound", m_Transform->position, 1.0f);
+    if (auto* audio = Resolve<AudioService>())
+        audio->Play3D("audio/hit.wav", GetComponent<PositionComponent>().value);
 }
 ```
 
 ### Learn More
 
-- [Scripting Basics](../guides/scripting_basics.md) - Detailed scripting guide  
+- [Scripting Basics](../scripting/scriptable_api.md) - Detailed scripting guide
 - [Scene Format Reference](../guides/scene_format.md) - All scene commands
 - [Component Reference](../guides/components_reference.md) - All available components
 - [State API](../state/state_api.md) - Complete State API
@@ -561,7 +548,7 @@ void OnCollisionEnter(entt::entity other) override {
 ```
 [SceneLoader] 'PlayerController' script not found!
 ```
-**Solution:** Make sure you called `REGISTER_SCRIPT(PlayerController)` before `app.Init()`.
+**Solution:** Register the class with `RegisterScript<PlayerController>("PlayerController")` in your application's `RegisterUserScripts` override, and verify the serialized class name matches exactly.
 
 ### Model Not Loaded
 ```
@@ -573,7 +560,7 @@ ERROR: Model not found: playerModel
 ```
 ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ
 ```
-**Solution:** Verify shader paths point to `include/engine/asset/shaders/...` or ensure they are listed correctly in the `Resources` block of your `.axs` file.
+**Solution:** Verify shader paths use `asset://shaders/...` or ensure they are listed correctly in the `Resources` block of your `.axs` file.
 
 ### Physics Not Working
 ```
@@ -596,4 +583,5 @@ You've created your first AXIS Engine game with:
 - ✅ Lighting
 - ✅ UI
 
-Keep experimenting and building! Check out the [examples](../examples/) folder for more complex patterns.
+Keep experimenting and building! Check out the [sample scenarios](../../sample/src/scenarios/) folder for more complex
+patterns.

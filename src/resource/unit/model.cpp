@@ -2,11 +2,12 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <algorithm>
+#include <charconv>
 #include <cstdlib>
 #include <cstring>
 
-#define GLM_ENABLE_EXPERIMENTAL
 #include <resource/unit/model.h>
+#include <render/type/shader_abi.h>
 #include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <render/interface/i_texture_manager.h>
@@ -18,6 +19,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace
 {
@@ -113,15 +115,13 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
 
     if (!filename.empty() && filename[0] == '*')
     {
-        try
-        {
-            int id = std::stoi(filename.substr(1));
-            if (id < scene->mNumTextures)
-                aiTex = scene->mTextures[id];
-        }
-        catch (...)
-        {
-        }
+        const std::string_view encodedIndex(filename.data() + 1, filename.size() - 1);
+        unsigned int id = 0;
+        const auto [end, error] = std::from_chars(encodedIndex.data(), encodedIndex.data() + encodedIndex.size(), id);
+        if (error == std::errc{} && end == encodedIndex.data() + encodedIndex.size() && id < scene->mNumTextures)
+            aiTex = scene->mTextures[id];
+        else
+            LOGGER_WARN("Model") << "Invalid embedded texture reference: " << filename;
     }
     if (!aiTex)
         aiTex = scene->GetEmbeddedTexture(path);
@@ -154,7 +154,7 @@ unsigned int TextureFromFile(const char* path, const std::string& directory, con
 
         if (!data)
         {
-            std::string globalPath = FileSystem::getPath("include/engine/asset/textures") + '/' + pureFilename;
+            std::string globalPath = FileSystem::getEngineAssetPath("textures") + '/' + pureFilename;
             data = StbImageLoader::Load(globalPath.c_str(), &width, &height, &nrComponents, req_comp, false);
         }
 
@@ -260,7 +260,7 @@ void ExtractBoneWeightForVertices(std::vector<SkinnedVertex>& vertices, aiMesh* 
         std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
         if (boneInfoMap.find(boneName) == boneInfoMap.end())
         {
-            if (boneCount < 200)
+            if (boneCount < ShaderABI::MaxBones)
             {
                 BoneInfo newBoneInfo;
                 newBoneInfo.id = boneCount;
@@ -271,7 +271,8 @@ void ExtractBoneWeightForVertices(std::vector<SkinnedVertex>& vertices, aiMesh* 
             }
             else
             {
-                LOGGER_WARN("Model") << "Max bone limit (200) exceeded while processing bone: " << boneName;
+                LOGGER_WARN("Model") << "Max bone limit (" << ShaderABI::MaxBones
+                                     << ") exceeded while processing bone: " << boneName;
                 continue;
             }
         }
@@ -438,7 +439,7 @@ void processNode(aiNode* node, const aiScene* scene, std::vector<Mesh>& meshes, 
         if (mesh)
         {
             auto processedMesh = processMesh(mesh, scene, textures_loaded, directory, boneInfoMap, boneCount, deferred);
-            meshes.push_back(processedMesh);
+            meshes.push_back(std::move(processedMesh));
         }
     }
     for (unsigned int i = 0; i < node->mNumChildren; i++)
@@ -501,9 +502,9 @@ void Model::Draw(Shader& shader, bool bindTextures)
     }
 }
 
-void Model::DrawInstanced(Shader& shader, const std::vector<glm::mat4>& models, bool bindTextures)
+void Model::DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& instances, bool bindTextures)
 {
-    for (unsigned int i = 0; i < meshes.size(); i++) meshes[i].DrawInstanced(shader, models, bindTextures);
+    for (unsigned int i = 0; i < meshes.size(); i++) meshes[i].DrawInstanced(shader, instances, bindTextures);
 }
 
 std::unordered_map<std::string, BoneInfo>& Model::GetBoneInfoMap()
@@ -598,4 +599,31 @@ void Model::UploadToGPU()
     }
 
     m_ReadyToRender = true;
+}
+
+void Model::AdoptCpuData(Model&& decoded)
+{
+    // Keep the published resource name/identity while atomically replacing its
+    // decoded payload on the owner thread.
+    directory = std::move(decoded.directory);
+    gammaCorrection = decoded.gammaCorrection;
+    aabb = decoded.aabb;
+    meshes = std::move(decoded.meshes);
+    textures_loaded = std::move(decoded.textures_loaded);
+    m_BoneInfoMap = std::move(decoded.m_BoneInfoMap);
+    m_BoneCounter = decoded.m_BoneCounter;
+    m_IsStatic = decoded.m_IsStatic;
+    m_RootTransform = decoded.m_RootTransform;
+    m_RootTranslation = decoded.m_RootTranslation;
+    m_RootRotation = decoded.m_RootRotation;
+    m_RootScale = decoded.m_RootScale;
+    m_ReadyToRender = false;
+}
+
+void Model::ReleaseCpuMeshData()
+{
+    if (!m_ReadyToRender)
+        return;
+    for (auto& mesh : meshes)
+        mesh.ReleaseCpuVertexData();
 }

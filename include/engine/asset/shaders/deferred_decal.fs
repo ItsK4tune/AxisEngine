@@ -7,12 +7,13 @@ layout (location = 3) out vec4 gPBRParams;
 
 in vec4 v_ScreenSpace;
 
-uniform sampler2D u_GPosition;
 uniform sampler2D u_GNormalTex;
 uniform sampler2D u_GDepth;
+uniform usampler2D u_GID;
+uniform usampler1D u_TagMap;
 uniform sampler2D u_DecalAlbedo;
-uniform sampler2D u_DecalNormal;
 uniform bool u_HasDecalTexture;
+uniform uint u_AllowedTagsMask;
 
 uniform mat4 u_InvModel;
 uniform mat4 u_Model;
@@ -24,6 +25,25 @@ uniform float u_Roughness;
 uniform float u_Metallic;
 uniform float u_Reflectivity;
 
+layout(std140, binding = 20) uniform CameraData {
+    mat4 u_Projection;
+    mat4 u_View;
+    vec4 viewPos;
+    mat4 u_InvProjection;
+    mat4 u_InvView;
+    mat4 stableProjection;
+    mat4 invStableProjection;
+} camera;
+
+vec3 ReconstructWorldPosition(vec2 uv, float depth)
+{
+    vec4 clipPosition = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 viewPosition = camera.u_InvProjection * clipPosition;
+    float safeW = abs(viewPosition.w) > 0.000001 ? viewPosition.w : 0.000001;
+    viewPosition /= safeW;
+    return (camera.u_InvView * viewPosition).xyz;
+}
+
 void main()
 {
     vec2 screenUV = (v_ScreenSpace.xy / v_ScreenSpace.w) * 0.5 + 0.5;
@@ -31,7 +51,12 @@ void main()
     float depth = texture(u_GDepth, screenUV).r;
     if (depth == 1.0) discard;
 
-    vec3 worldPos = texture(u_GPosition, screenUV).rgb;
+    uint entityId = texture(u_GID, screenUV).r;
+    if (entityId >= uint(textureSize(u_TagMap, 0))) discard;
+    uint tagMask = texelFetch(u_TagMap, int(entityId), 0).r;
+    if ((tagMask & u_AllowedTagsMask) == 0u) discard;
+
+    vec3 worldPos = ReconstructWorldPosition(screenUV, depth);
     vec4 localPos = u_InvModel * vec4(worldPos, 1.0);
     localPos /= localPos.w;
 
@@ -49,10 +74,9 @@ void main()
     // For now, decals use the wall's normal to match deferred lighting expectation
     // A more advanced version would use u_DecalNormal + TBN, but we prioritize parity first.
     
-    // Shadow Masking (Normal.a)
-    // 1.0 = Receive Shadow (LightingMode 2), 0.0 = Skip Shadow (LightingMode 1)
-    float receiveShadowBit = (u_LightingMode == 2) ? 1.0 : 0.0;
-    gNormal = vec4(wallNormal, receiveShadowBit);
+    // All deferred outputs expose the same source alpha so RGB blending is consistent.
+    // The render state preserves destination alpha because it contains surface metadata.
+    gNormal = vec4(wallNormal, finalAlpha);
 
     if (u_LightingMode == 0) {
         // NONE (Unlit): Black out Albedo, Use Emissive
@@ -64,8 +88,7 @@ void main()
         gEmissive = vec4(0.0, 0.0, 0.0, 0.0);
     }
 
-    // PBR parameters: Decals replace material properties where they are opaque
-    // We use finalAlpha as the blend factor for PBR params too.
-    // R: Metallic, G: Roughness, B: Reflectivity, A: packed(noProbe + FresnelPower/100)
-    gPBRParams = vec4(u_Metallic, u_Roughness, u_Reflectivity, 0.05) * finalAlpha;
+    // PBR RGB is blended by finalAlpha. Alpha is deliberately not written: it stores
+    // packed reflection metadata belonging to the underlying surface.
+    gPBRParams = vec4(u_Metallic, u_Roughness, u_Reflectivity, finalAlpha);
 }

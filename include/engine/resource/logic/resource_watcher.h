@@ -1,11 +1,9 @@
 #pragma once
 
-#include <core/type/event_types.h>
 #include <resource/type/resource_events.h>
 #include <atomic>
 #include <condition_variable>
 #include <filesystem>
-#include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -14,10 +12,11 @@
 class ResourceWatcher
 {
 public:
-    using ReloadCallback = std::function<void(const std::string& name)>;
-
     ResourceWatcher();
     ~ResourceWatcher();
+
+    void SetEnabled(bool enabled);
+    bool IsEnabled() const { return m_Running.load(std::memory_order_acquire); }
 
     void Watch(const std::string& name, const std::string& path, const std::string& type);
     void Watch(const std::string& name, const std::string& path, const std::string& type, const std::string& vsPath,
@@ -43,7 +42,7 @@ private:
     std::vector<WatchEntry> m_Watchers;
     std::vector<ResourceReloadEvent> m_PendingReloads;
     std::mutex m_Mutex;
-    std::atomic<bool> m_Running;
+    std::atomic<bool> m_Running{false};
     std::thread m_WatcherThread;
     std::condition_variable m_StopCV;
     std::mutex m_StopMutex;

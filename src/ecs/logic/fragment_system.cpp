@@ -10,7 +10,6 @@
 #include <scene/logic/scene_manager.h>
 #include <functional>
 
-REGISTER_SYSTEM(FragmentSystem)
 
 FragmentSystem::FragmentSystem()
 {

@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define GLM_ENABLE_EXPERIMENTAL
 
 class Animation
 {
@@ -20,6 +19,11 @@ public:
     ~Animation() = default;
 
     Bone* FindBone(const std::string& name);
+
+    bool IsValid() const
+    {
+        return m_Valid;
+    }
 
     inline float GetTicksPerSecond()
     {
@@ -39,8 +43,9 @@ public:
     }
 
 private:
-    float m_Duration;
-    int m_TicksPerSecond;
+    float m_Duration = 0.0f;
+    int m_TicksPerSecond = 0;
+    bool m_Valid = false;
     std::vector<Bone> m_Bones;
     std::unordered_map<std::string, Bone*> m_BoneMap;
 

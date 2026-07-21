@@ -42,6 +42,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/build/install",
         "ENABLE_TESTS": "ON",
         "ENABLE_EDITOR": "OFF",
         "BUILD_SAMPLES": "OFF"

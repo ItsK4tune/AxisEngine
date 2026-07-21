@@ -3,7 +3,10 @@
 #include <render/interface/i_buffer_manager.h>
 #include <render/interface/i_draw_context.h>
 #include <render/interface/i_texture_manager.h>
+#include <render/logic/transient_buffer_ring.h>
 #include <render/type/graphics_types.h>
+#include <algorithm>
+#include <random>
 
 IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
 ITextureManager* ParticleEmitter::s_TextureManager = nullptr;
@@ -15,6 +18,13 @@ void ParticleEmitter::SetManagers(IBufferManager& bufferManager, ITextureManager
     s_BufferManager = &bufferManager;
     s_TextureManager = &textureManager;
     s_DrawContext = &drawContext;
+}
+
+void ParticleEmitter::ClearManagers()
+{
+    s_BufferManager = nullptr;
+    s_TextureManager = nullptr;
+    s_DrawContext = nullptr;
 }
 
 IBufferManager& ParticleEmitter::GetBufferManager()
@@ -53,6 +63,7 @@ ParticleEmitter::ParticleEmitter() : m_VAO(0), m_VBO(0), m_instanceVBO(0)
 
 ParticleEmitter::~ParticleEmitter()
 {
+    m_InstanceUpload.reset();
     if (s_BufferManager)
     {
         try
@@ -61,8 +72,6 @@ ParticleEmitter::~ParticleEmitter()
                 s_BufferManager->DeleteVertexArrays(1, &m_VAO);
             if (m_VBO != 0)
                 s_BufferManager->DeleteBuffers(1, &m_VBO);
-            if (m_instanceVBO != 0)
-                s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
         }
         catch (...)
         {
@@ -73,13 +82,15 @@ ParticleEmitter::~ParticleEmitter()
 
 ParticleEmitter::ParticleEmitter(ParticleEmitter&& other) noexcept
     : m_Particles(std::move(other.m_Particles)),
+      m_ActiveIndices(std::move(other.m_ActiveIndices)),
+      m_FreeIndices(std::move(other.m_FreeIndices)),
+      m_InstanceData(std::move(other.m_InstanceData)),
       m_MaxParticles(other.m_MaxParticles),
-      m_LastUsedParticle(other.m_LastUsedParticle),
       m_VAO(other.m_VAO),
       m_VBO(other.m_VBO),
       m_instanceVBO(other.m_instanceVBO),
+      m_InstanceUpload(std::move(other.m_InstanceUpload)),
       texture(other.texture),
-      Offset(other.Offset),
       MinVelocity(other.MinVelocity),
       MaxVelocity(other.MaxVelocity),
       StartColor(other.StartColor),
@@ -87,10 +98,12 @@ ParticleEmitter::ParticleEmitter(ParticleEmitter&& other) noexcept
       StartSize(other.StartSize),
       EndSize(other.EndSize),
       LifeTime(other.LifeTime),
-      StartLife(other.StartLife),
       SpawnRate(other.SpawnRate),
       Shape(other.Shape),
-      m_SpawnAccumulator(other.m_SpawnAccumulator)
+      m_SpawnAccumulator(other.m_SpawnAccumulator),
+      m_EmissionPhase(other.m_EmissionPhase),
+      m_SpawnBudgetEnabled(other.m_SpawnBudgetEnabled),
+      m_MaxSpawnPerFrame(other.m_MaxSpawnPerFrame)
 {
     other.m_VAO = 0;
     other.m_VBO = 0;
@@ -101,25 +114,26 @@ ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
 {
     if (this != &other)
     {
+        m_InstanceUpload.reset();
         if (s_BufferManager)
         {
             if (m_VAO != 0)
                 s_BufferManager->DeleteVertexArrays(1, &m_VAO);
             if (m_VBO != 0)
                 s_BufferManager->DeleteBuffers(1, &m_VBO);
-            if (m_instanceVBO != 0)
-                s_BufferManager->DeleteBuffers(1, &m_instanceVBO);
         }
 
         m_Particles = std::move(other.m_Particles);
+        m_ActiveIndices = std::move(other.m_ActiveIndices);
+        m_FreeIndices = std::move(other.m_FreeIndices);
+        m_InstanceData = std::move(other.m_InstanceData);
         m_MaxParticles = other.m_MaxParticles;
-        m_LastUsedParticle = other.m_LastUsedParticle;
         m_VAO = other.m_VAO;
         m_VBO = other.m_VBO;
         m_instanceVBO = other.m_instanceVBO;
+        m_InstanceUpload = std::move(other.m_InstanceUpload);
         texture = other.texture;
 
-        Offset = other.Offset;
         MinVelocity = other.MinVelocity;
         MaxVelocity = other.MaxVelocity;
         StartColor = other.StartColor;
@@ -127,10 +141,12 @@ ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
         StartSize = other.StartSize;
         EndSize = other.EndSize;
         LifeTime = other.LifeTime;
-        StartLife = other.StartLife;
         SpawnRate = other.SpawnRate;
         Shape = other.Shape;
         m_SpawnAccumulator = other.m_SpawnAccumulator;
+        m_EmissionPhase = other.m_EmissionPhase;
+        m_SpawnBudgetEnabled = other.m_SpawnBudgetEnabled;
+        m_MaxSpawnPerFrame = other.m_MaxSpawnPerFrame;
 
         other.m_VAO = 0;
         other.m_VBO = 0;
@@ -141,10 +157,28 @@ ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
 
 void ParticleEmitter::Initialize(unsigned int maxParticles)
 {
-    if (!s_BufferManager)
-        return;
+    m_InstanceUpload.reset();
+    if (s_BufferManager)
+    {
+        if (m_VAO != 0)
+            s_BufferManager->DeleteVertexArrays(1, &m_VAO);
+        if (m_VBO != 0)
+            s_BufferManager->DeleteBuffers(1, &m_VBO);
+    }
+    m_VAO = m_VBO = m_instanceVBO = 0;
     m_MaxParticles = maxParticles;
     m_Particles.resize(m_MaxParticles);
+    m_ActiveIndices.clear();
+    m_ActiveIndices.reserve(m_MaxParticles);
+    m_FreeIndices.clear();
+    m_FreeIndices.reserve(m_MaxParticles);
+    for (unsigned int index = m_MaxParticles; index > 0; --index)
+        m_FreeIndices.push_back(index - 1);
+    m_InstanceData.clear();
+    m_InstanceData.reserve(m_MaxParticles);
+
+    if (!s_BufferManager)
+        return;
 
     auto& bm = GetBufferManager();
 
@@ -154,7 +188,11 @@ void ParticleEmitter::Initialize(unsigned int maxParticles)
 
     m_VAO = bm.GenVertexArray();
     m_VBO = bm.GenBuffer();
-    m_instanceVBO = bm.GenBuffer();
+    m_InstanceUpload = std::make_unique<TransientBufferRing>();
+    m_InstanceUpload->Initialize(bm, BufferType::ArrayBuffer,
+                                 (std::max)(size_t{1}, static_cast<size_t>(m_MaxParticles)) *
+                                     sizeof(ParticleInstanceData));
+    m_instanceVBO = m_InstanceUpload->GetBuffer();
 
     bm.BindVertexArray(m_VAO);
 
@@ -168,8 +206,6 @@ void ParticleEmitter::Initialize(unsigned int maxParticles)
     bm.VertexAttribPointer(1, 2, DataType::Float, false, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
     bm.BindBuffer(BufferType::ArrayBuffer, m_instanceVBO);
-    bm.BufferData(BufferType::ArrayBuffer, m_MaxParticles * sizeof(ParticleInstanceData), nullptr,
-                  BufferUsage::StreamDraw);
 
     bm.EnableVertexAttribArray(2);
     bm.VertexAttribPointer(2, 4, DataType::Float, false, sizeof(ParticleInstanceData),
@@ -189,8 +225,6 @@ void ParticleEmitter::Initialize(unsigned int maxParticles)
     bm.BindVertexArray(0);
 }
 
-#include <random>
-
 float RandomFloat()
 {
     static thread_local std::mt19937 generator(std::random_device{}());
@@ -207,48 +241,64 @@ float RandomFloat(float min, float max)
 
 void ParticleEmitter::Update(float dt, const glm::vec3& offset, bool spawn)
 {
+    // Age the particles that existed at the start of the frame. Particles
+    // emitted below must remain visible for at least their first frame instead
+    // of immediately losing the entire frame delta from their lifetime.
+    for (size_t activeIndex = 0; activeIndex < m_ActiveIndices.size();)
+    {
+        Particle& p = m_Particles[m_ActiveIndices[activeIndex]];
+        p.Life -= dt;
+        if (p.Life <= 0.0f)
+        {
+            m_FreeIndices.push_back(m_ActiveIndices[activeIndex]);
+            m_ActiveIndices[activeIndex] = m_ActiveIndices.back();
+            m_ActiveIndices.pop_back();
+            continue;
+        }
+        p.Position += p.Velocity * dt;
+        const float t = 1.0f - (p.Life / p.StartLife);
+        p.Color = StartColor * (1.0f - t) + EndColor * t;
+        p.Size = StartSize * (1.0f - t) + EndSize * t;
+        ++activeIndex;
+    }
+
     if (spawn)
     {
         m_SpawnAccumulator += dt;
-        float rate = (SpawnRate > 0.0f) ? (1.0f / SpawnRate) : 0.0f;
-
-        while (m_SpawnAccumulator >= rate && rate > 0.0001f)
+        const float interval = SpawnRate > 0.0f ? 1.0f / SpawnRate : 0.0f;
+        const unsigned int maxSpawnThisFrame =
+            m_SpawnBudgetEnabled ? (std::min)(m_MaxParticles, m_MaxSpawnPerFrame) : m_MaxParticles;
+        unsigned int spawned = 0;
+        while (interval > 0.0f && m_SpawnAccumulator >= interval && !m_FreeIndices.empty() &&
+               spawned < maxSpawnThisFrame)
         {
-            int unusedParticle = FirstUnusedParticle();
-            RespawnParticle(m_Particles[unusedParticle], offset);
-            m_SpawnAccumulator -= rate;
+            const unsigned int particleIndex = m_FreeIndices.back();
+            m_FreeIndices.pop_back();
+            RespawnParticle(m_Particles[particleIndex], offset);
+            m_ActiveIndices.push_back(particleIndex);
+            m_SpawnAccumulator -= interval;
+            ++spawned;
         }
+        if (interval <= 0.0f || m_FreeIndices.empty() || spawned == maxSpawnThisFrame)
+            m_SpawnAccumulator = interval > 0.0f ? (std::min)(m_SpawnAccumulator, interval) : 0.0f;
     }
 
-    for (unsigned int i = 0; i < m_MaxParticles; ++i)
+    m_InstanceData.clear();
+    for (const unsigned int particleIndex : m_ActiveIndices)
     {
-        Particle& p = m_Particles[i];
-        p.Life -= dt;
-        if (p.Life > 0.0f)
-        {
-            p.Position += p.Velocity * dt;
-
-            float t = 1.0f - (p.Life / p.StartLife);
-            p.Color = StartColor * (1.0f - t) + EndColor * t;
-            p.Size = StartSize * (1.0f - t) + EndSize * t;
-        }
+        const auto& particle = m_Particles[particleIndex];
+        m_InstanceData.push_back({particle.Color, particle.Position, particle.Size});
     }
 }
 
 unsigned int ParticleEmitter::GetActiveParticleCount() const
 {
-    unsigned int count = 0;
-    for (const auto& p : m_Particles)
-    {
-        if (p.Life > 0.0f)
-            count++;
-    }
-    return count;
+    return static_cast<unsigned int>(m_ActiveIndices.size());
 }
 
 void ParticleEmitter::Render(Shader* shader)
 {
-    if (!s_TextureManager || !s_BufferManager || !s_DrawContext)
+    if (!s_TextureManager || !s_BufferManager || !s_DrawContext || !m_InstanceUpload)
         return;
     auto& tm = GetTextureManager();
     auto& bm = GetBufferManager();
@@ -261,53 +311,23 @@ void ParticleEmitter::Render(Shader* shader)
         shader->setInt("u_AlbedoMap", 0);
     }
 
-    std::vector<ParticleInstanceData> instanceData;
-    instanceData.reserve(m_MaxParticles);
-
-    for (const auto& particle : m_Particles)
-    {
-        if (particle.Life > 0.0f)
-        {
-            ParticleInstanceData data;
-            data.color = particle.Color;
-            data.offset = particle.Position;
-            data.scale = particle.Size;
-            instanceData.push_back(data);
-        }
-    }
-
-    if (instanceData.empty())
+    if (m_InstanceData.empty())
         return;
 
-    bm.BindBuffer(BufferType::ArrayBuffer, m_instanceVBO);
-    bm.BufferSubData(BufferType::ArrayBuffer, 0, instanceData.size() * sizeof(ParticleInstanceData),
-                     instanceData.data());
-    bm.BindBuffer(BufferType::ArrayBuffer, 0);
-
+    const auto slice = m_InstanceUpload->Upload(m_InstanceData.data(),
+                                                m_InstanceData.size() * sizeof(ParticleInstanceData));
+    m_instanceVBO = slice.buffer;
     bm.BindVertexArray(m_VAO);
-    dc.DrawArraysInstanced(Primitive::Triangles, 0, 6, static_cast<unsigned int>(instanceData.size()));
+    bm.BindBuffer(BufferType::ArrayBuffer, m_instanceVBO);
+    bm.VertexAttribPointer(2, 4, DataType::Float, false, sizeof(ParticleInstanceData),
+                           reinterpret_cast<void*>(slice.offset + offsetof(ParticleInstanceData, color)));
+    bm.VertexAttribPointer(3, 3, DataType::Float, false, sizeof(ParticleInstanceData),
+                           reinterpret_cast<void*>(slice.offset + offsetof(ParticleInstanceData, offset)));
+    bm.VertexAttribPointer(4, 1, DataType::Float, false, sizeof(ParticleInstanceData),
+                           reinterpret_cast<void*>(slice.offset + offsetof(ParticleInstanceData, scale)));
+    dc.DrawArraysInstanced(Primitive::Triangles, 0, 6, static_cast<unsigned int>(m_InstanceData.size()));
+    m_InstanceUpload->Commit();
     bm.BindVertexArray(0);
-}
-
-unsigned int ParticleEmitter::FirstUnusedParticle()
-{
-    for (unsigned int i = m_LastUsedParticle; i < m_MaxParticles; ++i)
-    {
-        if (m_Particles[i].Life <= 0.0f)
-        {
-            m_LastUsedParticle = i;
-            return i;
-        }
-    }
-    for (unsigned int i = 0; i < m_LastUsedParticle; ++i)
-    {
-        if (m_Particles[i].Life <= 0.0f)
-        {
-            m_LastUsedParticle = i;
-            return i;
-        }
-    }
-    return 0;
 }
 
 void ParticleEmitter::RespawnParticle(Particle& particle, const glm::vec3& offset)
@@ -340,10 +360,9 @@ void ParticleEmitter::RespawnParticle(Particle& particle, const glm::vec3& offse
     }
     else if (Shape == EmissionShape::FIGURE_EIGHT)
     {
-        static float timeAcc = 0.0f;
-        timeAcc += 0.1f;
-        float x = sin(timeAcc);
-        float z = sin(timeAcc / 2.0f);
+        m_EmissionPhase += 0.1f;
+        float x = sin(m_EmissionPhase);
+        float z = sin(m_EmissionPhase * 0.5f);
         particle.Velocity = glm::vec3(x, 1.0f, z) * glm::length(baseVel);
     }
 }

@@ -32,10 +32,7 @@ public:
     void Shutdown();
 
     void SetPhysicsStep(float step);
-    void SetMaxSubSteps(int steps)
-    {
-        m_MaxSubSteps = steps;
-    }
+    void SetMaxSubSteps(int steps);
     void SetTimeScale(float scale);
     void SetPaused(bool paused);
 
@@ -74,6 +71,9 @@ private:
     int m_MaxSubSteps = 10;
     int m_ConfigSubscriptionId = -1;
     bool m_IsRunning = false;
+#ifdef _WIN32
+    bool m_TimerResolutionEnabled = false;
+#endif
 };
 
 class RuntimeCore
