@@ -298,6 +298,17 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> enable;
         config.culling.frustumCullingEnabled = (enable != 0);
     }
+    else if (subCmd == "SPATIAL_CULLING")
+    {
+        std::string mode;
+        ss >> mode;
+        config.culling.spatialCullingMode =
+            ResolveEnum("SPATIAL_CULLING", mode,
+                        {{"AUTO", SpatialCullingMode::Auto},
+                         {"LINEAR", SpatialCullingMode::Linear},
+                         {"OCTREE", SpatialCullingMode::Octree}},
+                        config.culling.spatialCullingMode);
+    }
     else if (subCmd == "SHADOW_FRUSTUM")
     {
         int enable;

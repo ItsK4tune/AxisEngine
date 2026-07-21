@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/type/spatial_culling_mode.h>
 #include <render/type/graphics_types.h>
 #include <cstdint>
 
@@ -20,5 +21,7 @@ public:
     virtual void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less) = 0;
     virtual void SetInstanceBatching(bool enabled) = 0;
     virtual void SetFrustumCulling(bool enabled) = 0;
+    virtual void SetSpatialCullingMode(SpatialCullingMode mode) = 0;
+    virtual SpatialCullingMode GetActiveSpatialCullingMode() const = 0;
     virtual void SetRenderOrderEnabled(bool enabled) = 0;
 };

@@ -468,6 +468,12 @@ void WASAPIAudioCaptureService::Update(float deltaTime)
     m_Impl->processor.Update(deltaTime, isCapturing, rawRms, isCapturing ? rawPeak : 0.0f);
 }
 
+void WASAPIAudioCaptureService::SetPulseOrigin(const glm::vec3& origin)
+{
+    std::scoped_lock lock(m_Impl->stateMutex);
+    m_Impl->processor.SetPulseOrigin(origin);
+}
+
 void WASAPIAudioCaptureService::BeginCalibration(float seconds)
 {
     std::scoped_lock lock(m_Impl->stateMutex);

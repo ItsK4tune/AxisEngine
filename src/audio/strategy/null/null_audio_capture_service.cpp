@@ -41,6 +41,11 @@ void NullAudioCaptureService::Update(float deltaTime)
     m_Processor.Update(deltaTime, false, 0.0f, 0.0f);
 }
 
+void NullAudioCaptureService::SetPulseOrigin(const glm::vec3& origin)
+{
+    m_Processor.SetPulseOrigin(origin);
+}
+
 void NullAudioCaptureService::BeginCalibration(float seconds)
 {
     m_Processor.BeginCalibration(seconds);

@@ -135,16 +135,20 @@ Audio pulses use this std430 layout:
 
 ```glsl
 struct AudioPulse {
+    vec3 origin;
     float intensity;
     float peak;
     float age;
     float duration;
+    float padding;
 };
 
 layout(std430, binding = 26) readonly buffer AudioPulseBuffer {
     AudioPulse u_AudioPulses[];
 };
 ```
+
+`origin` is the fixed world-space position where the pulse was emitted. Microphone pulses use the active listener/camera position at detection time; gameplay pulses use the position supplied to `AudioService::EmitPulse`. The buffer keeps at most 64 of the newest active pulses.
 
 The serialized effect mask uses bits: color `1`, depth `2`, normal `4`, world position `8`, camera matrices `16`, and audio pulses `32`.
 Effects default to color-only for compatibility and cost control; request every additional input explicitly, or use the `PostProcessInput::Standard` mask when all six inputs are required.

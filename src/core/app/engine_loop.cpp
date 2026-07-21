@@ -149,6 +149,8 @@ void EngineLoop::ProcessFrame()
 
     stageStart = std::chrono::steady_clock::now();
     resourceManager.Update(m_RealDeltaTime);
+    if (auto* audioService = sl.Resolve<AudioService>())
+        audioService->UpdatePulses(m_RealDeltaTime);
     if (auto* audioCapture = sl.Resolve<IAudioCaptureService>())
         audioCapture->Update(m_RealDeltaTime);
     profiler.AddPassTime(ProfiledRenderPass::ResourceUpdate, elapsedMs(stageStart));

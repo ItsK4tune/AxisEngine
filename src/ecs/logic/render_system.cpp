@@ -68,6 +68,11 @@ void RenderSystem::SetFrustumCulling(bool enable)
     if (m_RenderService)
         m_RenderService->SetFrustumCulling(enable);
 }
+void RenderSystem::SetSpatialCullingMode(SpatialCullingMode mode)
+{
+    if (m_RenderService)
+        m_RenderService->SetSpatialCullingMode(mode);
+}
 void RenderSystem::SetRenderOrderEnabled(bool enable)
 {
     if (m_RenderService)

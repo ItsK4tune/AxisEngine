@@ -31,8 +31,21 @@ if (auto* audio = Resolve<AudioService>()) {
 ### Common Operations
 - **Play2D**: Use for background music or UI sound effects (`audio->Play2D("path.wav", true)`).
 - **Play3D**: Trigger a one-off sound at a world position.
+- **World-space pulse**: Publish a pulse for post-process or gameplay effects with `audio->EmitPulse(position, intensity, duration)`. Pulse emission is explicit so looping ambience and other 3D sounds do not create unwanted one-shot effects.
 - **Global Control**: `StopAll()` or `SetGlobalVolume(float)` for master volume control.
 - **Listener**: The system automatically updates the listener's "ears" to match the active camera position and orientation.
+
+For a spatial event that should be both audible and visible to an audio-reactive shader:
+
+```cpp
+if (auto* audio = Resolve<AudioService>()) {
+    const glm::vec3 origin = GetComponent<PositionComponent>().value;
+    audio->Play3D("audio/footstep.wav", origin);
+    audio->EmitPulse(origin, 0.8f, 0.45f);
+}
+```
+
+Microphone pulses are emitted automatically at the listener position. Both sources share the same 64-entry GPU pulse buffer.
 
 ---
 

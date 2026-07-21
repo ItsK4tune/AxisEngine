@@ -334,6 +334,7 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     config.audio.audioDevice.clear();
     config.audio.captureDevice.clear();
     config.culling.stencilTestEnabled = false;
+    config.culling.spatialCullingMode = SpatialCullingMode::Octree;
     config.optimization.resourceUploadBudgetEnabled = false;
     config.optimization.resourceHotReloadEnabled = true;
     config.optimization.maxModelUploadsPerFrame = 7;
@@ -402,6 +403,7 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     AXIS_CHECK(loadedConfig.audio.audioDevice.empty());
     AXIS_CHECK(loadedConfig.audio.captureDevice.empty());
     AXIS_CHECK(!loadedConfig.culling.stencilTestEnabled);
+    AXIS_CHECK(loadedConfig.culling.spatialCullingMode == SpatialCullingMode::Octree);
     AXIS_CHECK(!loadedConfig.optimization.resourceUploadBudgetEnabled);
     AXIS_CHECK(loadedConfig.optimization.resourceHotReloadEnabled);
     AXIS_CHECK(loadedConfig.optimization.maxModelUploadsPerFrame == 7);

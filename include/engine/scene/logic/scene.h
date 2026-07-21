@@ -59,10 +59,17 @@ struct Scene
         {
             m_OctreeFullRebuildRequired = false;
             m_DirtyOctreeEntities.clear();
+            m_OctreeDirtyEventCount = 0;
         }
     }
     void MarkOctreeEntityDirty(entt::entity entity);
     bool ConsumeOctreeChanges(std::vector<entt::entity>& output);
+    size_t ConsumeOctreeDirtyEventCount()
+    {
+        const size_t count = m_OctreeDirtyEventCount;
+        m_OctreeDirtyEventCount = 0;
+        return count;
+    }
     void OnOctreeDirty(entt::registry&, entt::entity entity) { MarkOctreeEntityDirty(entity); }
 
     void MarkTransformDirty(entt::entity entity);
@@ -212,6 +219,7 @@ private:
     bool m_OctreeDirty = true;
     bool m_OctreeFullRebuildRequired = true;
     std::unordered_set<entt::entity> m_DirtyOctreeEntities;
+    size_t m_OctreeDirtyEventCount = 0;
     std::unordered_set<entt::entity> m_DirtyTransforms;
 
     entt::entity m_ActiveSkybox = entt::null;

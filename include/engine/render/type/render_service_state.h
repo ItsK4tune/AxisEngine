@@ -1,5 +1,6 @@
 #pragma once
 
+#include <core/type/spatial_culling_mode.h>
 #include <ecs/interface/i_render_service.h>
 #include <glm/glm.hpp>
 
@@ -17,6 +18,7 @@ struct RenderFlagsState
     bool enabled = true;
     bool instanceBatchingEnabled = true;
     bool frustumCullingEnabled = true;
+    SpatialCullingMode spatialCullingMode = SpatialCullingMode::Auto;
     bool occlusionCullingEnabled = false;
     bool renderOrderEnabled = true;
     uint32_t filterLayerMask = 0xFFFFFFFF;

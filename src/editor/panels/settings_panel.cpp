@@ -9,6 +9,7 @@
 #include <core/logic/filesystem.h>
 #include <core/logic/service_locator.h>
 #include <core/type/tonemapping_mode.h>
+#include <ecs/interface/i_render_runtime_control.h>
 #include <platform/interface/i_device_manager.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/io_handler.h>
@@ -651,6 +652,19 @@ void SettingsPanel::OnImGui(Scene& scene)
     {
         if (ImGui::Checkbox("Frustum Culling", &conf.culling.frustumCullingEnabled))
             changed = true;
+        const char* spatialModes[] = {"Auto", "Linear", "Octree"};
+        int spatialMode = static_cast<int>(conf.culling.spatialCullingMode);
+        if (ImGui::Combo("Spatial Culling", &spatialMode, spatialModes, IM_ARRAYSIZE(spatialModes)))
+        {
+            conf.culling.spatialCullingMode = static_cast<SpatialCullingMode>(spatialMode);
+            changed = true;
+        }
+        if (conf.culling.spatialCullingMode == SpatialCullingMode::Auto)
+        {
+            if (auto* renderControl = ServiceLocator::Instance().Resolve<IRenderRuntimeControl>())
+                ImGui::TextDisabled("Active backend: %s",
+                                    SpatialCullingModeName(renderControl->GetActiveSpatialCullingMode()));
+        }
         if (ImGui::Checkbox("Depth Test", &conf.culling.depthTestEnabled))
             changed = true;
         if (ImGui::Checkbox("Stencil Test", &conf.culling.stencilTestEnabled))

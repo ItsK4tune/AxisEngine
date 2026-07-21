@@ -5,6 +5,7 @@
 #include <ecs/interface/i_render_runtime_control.h>
 #include <render/logic/frustum_culler.h>
 #include <render/logic/occlusion_culler.h>
+#include <render/logic/spatial_culling_policy.h>
 #include <render/type/graphics_types.h>
 #include <render/type/render_service_state.h>
 #include <render/unit/command_queue.h>
@@ -176,7 +177,18 @@ public:
     }
     void SetFrustumCulling(bool enable) override
     {
+        if (m_Flags.frustumCullingEnabled != enable)
+            m_SpatialCullingPolicy.ResetMeasurements();
         m_Flags.frustumCullingEnabled = enable;
+    }
+    void SetSpatialCullingMode(SpatialCullingMode mode) override
+    {
+        m_Flags.spatialCullingMode = mode;
+        m_SpatialCullingPolicy.SetMode(mode);
+    }
+    SpatialCullingMode GetActiveSpatialCullingMode() const override
+    {
+        return m_ActiveSpatialCullingMode;
     }
     void SetRenderOrderEnabled(bool enable) override
     {
@@ -307,6 +319,8 @@ private:
     std::unordered_map<entt::entity, OctreeEntryState> m_OctreeEntryStates;
     std::unordered_set<entt::entity> m_OctreeSeenEntities;
     std::vector<entt::entity> m_DirtyOctreeEntities;
+    SpatialCullingPolicy m_SpatialCullingPolicy;
+    SpatialCullingMode m_ActiveSpatialCullingMode = SpatialCullingMode::Linear;
     std::vector<MeshInstanceData> m_InstanceDataScratch;
 
     std::unique_ptr<RenderCore> m_RenderCore;

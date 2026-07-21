@@ -1,5 +1,6 @@
 #include <render/logic/post_process_pipeline.h>
 #include <audio/interface/i_audio_capture_service.h>
+#include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
 #include <core/logic/logger.h>
@@ -25,8 +26,8 @@
 
 namespace
 {
-static_assert(static_cast<size_t>(ShaderABI::MaxAudioPulses) == AudioCaptureLimits::MaxPulses,
-              "Audio capture and shader pulse limits must stay synchronized");
+static_assert(static_cast<size_t>(ShaderABI::MaxAudioPulses) == AudioPulseLimits::MaxPulses,
+              "Audio and shader pulse limits must stay synchronized");
 
 using ProfileClock = std::chrono::steady_clock;
 
@@ -482,6 +483,22 @@ void PostProcessPipeline::PrepareFrameInputs()
     {
         if (auto* audioCapture = services.Resolve<IAudioCaptureService>(); audioCapture && audioCapture->IsCapturing())
             m_FrameInputs.audio = audioCapture->GetSnapshot();
+
+        if (auto* audioService = services.Resolve<AudioService>())
+        {
+            const auto& gameplayPulses = audioService->GetPulses();
+            m_FrameInputs.audio.pulses.insert(m_FrameInputs.audio.pulses.end(), gameplayPulses.begin(),
+                                              gameplayPulses.end());
+        }
+
+        // Capture and gameplay each retain up to the public limit. When both
+        // are active, keep the newest events across the merged GPU buffer.
+        if (m_FrameInputs.audio.pulses.size() > AudioPulseLimits::MaxPulses)
+        {
+            std::stable_sort(m_FrameInputs.audio.pulses.begin(), m_FrameInputs.audio.pulses.end(),
+                             [](const AudioPulse& lhs, const AudioPulse& rhs) { return lhs.age < rhs.age; });
+            m_FrameInputs.audio.pulses.resize(AudioPulseLimits::MaxPulses);
+        }
 
         m_FrameInputs.pulseCount =
             (std::min)(m_FrameInputs.audio.pulses.size(), static_cast<size_t>(ShaderABI::MaxAudioPulses));

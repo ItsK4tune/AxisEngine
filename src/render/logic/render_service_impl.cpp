@@ -130,6 +130,7 @@ void RenderServiceImpl::Initialize()
 
     this->SetInstanceBatching(config.culling.instanceBatchingEnabled);
     this->SetFrustumCulling(config.culling.frustumCullingEnabled);
+    this->SetSpatialCullingMode(config.culling.spatialCullingMode);
     this->SetOcclusionCulling(config.culling.occlusionCullingEnabled);
     this->SetDistanceCulling(config.culling.distanceCulling);
     this->SetAntiAliasingMode((AntiAliasingMode)config.graphics.antialiasing);
@@ -156,6 +157,7 @@ void RenderServiceImpl::Initialize()
             const AppConfig& cfg = e.config;
             this->SetInstanceBatching(cfg.culling.instanceBatchingEnabled);
             this->SetFrustumCulling(cfg.culling.frustumCullingEnabled);
+            this->SetSpatialCullingMode(cfg.culling.spatialCullingMode);
             this->SetOcclusionCulling(cfg.culling.occlusionCullingEnabled);
             this->SetDistanceCulling(cfg.culling.distanceCulling);
             this->SetAntiAliasingMode((AntiAliasingMode)cfg.graphics.antialiasing);
@@ -567,15 +569,24 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         }
     }
 
+    const auto spatialBuildStart = std::chrono::steady_clock::now();
     auto renderView = scene.View<WorldTransformComponent, MeshRendererComponent, InfoComponent>();
     auto& registry = scene.GetRegistry();
 
     const size_t entityCount = renderView.size_hint();
-    const bool useOctree = m_Flags.frustumCullingEnabled && scene.GetOctree() && (entityCount >= 3000);
+    const size_t dirtyEvents = !m_IsCapturingProbe ? scene.ConsumeOctreeDirtyEventCount() : 0;
+    const bool octreeAvailable = m_Flags.frustumCullingEnabled && scene.GetOctree();
+    const SpatialCullingMode selectedSpatialMode =
+        m_SpatialCullingPolicy.Select(octreeAvailable, !m_IsCapturingProbe);
+    const bool useOctree = selectedSpatialMode == SpatialCullingMode::Octree;
+    bool octreeFullRebuild = false;
+    size_t processedOctreeChanges = 0;
 
     if (useOctree && scene.IsOctreeDirty())
     {
         const bool fullRebuild = scene.ConsumeOctreeChanges(m_DirtyOctreeEntities) || m_OctreeEntryStates.empty();
+        octreeFullRebuild = fullRebuild;
+        processedOctreeChanges = m_DirtyOctreeEntities.size();
         if (fullRebuild)
         {
             m_OctreeSeenEntities.clear();
@@ -756,6 +767,32 @@ void RenderServiceImpl::BuildRenderQueuesWithCamera(Scene& scene, const RenderVi
         for (entt::entity entity : renderView)
             m_CandidatesCache.push_back(entity);
         BuildRenderQueuesFromCandidates(scene, params, lodFactor, m_ProbeCache, m_ProbeTargetsCache, false, 0);
+    }
+
+    if (!m_IsCapturingProbe)
+    {
+        const float spatialCostMs =
+            std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - spatialBuildStart).count();
+        const bool transitioningToOctree =
+            useOctree && m_ActiveSpatialCullingMode == SpatialCullingMode::Linear;
+        const bool largeCatchUp =
+            transitioningToOctree && entityCount > 0 && processedOctreeChanges > entityCount / 4;
+        const bool ignoreTiming = useOctree && (octreeFullRebuild || largeCatchUp);
+        const SpatialCullingMode previousAutoMode = m_SpatialCullingPolicy.GetAutoMode();
+        m_SpatialCullingPolicy.RecordSample(selectedSpatialMode, spatialCostMs, entityCount, m_CandidatesCache.size(),
+                                            dirtyEvents, ignoreTiming);
+        const SpatialCullingMode nextAutoMode = m_SpatialCullingPolicy.GetAutoMode();
+        m_ActiveSpatialCullingMode = selectedSpatialMode;
+
+        if (m_Flags.spatialCullingMode == SpatialCullingMode::Auto && previousAutoMode != nextAutoMode)
+        {
+            const auto metrics = m_SpatialCullingPolicy.GetMetrics();
+            LOGGER_INFO("RenderService") << "Adaptive spatial culling selected "
+                                         << SpatialCullingModeName(nextAutoMode) << " (linear="
+                                         << metrics.linearCostMs << "ms, octree=" << metrics.octreeCostMs
+                                         << "ms, candidates=" << metrics.octreeCandidateRatio * 100.0f
+                                         << "%, dirty=" << metrics.dirtyRatio * 100.0f << "%)";
+        }
     }
 
     const float ambientIntensity = config ? (std::max)(0.0f, config->render.ambientIntensity) : 1.0f;

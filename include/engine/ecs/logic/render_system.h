@@ -60,6 +60,7 @@ public:
     void SetDepthTest(bool enabled, CompareFunc func = CompareFunc::Less);
     void SetInstanceBatching(bool enable);
     void SetFrustumCulling(bool enable);
+    void SetSpatialCullingMode(SpatialCullingMode mode);
     void SetRenderOrderEnabled(bool enable);
 
 private:

@@ -16,6 +16,7 @@ public:
     const AudioCaptureSettings& GetSettings() const;
 
     void BeginCalibration(float seconds);
+    void SetPulseOrigin(const glm::vec3& origin);
     void Update(float deltaTime, bool isCapturing, float rawRms, float rawPeak);
     void ResetLevelState();
 
@@ -28,4 +29,5 @@ private:
     float m_CalibrationWeightedTotal = 0.0f;
     float m_CalibrationElapsed = 0.0f;
     float m_PulseCooldownRemaining = 0.0f;
+    glm::vec3 m_PulseOrigin{0.0f};
 };

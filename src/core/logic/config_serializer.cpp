@@ -283,6 +283,7 @@ bool ConfigSerializer::Serialize(const std::string& filepath, const AppConfig& c
     kv("DEPTH_TEST", cfg.culling.depthTestEnabled ? "1" : "0");
     kv("STENCIL_TEST", cfg.culling.stencilTestEnabled ? "1" : "0");
     kv("FRUSTUM", cfg.culling.frustumCullingEnabled ? "1" : "0");
+    kv("SPATIAL_CULLING", SpatialCullingModeName(cfg.culling.spatialCullingMode));
     kv("OCCLUSION_CULLING", cfg.culling.occlusionCullingEnabled ? "1" : "0");
     kv("INSTANCING", cfg.culling.instanceBatchingEnabled ? "1" : "0");
     kv("RENDER_ORDER", cfg.culling.renderOrderEnabled ? "1" : "0");

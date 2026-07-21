@@ -105,6 +105,7 @@ void Scene::InitializeManagers()
     m_OctreeDirty = true;
     m_OctreeFullRebuildRequired = true;
     m_DirtyOctreeEntities.clear();
+    m_OctreeDirtyEventCount = 0;
 
     registry.on_update<PositionComponent>().connect<&Scene::OnOctreeDirty>(this);
     registry.on_update<RotationComponent>().connect<&Scene::OnOctreeDirty>(this);
@@ -123,6 +124,7 @@ void Scene::ShutdownManagers()
 
     m_Octree.reset();
     m_DirtyOctreeEntities.clear();
+    m_OctreeDirtyEventCount = 0;
     m_DirtyTransforms.clear();
     m_OctreeDirty = true;
     m_OctreeFullRebuildRequired = true;
@@ -447,6 +449,7 @@ void Scene::MarkTransformDirty(entt::entity entity)
 void Scene::MarkOctreeEntityDirty(entt::entity entity)
 {
     m_OctreeDirty = true;
+    ++m_OctreeDirtyEventCount;
     if (entity != entt::null)
         m_DirtyOctreeEntities.insert(entity);
 }

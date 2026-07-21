@@ -2,6 +2,7 @@
 #include "test_support.h"
 
 #include <audio/logic/audio_capture_processor.h>
+#include <audio/logic/audio_service.h>
 #include <audio/strategy/null/null_audio_engine.h>
 #include <core/app/app_builder.h>
 #include <core/app/application.h>
@@ -24,6 +25,7 @@
 #include <platform/logic/monitor_manager.h>
 #include <render/type/post_process_input.h>
 #include <render/type/shader_abi.h>
+#include <render/logic/spatial_culling_policy.h>
 #include <render/logic/particle_emitter.h>
 #include <resource/unit/model.h>
 #include <scene/logic/scene.h>
@@ -352,6 +354,7 @@ AXIS_TEST_CASE("Config validation reports and sanitizes unsafe runtime values")
     input.timeScale = std::numeric_limits<float>::quiet_NaN();
     input.audio.captureInputVolume = 50.0f;
     input.audio.captureAttackSeconds = -1.0f;
+    input.culling.spatialCullingMode = static_cast<SpatialCullingMode>(99);
 
     const ConfigValidationResult result = ValidateAndSanitizeConfig(input);
     AXIS_CHECK(result.WasSanitized());
@@ -362,6 +365,7 @@ AXIS_TEST_CASE("Config validation reports and sanitizes unsafe runtime values")
     AXIS_CHECK_NEAR(result.config.timeScale, 1.0f, 0.0001f);
     AXIS_CHECK_NEAR(result.config.audio.captureInputVolume, 4.0f, 0.0001f);
     AXIS_CHECK_NEAR(result.config.audio.captureAttackSeconds, 0.001f, 0.0001f);
+    AXIS_CHECK(result.config.culling.spatialCullingMode == SpatialCullingMode::Auto);
 }
 
 AXIS_TEST_CASE("Default asset bootstrap is explicit and sanitizes an empty manifest")
@@ -609,6 +613,8 @@ AXIS_TEST_CASE("Scene octree changes remain incremental after the initial rebuil
     const entt::entity entity = scene.GetRegistry().create();
     scene.MarkOctreeEntityDirty(entity);
     AXIS_CHECK(scene.IsOctreeDirty());
+    AXIS_CHECK(scene.ConsumeOctreeDirtyEventCount() == 1);
+    AXIS_CHECK(scene.ConsumeOctreeDirtyEventCount() == 0);
     AXIS_CHECK(!scene.ConsumeOctreeChanges(dirty));
     AXIS_CHECK(dirty.size() == 1);
     AXIS_CHECK(dirty.front() == entity);
@@ -617,6 +623,38 @@ AXIS_TEST_CASE("Scene octree changes remain incremental after the initial rebuil
     scene.SetOctreeDirty(true);
     AXIS_CHECK(scene.ConsumeOctreeChanges(dirty));
     scene.ShutdownManagers();
+}
+
+AXIS_TEST_CASE("Spatial culling policy learns the faster backend without an entity threshold")
+{
+    SpatialCullingPolicy policy;
+    for (int frame = 0; frame < 8; ++frame)
+    {
+        AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Linear);
+        policy.RecordSample(SpatialCullingMode::Linear, 4.0f, 100, 100, 0);
+    }
+
+    AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Octree);
+    policy.RecordSample(SpatialCullingMode::Octree, 100.0f, 100, 10, 100, true);
+    AXIS_CHECK(policy.GetMetrics().octreeSamples == 0);
+    AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Octree);
+    policy.RecordSample(SpatialCullingMode::Octree, 0.5f, 100, 10, 0);
+    AXIS_CHECK(policy.GetAutoMode() == SpatialCullingMode::Octree);
+
+    policy.SetMode(SpatialCullingMode::Linear);
+    AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Linear);
+    policy.SetMode(SpatialCullingMode::Octree);
+    AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Octree);
+    AXIS_CHECK(policy.Select(false) == SpatialCullingMode::Linear);
+}
+
+AXIS_TEST_CASE("Spatial culling policy avoids octree probes during sustained transform churn")
+{
+    SpatialCullingPolicy policy;
+    for (int frame = 0; frame < 16; ++frame)
+        policy.RecordSample(SpatialCullingMode::Linear, 1.0f, 100, 100, 100);
+    AXIS_CHECK(policy.GetMetrics().dirtyRatio > 0.9f);
+    AXIS_CHECK(policy.Select(true) == SpatialCullingMode::Linear);
 }
 
 AXIS_TEST_CASE("RuntimeProfiler publishes the last completed frame")
@@ -881,12 +919,43 @@ AXIS_TEST_CASE("AudioCaptureProcessor sanitizes settings and keeps new pulses al
     AXIS_CHECK_NEAR(processor.GetSnapshot().level.noiseFloor, 0.035f, 0.0001f);
 
     processor.BeginCalibration(0.0f);
+    processor.SetPulseOrigin(glm::vec3(4.0f, 5.0f, 6.0f));
     processor.Update(0.1f, true, 1.0f, 1.0f);
     AXIS_CHECK(processor.GetSnapshot().pulses.size() == 1);
     if (!processor.GetSnapshot().pulses.empty())
+    {
         AXIS_CHECK_NEAR(processor.GetSnapshot().pulses.front().age, 0.0f, 0.0001f);
+        AXIS_CHECK_NEAR(processor.GetSnapshot().pulses.front().origin.x, 4.0f, 0.0001f);
+        AXIS_CHECK_NEAR(processor.GetSnapshot().pulses.front().origin.y, 5.0f, 0.0001f);
+        AXIS_CHECK_NEAR(processor.GetSnapshot().pulses.front().origin.z, 6.0f, 0.0001f);
+    }
     processor.Update(0.06f, false, 0.0f, 0.0f);
     AXIS_CHECK(processor.GetSnapshot().pulses.empty());
+}
+
+AXIS_TEST_CASE("AudioService retains bounded world-space gameplay pulses")
+{
+    AudioService audio;
+    audio.EmitPulse(glm::vec3(1.0f, 2.0f, 3.0f), 1.5f, 0.5f);
+    AXIS_CHECK(audio.GetPulses().size() == 1);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().origin.x, 1.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().origin.y, 2.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().origin.z, 3.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().intensity, 1.0f, 0.0001f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().peak, 1.0f, 0.0001f);
+
+    audio.UpdatePulses(0.25f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().age, 0.25f, 0.0001f);
+    audio.UpdatePulses(0.25f);
+    AXIS_CHECK(audio.GetPulses().empty());
+
+    for (size_t i = 0; i < AudioPulseLimits::MaxPulses + 3; ++i)
+        audio.EmitPulse(glm::vec3(static_cast<float>(i), 0.0f, 0.0f));
+    AXIS_CHECK(audio.GetPulses().size() == AudioPulseLimits::MaxPulses);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().origin.x, 3.0f, 0.0001f);
+
+    audio.EmitPulse(glm::vec3(std::numeric_limits<float>::quiet_NaN()), 1.0f, 1.0f);
+    AXIS_CHECK(audio.GetPulses().size() == AudioPulseLimits::MaxPulses);
 }
 
 AXIS_TEST_CASE("AudioCaptureProcessor applies mic input volume and independent response timing")
@@ -933,15 +1002,24 @@ AXIS_TEST_CASE("ConfigLoader preserves known custom-provider backends and reject
         std::stringstream line("MIC_INPUT_THRESHOLD 0.07");
         ConfigLoader::LoadConfig(line, config, false);
     }
+    {
+        std::stringstream line("SPATIAL_CULLING OCTREE");
+        ConfigLoader::LoadConfig(line, config, false);
+    }
     AXIS_CHECK(config.graphics.graphicsBackend == GraphicsBackend::DirectX);
     AXIS_CHECK(config.physics.physicsBackend == PhysicsBackend::PhysX);
     AXIS_CHECK(config.audio.audioBackend == AudioBackend::OpenAL);
     AXIS_CHECK_NEAR(config.audio.captureInputVolume, 1.8f, 0.0001f);
     AXIS_CHECK_NEAR(config.audio.captureNoiseGate, 0.07f, 0.0001f);
+    AXIS_CHECK(config.culling.spatialCullingMode == SpatialCullingMode::Octree);
 
     std::stringstream invalid("GRAPHICS_API TYPO_BACKEND");
     ConfigLoader::LoadConfig(invalid, config, false);
     AXIS_CHECK(config.graphics.graphicsBackend == GraphicsBackend::DirectX);
+
+    std::stringstream invalidSpatial("SPATIAL_CULLING TYPO_MODE");
+    ConfigLoader::LoadConfig(invalidSpatial, config, false);
+    AXIS_CHECK(config.culling.spatialCullingMode == SpatialCullingMode::Octree);
 }
 
 AXIS_TEST_CASE("Engine assets resolve from a build output directory")
@@ -1132,6 +1210,7 @@ AXIS_TEST_CASE("Shader ABI constants and post-process mask stay synchronized")
     AXIS_CHECK(ShaderABI::LightTileGridSSBOBinding == 27);
     AXIS_CHECK(ShaderABI::LightTileIndicesSSBOBinding == 28);
     AXIS_CHECK(ShaderABI::MaxAudioPulses == 64);
+    AXIS_CHECK(sizeof(AudioPulse) == 32);
     AXIS_CHECK(HasPostProcessInput(PostProcessInput::Standard, PostProcessInput::AudioPulses));
     AXIS_CHECK(static_cast<uint32_t>(PostProcessInput::Standard) == 63u);
 }

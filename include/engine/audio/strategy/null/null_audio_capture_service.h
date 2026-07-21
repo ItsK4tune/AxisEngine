@@ -14,6 +14,7 @@ public:
     void Stop() override;
     bool IsCapturing() const override;
     void Update(float deltaTime) override;
+    void SetPulseOrigin(const glm::vec3& origin) override;
     void BeginCalibration(float seconds) override;
     void SetSettings(const AudioCaptureSettings& settings) override;
     AudioCaptureSettings GetSettings() const override;

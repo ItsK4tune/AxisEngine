@@ -51,6 +51,12 @@ void AudioCaptureProcessor::BeginCalibration(float seconds)
     m_Snapshot.level.noiseFloor = 0.0f;
 }
 
+void AudioCaptureProcessor::SetPulseOrigin(const glm::vec3& origin)
+{
+    if (std::isfinite(origin.x) && std::isfinite(origin.y) && std::isfinite(origin.z))
+        m_PulseOrigin = origin;
+}
+
 void AudioCaptureProcessor::Update(float deltaTime, bool isCapturing, float rawRms, float rawPeak)
 {
     const float dt = std::max(deltaTime, 0.0f);
@@ -84,7 +90,12 @@ void AudioCaptureProcessor::Update(float deltaTime, bool isCapturing, float rawR
     if (isCapturing && m_CalibrationRemaining == 0.0f && snapshot.level.intensity >= m_Settings.pulseThreshold &&
         m_PulseCooldownRemaining == 0.0f)
     {
-        snapshot.pulses.push_back({snapshot.level.intensity, snapshot.level.peak, 0.0f, m_Settings.pulseDuration});
+        AudioPulse pulse;
+        pulse.origin = m_PulseOrigin;
+        pulse.intensity = snapshot.level.intensity;
+        pulse.peak = snapshot.level.peak;
+        pulse.duration = m_Settings.pulseDuration;
+        snapshot.pulses.push_back(pulse);
         if (snapshot.pulses.size() > AudioCaptureLimits::MaxPulses)
         {
             snapshot.pulses.erase(snapshot.pulses.begin(),

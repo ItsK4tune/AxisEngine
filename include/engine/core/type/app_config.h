@@ -7,6 +7,7 @@
 #include <core/type/physics_backend.h>
 #include <core/type/physics_mode.h>
 #include <core/type/render_path.h>
+#include <core/type/spatial_culling_mode.h>
 #include <core/type/tonemapping_mode.h>
 #include <platform/type/window_mode.h>
 #include <cstdint>
@@ -125,6 +126,7 @@ struct CullingConfig
     bool depthTestEnabled = true;
     bool stencilTestEnabled = true;
     bool frustumCullingEnabled = true;
+    SpatialCullingMode spatialCullingMode = SpatialCullingMode::Auto;
     bool occlusionCullingEnabled = false;
     bool instanceBatchingEnabled = true;
     bool renderOrderEnabled = false;

@@ -26,6 +26,7 @@ axis_config:
     RENDER_ORDER: 0
     ANTIALIASING: TAA
     FRUSTUM: 1
+    SPATIAL_CULLING: AUTO
     DISTANCE: 0.0
     INSTANCING: 1
     OCCLUSION_CULLING: 0
@@ -90,6 +91,11 @@ These settings apply to the `IGraphicsContext` and rendering provider compiled i
 - **`AMBIENT_INTENSITY`**: Multiplier applied to light ambient terms.
 - **`UI_REFERENCE_WIDTH` / `UI_REFERENCE_HEIGHT`**: Reference canvas size used by UI rendering and input scaling.
 - **`UI_REFERENCE_SIZE`**: Shorthand form that accepts width and height in one line.
+
+### Spatial culling
+- **`FRUSTUM`**: Enables view-frustum culling.
+- **`SPATIAL_CULLING`**: Selects the render-candidate backend: `AUTO`, `LINEAR`, or `OCTREE`.
+  `AUTO` measures both paths periodically and uses hysteresis plus scene churn/candidate ratios to keep the faster path.
 
 ---
 

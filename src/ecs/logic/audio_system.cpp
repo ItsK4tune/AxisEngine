@@ -1,4 +1,5 @@
 #include <ecs/logic/audio_system.h>
+#include <audio/interface/i_audio_capture_service.h>
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
@@ -64,10 +65,6 @@ void AudioSystem::Update(Scene& scene, float dt)
     if (!audioService)
         return;
 
-    auto* engine = audioService->GetEngine();
-    if (!engine)
-        return;
-
     entt::entity camEntity = scene.GetActiveCamera();
     if (camEntity != entt::null)
     {
@@ -84,7 +81,13 @@ void AudioSystem::Update(Scene& scene, float dt)
         }
 
         audioService->UpdateListener(listenerPosition, lookDir);
+        if (auto* capture = ServiceLocator::Instance().Resolve<IAudioCaptureService>())
+            capture->SetPulseOrigin(listenerPosition);
     }
+
+    auto* engine = audioService->GetEngine();
+    if (!engine)
+        return;
 
     auto view = scene.GetRegistry().view<AudioSourceComponent, InfoComponent>();
 

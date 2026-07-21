@@ -1,5 +1,6 @@
 #pragma once
 
+#include <audio/unit/audio_pulse.h>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -7,8 +8,9 @@
 
 namespace AudioCaptureLimits
 {
-inline constexpr size_t MaxPulses = 64;
-}
+// Compatibility alias for clients that used the old capture-specific limit.
+inline constexpr size_t MaxPulses = AudioPulseLimits::MaxPulses;
+}  // namespace AudioCaptureLimits
 
 enum class AudioCaptureResult
 {
@@ -51,16 +53,6 @@ struct AudioCaptureLevel
     float noiseFloor = 0.0f;
 };
 
-// std430-compatible representation used by custom post-process shaders.
-struct alignas(16) AudioPulse
-{
-    float intensity = 0.0f;
-    float peak = 0.0f;
-    float age = 0.0f;
-    float duration = 0.0f;
-};
-static_assert(sizeof(AudioPulse) == 16, "AudioPulse must match the std430 shader layout");
-
 struct AudioCaptureSnapshot
 {
     AudioCaptureLevel level;
@@ -84,6 +76,12 @@ public:
 
     // Called once per frame with unscaled real time.
     virtual void Update(float deltaTime) = 0;
+    // Microphone pulses are spatialized at the listener/camera position at
+    // the moment they are detected. The default keeps third-party capture
+    // providers source-compatible while opting out of spatial propagation.
+    virtual void SetPulseOrigin(const glm::vec3&)
+    {
+    }
     virtual void BeginCalibration(float seconds) = 0;
     virtual void SetSettings(const AudioCaptureSettings& settings) = 0;
     virtual AudioCaptureSettings GetSettings() const = 0;

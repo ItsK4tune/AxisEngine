@@ -168,6 +168,12 @@ ConfigValidationResult ValidateAndSanitizeConfig(const AppConfig& input, const C
     updateCapture(config.audio.capturePulseDuration, sanitizedCapture.pulseDuration, "audio.capturePulseDuration");
 
     ClampFinite(config.culling.distanceCulling, 0.0f, 10000000.0f, 0.0f, "culling.distanceCulling", issues);
+    if (config.culling.spatialCullingMode < SpatialCullingMode::Auto ||
+        config.culling.spatialCullingMode > SpatialCullingMode::Octree)
+    {
+        config.culling.spatialCullingMode = SpatialCullingMode::Auto;
+        issues.push_back({"culling.spatialCullingMode", "invalid mode was replaced by Auto"});
+    }
     ClampValue(config.optimization.maxModelUploadsPerFrame, 1, 65536,
                "optimization.maxModelUploadsPerFrame", issues);
     ClampValue(config.optimization.maxTextureUploadsPerFrame, 1, 65536,
