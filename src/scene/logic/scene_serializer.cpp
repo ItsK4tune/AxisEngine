@@ -33,6 +33,7 @@
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/scene_load_finalizer.h>
 #include <algorithm>
+#include <iomanip>
 #include <cctype>
 #include <filesystem>
 #include <set>
@@ -650,6 +651,36 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         SerialWriteKV(f, ti, "StartTime", FloatStr(anim->startTime));
         SerialWriteKV(f, ti, "Rate", FloatStr(anim->rate));
         SerialWriteKV(f, ti, "BlendFactor", FloatStr(anim->blendFactor));
+        SerialWriteKV(f, ti, "GraphEnabled", anim->graph.enabled ? "true" : "false");
+        if (anim->graph.entryState != 0)
+            SerialWriteKV(f, ti, "GraphEntry", std::to_string(anim->graph.entryState));
+        for (const auto& parameter : anim->graph.parameters)
+        {
+            std::ostringstream record;
+            record << std::quoted(parameter.name) << " " << static_cast<int>(parameter.type) << " "
+                   << FloatStr(parameter.floatValue) << " " << parameter.boolValue << " " << parameter.triggerValue;
+            SerialWriteKV(f, ti, "GraphParameter", record.str());
+        }
+        for (const auto& state : anim->graph.states)
+        {
+            std::ostringstream record;
+            record << state.id << " " << std::quoted(state.name) << " " << std::quoted(state.clip) << " "
+                   << FloatStr(state.speed) << " " << FloatStr(state.editorPosition.x) << " "
+                   << FloatStr(state.editorPosition.y);
+            SerialWriteKV(f, ti, "GraphState", record.str());
+        }
+        for (const auto& transition : anim->graph.transitions)
+        {
+            std::ostringstream record;
+            record << transition.id << " " << transition.fromState << " " << transition.toState << " "
+                   << FloatStr(transition.duration) << " " << transition.hasExitTime << " "
+                   << FloatStr(transition.exitTime) << " " << static_cast<int>(transition.conditionLogic) << " "
+                   << transition.conditions.size();
+            for (const auto& condition : transition.conditions)
+                record << " " << std::quoted(condition.parameter) << " " << static_cast<int>(condition.op) << " "
+                       << FloatStr(condition.threshold) << " " << condition.negated;
+            SerialWriteKV(f, ti, "GraphTransitionV2", record.str());
+        }
     }
 
     // Lights
@@ -817,6 +848,35 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
             SerialWriteKV(f, ti, "Shader", pe->customShader);
         SerialWriteKV(f, ti, "SpawnRate", FloatStr(pe->emitter.SpawnRate));
         SerialWriteKV(f, ti, "Lifetime", FloatStr(pe->emitter.LifeTime));
+        SerialWriteKV(f, ti, "Gravity", Vec3Str(pe->emitter.Gravity));
+        SerialWriteKV(f, ti, "Drag", FloatStr(pe->emitter.Drag));
+        SerialWriteKV(f, ti, "GraphEnabled", pe->graph.enabled ? "true" : "false");
+        for (const auto& parameter : pe->graph.parameters)
+        {
+            std::ostringstream record;
+            record << std::quoted(parameter.name) << " " << static_cast<int>(parameter.type) << " "
+                   << FloatStr(parameter.floatValue) << " " << parameter.boolValue << " " << parameter.triggerValue;
+            SerialWriteKV(f, ti, "GraphParameter", record.str());
+        }
+        for (const auto& node : pe->graph.nodes)
+        {
+            std::ostringstream record;
+            record << node.id << " " << static_cast<int>(node.type) << " " << std::quoted(node.name) << " "
+                   << node.enabled << " " << FloatStr(node.scalarA) << " " << FloatStr(node.scalarB) << " "
+                   << Vec4Str(node.valueA) << " " << Vec4Str(node.valueB) << " "
+                   << FloatStr(node.editorPosition.x) << " " << FloatStr(node.editorPosition.y);
+            SerialWriteKV(f, ti, "GraphNode", record.str());
+        }
+        for (const auto& link : pe->graph.links)
+        {
+            std::ostringstream record;
+            record << link.id << " " << link.fromNode << " " << link.toNode << " "
+                   << static_cast<int>(link.conditionLogic) << " " << link.conditions.size();
+            for (const auto& condition : link.conditions)
+                record << " " << std::quoted(condition.parameter) << " " << static_cast<int>(condition.op) << " "
+                       << FloatStr(condition.threshold) << " " << condition.negated;
+            SerialWriteKV(f, ti, "GraphLinkV2", record.str());
+        }
         SerialWriteKV(f, ti, "Shape",
                       pe->emitter.Shape == ParticleEmitter::EmissionShape::CONE
                           ? "CONE"

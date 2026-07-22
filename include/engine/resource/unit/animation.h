@@ -44,7 +44,7 @@ public:
 
 private:
     float m_Duration = 0.0f;
-    int m_TicksPerSecond = 0;
+    float m_TicksPerSecond = 0.0f;
     bool m_Valid = false;
     std::vector<Bone> m_Bones;
     std::unordered_map<std::string, Bone*> m_BoneMap;

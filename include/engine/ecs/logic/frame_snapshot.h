@@ -13,6 +13,7 @@
 struct AnimationSnapshotItem
 {
     entt::entity entity = entt::null;
+    AnimationComponent* component = nullptr;
     std::shared_ptr<Animator> animator = nullptr;
     float speed = 1.0f;
     glm::mat4 rootTransform = glm::mat4(1.0f);
@@ -34,7 +35,7 @@ public:
             if (!info.isActive)
                 continue;
 
-            const auto& animation = view.get<AnimationComponent>(entity);
+            auto& animation = view.get<AnimationComponent>(entity);
             if (!animation.animator)
                 continue;
 
@@ -45,7 +46,7 @@ public:
                 rootTransform = renderer.model->GetRootTransform();
             }
 
-            m_Animations.push_back({entity, animation.animator, animation.speed, rootTransform});
+            m_Animations.push_back({entity, &animation, animation.animator, animation.speed, rootTransform});
         }
     }
 

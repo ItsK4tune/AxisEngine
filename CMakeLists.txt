@@ -147,6 +147,7 @@ target_compile_definitions(axis_engine PUBLIC
 
 if(MSVC)
     target_compile_options(axis_engine PRIVATE /FS)
+    target_compile_definitions(axis_engine PRIVATE _ENABLE_EXTENDED_ALIGNED_STORAGE)
     add_link_options($<$<CONFIG:Release>:/OPT:REF> $<$<CONFIG:Release>:/OPT:ICF>)
 endif()
 

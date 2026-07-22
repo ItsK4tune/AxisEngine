@@ -476,6 +476,69 @@ AXIS_TEST_CASE("SceneSerializer round trips script and particle emission shape")
                ParticleEmitter::EmissionShape::CONE);
 }
 
+AXIS_TEST_CASE("SceneSerializer round trips animation and VFX graphs")
+{
+    axis_test_support::HeadlessResourceFixture fixture;
+    Scene source;
+    const entt::entity entity = source.GetRegistry().create();
+    source.AddComponent<InfoComponent>(entity, "GraphEntity", "default");
+
+    auto& animation = source.AddComponent<AnimationComponent>(entity);
+    animation.graph.enabled = true;
+    animation.graph.entryState = 10;
+    animation.graph.parameters.push_back({"move speed", AnimationParameterType::Float, 1.25f});
+    animation.graph.states.push_back({10, "Idle State", "idle", 1.0f, glm::vec2(12, 34)});
+    animation.graph.states.push_back({11, "Run State", "run", 1.2f, glm::vec2(220, 34)});
+    animation.graph.transitions.push_back(
+        {12, 10, 11, 0.15f, false, 0.9f, {{"move speed", AnimationConditionOp::Greater, 0.5f}}});
+    animation.graph.transitions.back().conditionLogic = GraphConditionLogic::Nor;
+    animation.graph.transitions.back().conditions.front().negated = true;
+
+    auto& particles = source.AddComponent<ParticleEmitterComponent>(entity);
+    particles.emitter.Initialize(16);
+    particles.maxParticles = 16;
+    particles.emitter.Gravity = glm::vec3(0, -4, 0);
+    particles.emitter.Drag = 0.25f;
+    particles.graph.enabled = true;
+    particles.graph.parameters.push_back({"burst", AnimationParameterType::Trigger, 0.0f, false, true});
+    particles.graph.nodes.push_back({20, VFXNodeType::Gravity, "World Gravity", glm::vec4(0, -8, 0, 0),
+                                     {}, 0, 0, true, glm::vec2(40, 50)});
+    particles.graph.nodes.push_back({21, VFXNodeType::Output, "Output", {}, {}, 0, 0, true,
+                                     glm::vec2(260, 50)});
+    particles.graph.links.push_back({22, 20, 21});
+    particles.graph.links.back().conditionLogic = GraphConditionLogic::Xor;
+    particles.graph.links.back().conditions.push_back(
+        {"burst", AnimationConditionOp::Triggered, 0.0f, true});
+
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    const std::string text = serializer.SerializeToString(source);
+    AXIS_CHECK(text.find("GraphTransitionV2:") != std::string::npos);
+    AXIS_CHECK(text.find("GraphNode:") != std::string::npos);
+    AXIS_CHECK(text.find("GraphLinkV2:") != std::string::npos);
+
+    Scene loaded;
+    SceneLoadResult result;
+    AXIS_CHECK(serializer.DeserializeFromString(text, "graph_roundtrip", loaded, result));
+    const entt::entity loadedEntity = loaded.FindByName("GraphEntity");
+    AXIS_CHECK(loadedEntity != entt::null);
+    if (loadedEntity == entt::null) return;
+    const auto& loadedAnimation = loaded.GetComponent<AnimationComponent>(loadedEntity);
+    AXIS_CHECK(loadedAnimation.graph.enabled);
+    AXIS_CHECK(loadedAnimation.graph.states.size() == 2);
+    AXIS_CHECK(loadedAnimation.graph.transitions.size() == 1);
+    AXIS_CHECK(loadedAnimation.graph.parameters.front().name == "move speed");
+    AXIS_CHECK(loadedAnimation.graph.transitions.front().conditionLogic == GraphConditionLogic::Nor);
+    AXIS_CHECK(loadedAnimation.graph.transitions.front().conditions.front().negated);
+    const auto& loadedParticles = loaded.GetComponent<ParticleEmitterComponent>(loadedEntity);
+    AXIS_CHECK(loadedParticles.graph.enabled);
+    AXIS_CHECK(loadedParticles.graph.nodes.size() == 2);
+    AXIS_CHECK(loadedParticles.graph.links.size() == 1);
+    AXIS_CHECK(loadedParticles.graph.parameters.size() == 1);
+    AXIS_CHECK(loadedParticles.graph.links.front().conditionLogic == GraphConditionLogic::Xor);
+    AXIS_CHECK(loadedParticles.graph.links.front().conditions.front().negated);
+    AXIS_CHECK_NEAR(loadedParticles.emitter.Drag, 0.25f, 0.0001f);
+}
+
 AXIS_TEST_CASE("SceneSerializer round trips network replication policy")
 {
     axis_test_support::HeadlessResourceFixture fixture;

@@ -101,6 +101,10 @@ void Animator::PlayAnimation(std::shared_ptr<Animation> pAnimation)
     std::lock_guard<std::mutex> lock(m_Mutex);
     m_CurrentAnimation = pAnimation;
     m_CurrentTime = 0.0f;
+    m_NextAnimation = nullptr;
+    m_NextTime = 0.0f;
+    m_BlendFactor = 0.0f;
+    m_IsCrossFading = false;
 }
 
 void Animator::PlayAnimation(const std::string& name)
@@ -115,11 +119,21 @@ void Animator::PlayAnimation(const std::string& name)
             m_CurrentAnimation = targetAnim;
             m_CurrentTime = 0.0f;
         }
+        m_NextAnimation = nullptr;
+        m_NextTime = 0.0f;
+        m_BlendFactor = 0.0f;
+        m_IsCrossFading = false;
     }
     else
     {
         LOGGER_ERROR("Animator") << "Animation not found: " << name;
     }
+}
+
+bool Animator::HasAnimation(const std::string& name) const
+{
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    return m_AnimationsMap.contains(name);
 }
 
 void Animator::CrossFade(const std::string& name, float transitionDuration)
@@ -137,15 +151,22 @@ void Animator::CrossFade(const std::string& name, float transitionDuration)
     if (target == m_NextAnimation && m_IsCrossFading)
         return;
 
+    if (transitionDuration <= 0.0f)
+    {
+        m_CurrentAnimation = target;
+        m_CurrentTime = 0.0f;
+        m_NextAnimation = nullptr;
+        m_NextTime = 0.0f;
+        m_BlendFactor = 0.0f;
+        m_IsCrossFading = false;
+        return;
+    }
+
     m_NextAnimation = target;
     m_NextTime = 0.0f;
     m_BlendFactor = 0.0f;
     m_IsCrossFading = true;
-
-    if (transitionDuration <= 0.0f)
-        m_TransitionSpeed = 1000.0f;
-    else
-        m_TransitionSpeed = 1.0f / transitionDuration;
+    m_TransitionSpeed = 1.0f / transitionDuration;
 }
 
 void Animator::PlayBlend(const std::string& nameA, const std::string& nameB, float factor)

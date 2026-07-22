@@ -45,6 +45,7 @@
 #include <core/type/event_types.h>
 #include <ecs/logic/system_manager.h>
 #include <editor/panels/console_panel.h>
+#include <editor/panels/animation_graph_panel.h>
 #include <editor/panels/file_hierarchy_panel.h>
 #include <editor/panels/help_panel.h>
 #include <editor/panels/profiler_panel.h>
@@ -55,6 +56,7 @@
 #include <editor/panels/state_panel.h>
 #include <editor/panels/network_panel.h>
 #include <editor/panels/tools_panel.h>
+#include <editor/panels/vfx_graph_panel.h>
 
 namespace
 {
@@ -150,10 +152,13 @@ void EditorSystem::Initialize()
     m_Panels.push_back(std::make_unique<StatePanel>());
     m_Panels.push_back(std::make_unique<NetworkPanel>());
     m_Panels.push_back(std::make_unique<HelpPanel>());
+    m_Panels.push_back(std::make_unique<AnimationGraphPanel>());
+    m_Panels.push_back(std::make_unique<VFXGraphPanel>());
     m_PanelOwners.assign(m_Panels.size(), "axis.editor");
 
-    const char* defaultPanelNames[] = {"Scene Hierarchy", "Resource Browser", "File Hierarchy", "Tools",   "Settings",
-                                       "Profiler",        "Console",          "State",          "Network", "Help"};
+    const char* defaultPanelNames[] = {"Scene Hierarchy", "Resource Browser", "File Hierarchy", "Tools",
+                                       "Settings", "Profiler", "Console", "State", "Network", "Help",
+                                       "Animation Graph", "VFX Graph"};
     for (const char* name : defaultPanelNames)
         m_Extensions.push_back({"axis.editor", name, EditorExtensionKind::Panel});
 
@@ -670,17 +675,20 @@ void EditorSystem::OnUpdate(float dt)
             m_F6Pressed = false;
     }
 
-    // Panel toggle shortcuts (Ctrl+1 to Ctrl+9, and Ctrl+0 for HelpPanel)
+    // Panel toggle shortcuts. Ctrl+1..0 addresses the first bank; Ctrl+Shift+1..0 the second.
     Key numKeys[] = {Key::_1, Key::_2, Key::_3, Key::_4, Key::_5, Key::_6, Key::_7, Key::_8, Key::_9, Key::_0};
 
     if (ctrl)
     {
-        for (int i = 0; i < std::min((int)m_Panels.size(), 10); ++i)
+        const int panelOffset = shift ? 10 : 0;
+        const int shortcutCount = std::min(std::max(static_cast<int>(m_Panels.size()) - panelOffset, 0), 10);
+        for (int i = 0; i < shortcutCount; ++i)
         {
             if (kb.GetKey(numKeys[i]) && !m_NumberKeyPressed[i])
             {
                 m_NumberKeyPressed[i] = true;
-                m_Panels[i]->SetOpen(!m_Panels[i]->IsOpen());
+                auto& panel = m_Panels[panelOffset + i];
+                panel->SetOpen(!panel->IsOpen());
             }
             else if (!kb.GetKey(numKeys[i]))
             {
@@ -819,22 +827,34 @@ void EditorSystem::DrawMenuBar()
         }
         if (ImGui::BeginMenu("View"))
         {
-            for (auto& panel : m_Panels)
+            for (size_t panelIndex = 0; panelIndex < m_Panels.size(); ++panelIndex)
             {
+                auto& panel = m_Panels[panelIndex];
                 if (panel->GetGroup() == PanelGroup::Scene)
                 {
                     bool open = panel->IsOpen();
-                    if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open))
+                    const int keyIndex = static_cast<int>(panelIndex % 10);
+                    const char keyName = keyIndex == 9 ? '0' : static_cast<char>('1' + keyIndex);
+                    const std::string shortcut = panelIndex < 10
+                                                     ? std::string("Ctrl+") + keyName
+                                                     : panelIndex < 20 ? std::string("Ctrl+Shift+") + keyName : "";
+                    if (ImGui::MenuItem(panel->GetTitle().c_str(), shortcut.empty() ? nullptr : shortcut.c_str(), &open))
                         panel->SetOpen(open);
                 }
             }
             ImGui::Separator();
-            for (auto& panel : m_Panels)
+            for (size_t panelIndex = 0; panelIndex < m_Panels.size(); ++panelIndex)
             {
+                auto& panel = m_Panels[panelIndex];
                 if (panel->GetGroup() == PanelGroup::Debug || panel->GetGroup() == PanelGroup::Tools)
                 {
                     bool open = panel->IsOpen();
-                    if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, &open))
+                    const int keyIndex = static_cast<int>(panelIndex % 10);
+                    const char keyName = keyIndex == 9 ? '0' : static_cast<char>('1' + keyIndex);
+                    const std::string shortcut = panelIndex < 10
+                                                     ? std::string("Ctrl+") + keyName
+                                                     : panelIndex < 20 ? std::string("Ctrl+Shift+") + keyName : "";
+                    if (ImGui::MenuItem(panel->GetTitle().c_str(), shortcut.empty() ? nullptr : shortcut.c_str(), &open))
                         panel->SetOpen(open);
                 }
             }

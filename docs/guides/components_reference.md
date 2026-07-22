@@ -132,6 +132,42 @@ Component: Animator
   Rate: 30.0                # Internal update sampling rate
 ```
 
+The optional animation graph is authored from **Tools > Animation Graph**. It stores named float, bool, and trigger
+parameters, clip states, conditional transitions, blend durations, and normalized exit times in the same Animator
+component. Gameplay scripts drive the graph through `Entity::SetAnimationFloat`, `SetAnimationBool`, and
+`SetAnimationTrigger`. Direct `PlayAnimation`, `CrossFade`, and `PlayBlend` calls remain available when the graph is
+disabled.
+
+The panel can be toggled with `Ctrl+Shift+1`. Middle-drag pans the graph, the mouse wheel zooms around the cursor,
+and the divider between canvas and inspector is draggable. Transition conditions support AND, OR, XOR, NAND, NOR,
+XNOR, and per-condition NOT.
+
+Graph data is serialized with repeated `GraphParameter`, `GraphState`, and `GraphTransitionV2` records. These records
+are editor-owned; prefer editing them through the graph panel instead of hand-authoring their compact representation.
+
+### ParticleEmitter and VFX Graph
+
+The particle emitter supports spawn rate, finite or infinite emission duration, lifetime, directional/cone/figure-eight
+emission, velocity ranges, gravity, exponential drag, color over life, size over life, textures, and custom shaders.
+Open **Tools > VFX Graph** (or press `Ctrl+Shift+2`) to connect emitter modules to an Output node. Once a graph contains
+links, only modules that can reach an enabled Output node through passing links affect the emitter. VFX links can use
+float, bool, and trigger parameters with the same grouped logical conditions as animation transitions. Middle-drag
+pans, the mouse wheel zooms, and the canvas/inspector divider is draggable.
+
+```yaml
+Component: ParticleEmitter
+  Active: true
+  SpawnRate: 60
+  Lifetime: 1.5
+  Gravity: 0 -9.81 0
+  Drag: 0.15
+  Shape: CONE
+  GraphEnabled: false
+```
+
+The inspector exposes the common emitter settings. The VFX Graph panel owns advanced module authoring and persists
+node positions and links into `.axs` and `.axsb` scenes.
+
 ### RigidBody
 Modular physics simulation.
 ```yaml

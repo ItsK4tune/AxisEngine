@@ -6,6 +6,7 @@
 #include <ecs/logic/physics_system.h>
 #include <ecs/logic/audio_system.h>
 #include <ecs/logic/animation_system.h>
+#include <ecs/logic/effect_graph_runtime.h>
 #include <ecs/logic/scriptable_system.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/ui_render_system.h>

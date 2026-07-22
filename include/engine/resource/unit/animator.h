@@ -18,6 +18,7 @@ public:
     void AddAnimation(const std::string& name, std::shared_ptr<Animation> animation);
     void PlayAnimation(std::shared_ptr<Animation> pAnimation);
     void PlayAnimation(const std::string& name);
+    bool HasAnimation(const std::string& name) const;
 
     void CalculateBoneTransform(const BoneNodeData* node, glm::mat4 parentTransform, int depth);
     const std::vector<glm::mat4>& GetFinalBoneMatrices();
@@ -42,6 +43,16 @@ public:
     float GetDuration() const
     {
         return m_CurrentAnimation ? m_CurrentAnimation->GetDuration() : 0.0f;
+    }
+    float GetNormalizedTime() const
+    {
+        const float duration = GetDuration();
+        return duration > 0.0f ? m_CurrentTime / duration : 0.0f;
+    }
+    bool IsCrossFading() const
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        return m_IsCrossFading;
     }
 
     void CrossFade(const std::string& name, float transitionDuration);

@@ -21,7 +21,7 @@ Animation::Animation(const std::string& animationPath, Model& model)
 
     auto animation = scene->mAnimations[0];
     m_Duration = animation->mDuration;
-    m_TicksPerSecond = (int)animation->mTicksPerSecond;
+    m_TicksPerSecond = animation->mTicksPerSecond > 0.0 ? static_cast<float>(animation->mTicksPerSecond) : 25.0f;
 
     ReadHierarchyData(m_RootNode, scene->mRootNode);
     ReadMissingBones(animation, model);

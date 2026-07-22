@@ -6,6 +6,7 @@
 #include <render/logic/transient_buffer_ring.h>
 #include <render/type/graphics_types.h>
 #include <algorithm>
+#include <cmath>
 #include <random>
 
 IBufferManager* ParticleEmitter::s_BufferManager = nullptr;
@@ -99,6 +100,8 @@ ParticleEmitter::ParticleEmitter(ParticleEmitter&& other) noexcept
       EndSize(other.EndSize),
       LifeTime(other.LifeTime),
       SpawnRate(other.SpawnRate),
+      Gravity(other.Gravity),
+      Drag(other.Drag),
       Shape(other.Shape),
       m_SpawnAccumulator(other.m_SpawnAccumulator),
       m_EmissionPhase(other.m_EmissionPhase),
@@ -142,6 +145,8 @@ ParticleEmitter& ParticleEmitter::operator=(ParticleEmitter&& other) noexcept
         EndSize = other.EndSize;
         LifeTime = other.LifeTime;
         SpawnRate = other.SpawnRate;
+        Gravity = other.Gravity;
+        Drag = other.Drag;
         Shape = other.Shape;
         m_SpawnAccumulator = other.m_SpawnAccumulator;
         m_EmissionPhase = other.m_EmissionPhase;
@@ -255,6 +260,9 @@ void ParticleEmitter::Update(float dt, const glm::vec3& offset, bool spawn)
             m_ActiveIndices.pop_back();
             continue;
         }
+        p.Velocity += Gravity * dt;
+        if (Drag > 0.0f)
+            p.Velocity *= std::exp(-Drag * dt);
         p.Position += p.Velocity * dt;
         const float t = 1.0f - (p.Life / p.StartLife);
         p.Color = StartColor * (1.0f - t) + EndColor * t;

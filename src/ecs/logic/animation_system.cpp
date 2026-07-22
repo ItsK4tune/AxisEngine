@@ -1,4 +1,5 @@
 #include <ecs/logic/animation_system.h>
+#include <ecs/logic/effect_graph_runtime.h>
 #include <core/logic/job_system.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
@@ -48,7 +49,7 @@ void AnimationSystem::Update(Scene& scene, float dt)
                     rootTransform = renderer.model->GetRootTransform();
                 }
             }
-            anim.animator->UpdateAnimation(dt * anim.speed, rootTransform);
+            AnimationGraphRuntime::Update(anim, dt, rootTransform);
         }
     }
 }
@@ -70,9 +71,9 @@ void AnimationSystem::UpdateParallel(const FrameSnapshot& snapshot, ECSCommandBu
         for (size_t i = begin; i < end; ++i)
         {
             const auto& item = animations[i];
-            if (item.animator)
+            if (item.animator && item.component)
             {
-                item.animator->UpdateAnimation(dt * item.speed, item.rootTransform);
+                AnimationGraphRuntime::Update(*item.component, dt, item.rootTransform);
             }
         }
     };

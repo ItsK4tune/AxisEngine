@@ -19,6 +19,8 @@
 #include <core/logic/runtime_profiler.h>
 #include <ecs/logic/system_manager.h>
 #include <ecs/logic/system_factory.h>
+#include <ecs/logic/effect_graph_runtime.h>
+#include <ecs/logic/particle_system.h>
 #include <ecs/logic/post_process_system.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/input_serializer.h>
@@ -598,6 +600,152 @@ AXIS_TEST_CASE("ParticleEmitter maintains dense active slots without a graphics 
     AXIS_CHECK(emitter.GetActiveParticleCount() == 8);
     emitter.Update(0.2f, glm::vec3(0.0f), false);
     AXIS_CHECK(emitter.GetActiveParticleCount() == 0);
+}
+
+AXIS_TEST_CASE("ParticleEmitter applies gravity and drag without a graphics backend")
+{
+    ParticleEmitter::ClearManagers();
+    ParticleEmitter emitter;
+    emitter.Initialize(1);
+    emitter.SpawnRate = 1000.0f;
+    emitter.LifeTime = 10.0f;
+    emitter.MinVelocity = glm::vec3(0.0f);
+    emitter.MaxVelocity = glm::vec3(0.0f);
+    emitter.Gravity = glm::vec3(0.0f, -10.0f, 0.0f);
+    emitter.Drag = 0.0f;
+    emitter.Update(0.01f, glm::vec3(0.0f), true);
+    const float initialY = emitter.GetInstanceData().front().offset.y;
+    emitter.Update(0.5f, glm::vec3(0.0f), false);
+    AXIS_CHECK(emitter.GetInstanceData().front().offset.y < initialY - 2.0f);
+}
+
+AXIS_TEST_CASE("ParticleSystem honors the emitter active flag")
+{
+    ParticleEmitter::ClearManagers();
+    Scene scene;
+    const auto entity = scene.GetRegistry().create();
+    scene.AddComponent<InfoComponent>(entity, "Emitter", "test");
+    scene.AddComponent<PositionComponent>(entity);
+    auto& component = scene.AddComponent<ParticleEmitterComponent>(entity);
+    component.emitter.Initialize(4);
+    component.emitter.SpawnRate = 1000.0f;
+    component.emitter.LifeTime = 10.0f;
+    component.isActive = false;
+
+    ParticleSystem system;
+    system.Update(scene, 1.0f);
+    AXIS_CHECK(component.emitter.GetActiveParticleCount() == 0);
+    component.isActive = true;
+    system.Update(scene, 1.0f);
+    AXIS_CHECK(component.emitter.GetActiveParticleCount() == 4);
+}
+
+AXIS_TEST_CASE("Animation graph selects conditions and consumes only used triggers")
+{
+    AnimationGraph graph;
+    graph.enabled = true;
+    graph.entryState = 1;
+    graph.activeState = 1;
+    graph.parameters.push_back({"speed", AnimationParameterType::Float, 2.0f, false, false});
+    graph.parameters.push_back({"jump", AnimationParameterType::Trigger, 0.0f, false, true});
+    graph.states.push_back({1, "Idle", "idle"});
+    graph.states.push_back({2, "Run", "run"});
+    graph.states.push_back({3, "Jump", "jump"});
+    graph.transitions.push_back({4, 1, 2, 0.2f, false, 0.0f,
+                                 {{"speed", AnimationConditionOp::Greater, 0.5f}}});
+    graph.transitions.push_back({5, 1, 3, 0.1f, false, 0.0f,
+                                 {{"jump", AnimationConditionOp::Triggered, 0.0f}}});
+
+    const auto* selected = AnimationGraphRuntime::SelectTransition(graph, 0.0f);
+    AXIS_CHECK(selected != nullptr);
+    if (!selected) return;
+    AXIS_CHECK(selected->id == 4);
+    AnimationGraphRuntime::ConsumeTriggers(graph, *selected);
+    AXIS_CHECK(graph.parameters[1].triggerValue);
+
+    graph.parameters[0].floatValue = 0.0f;
+    selected = AnimationGraphRuntime::SelectTransition(graph, 0.0f);
+    AXIS_CHECK(selected != nullptr);
+    if (!selected) return;
+    AXIS_CHECK(selected->id == 5);
+    AnimationGraphRuntime::ConsumeTriggers(graph, *selected);
+    AXIS_CHECK(!graph.parameters[1].triggerValue);
+}
+
+AXIS_TEST_CASE("Animation graph combines AND OR XOR NAND NOR XNOR and per-condition NOT")
+{
+    AnimationGraph graph;
+    graph.parameters.push_back({"a", AnimationParameterType::Bool, 0.0f, true, false});
+    graph.parameters.push_back({"b", AnimationParameterType::Bool, 0.0f, false, false});
+    AnimationGraphTransition transition;
+    transition.conditions = {{"a", AnimationConditionOp::IsTrue}, {"b", AnimationConditionOp::IsTrue}};
+
+    transition.conditionLogic = GraphConditionLogic::And;
+    AXIS_CHECK(!AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Or;
+    AXIS_CHECK(AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Xor;
+    AXIS_CHECK(AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Nand;
+    AXIS_CHECK(AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Nor;
+    AXIS_CHECK(!AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Xnor;
+    AXIS_CHECK(!AnimationGraphRuntime::ConditionsPass(graph, transition));
+
+    transition.conditions[1].negated = true;
+    transition.conditionLogic = GraphConditionLogic::And;
+    AXIS_CHECK(AnimationGraphRuntime::ConditionsPass(graph, transition));
+    transition.conditionLogic = GraphConditionLogic::Xnor;
+    AXIS_CHECK(AnimationGraphRuntime::ConditionsPass(graph, transition));
+}
+
+AXIS_TEST_CASE("VFX graph applies only modules connected to output")
+{
+    ParticleEmitterComponent component;
+    component.graph.enabled = true;
+    component.graph.nodes.push_back({1, VFXNodeType::Spawn, "Spawn", {}, {}, 42.0f});
+    component.graph.nodes.push_back({2, VFXNodeType::Gravity, "Gravity", glm::vec4(0, -3, 0, 0)});
+    component.graph.nodes.push_back({3, VFXNodeType::Drag, "Disconnected Drag", {}, {}, 8.0f});
+    component.graph.nodes.push_back({4, VFXNodeType::Output, "Output"});
+    component.graph.links.push_back({5, 1, 4});
+    component.graph.links.push_back({6, 2, 4});
+
+    VFXGraphRuntime::Apply(component);
+    AXIS_CHECK_NEAR(component.emitter.SpawnRate, 42.0f, 0.0001f);
+    AXIS_CHECK_NEAR(component.emitter.Gravity.y, -3.0f, 0.0001f);
+    AXIS_CHECK_NEAR(component.emitter.Drag, 0.0f, 0.0001f);
+    AXIS_CHECK(!VFXGraphRuntime::IsNodeActive(component.graph, 3));
+}
+
+AXIS_TEST_CASE("VFX graph gates links with logical conditions and consumes active triggers")
+{
+    ParticleEmitterComponent component;
+    component.graph.enabled = true;
+    component.graph.parameters.push_back({"quality", AnimationParameterType::Float, 0.25f});
+    component.graph.parameters.push_back({"burst", AnimationParameterType::Trigger, 0.0f, false, true});
+    component.graph.nodes.push_back({1, VFXNodeType::Spawn, "Spawn", {}, {}, 64.0f});
+    component.graph.nodes.push_back({2, VFXNodeType::Output, "Output"});
+    VFXGraphLink link{3, 1, 2};
+    link.conditionLogic = GraphConditionLogic::And;
+    link.conditions = {{"quality", AnimationConditionOp::Greater, 0.5f},
+                       {"burst", AnimationConditionOp::Triggered}};
+    component.graph.links.push_back(link);
+
+    component.emitter.SpawnRate = 5.0f;
+    VFXGraphRuntime::Apply(component);
+    AXIS_CHECK_NEAR(component.emitter.SpawnRate, 5.0f, 0.0001f);
+    AXIS_CHECK(component.graph.parameters[1].triggerValue);
+
+    component.graph.links[0].conditionLogic = GraphConditionLogic::Or;
+    VFXGraphRuntime::Apply(component);
+    AXIS_CHECK_NEAR(component.emitter.SpawnRate, 64.0f, 0.0001f);
+    AXIS_CHECK(!component.graph.parameters[1].triggerValue);
+
+    component.graph.links[0].conditions[0].negated = true;
+    component.graph.links[0].conditions.erase(component.graph.links[0].conditions.begin() + 1);
+    component.graph.links[0].conditionLogic = GraphConditionLogic::And;
+    AXIS_CHECK(VFXGraphRuntime::ConditionsPass(component.graph, component.graph.links[0]));
 }
 
 AXIS_TEST_CASE("Scene octree changes remain incremental after the initial rebuild")

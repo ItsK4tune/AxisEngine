@@ -313,6 +313,45 @@ void Entity::PlayBlend(const std::string& nameA, const std::string& nameB, float
     }
 }
 
+void Entity::SetAnimationFloat(const std::string& parameter, float value)
+{
+    if (!IsValid())
+        return;
+    if (auto* animation = m_Scene->GetRegistry().try_get<AnimationComponent>(m_EntityHandle))
+        for (auto& item : animation->graph.parameters)
+            if (item.name == parameter && item.type == AnimationParameterType::Float)
+            {
+                item.floatValue = value;
+                return;
+            }
+}
+
+void Entity::SetAnimationBool(const std::string& parameter, bool value)
+{
+    if (!IsValid())
+        return;
+    if (auto* animation = m_Scene->GetRegistry().try_get<AnimationComponent>(m_EntityHandle))
+        for (auto& item : animation->graph.parameters)
+            if (item.name == parameter && item.type == AnimationParameterType::Bool)
+            {
+                item.boolValue = value;
+                return;
+            }
+}
+
+void Entity::SetAnimationTrigger(const std::string& parameter)
+{
+    if (!IsValid())
+        return;
+    if (auto* animation = m_Scene->GetRegistry().try_get<AnimationComponent>(m_EntityHandle))
+        for (auto& item : animation->graph.parameters)
+            if (item.name == parameter && item.type == AnimationParameterType::Trigger)
+            {
+                item.triggerValue = true;
+                return;
+            }
+}
+
 // Physics
 void Entity::SetLinearVelocity(const glm::vec3& velocity)
 {

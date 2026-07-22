@@ -1019,12 +1019,23 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Checkbox("Active##Part", &pe.isActive);
         ImGui::DragFloat("Spawn Rate", &pe.emitter.SpawnRate, 0.5f, 0.0f, 1000.0f);
         ImGui::DragFloat("Lifetime##Part", &pe.emitter.LifeTime, 0.1f, 0.01f, 60.0f);
+        ImGui::DragFloat("Emission Duration", &pe.emissionDuration, 0.1f, -1.0f, 600.0f);
         ImGui::DragFloat("Start Size", &pe.emitter.StartSize, 0.01f, 0.0f, 100.0f);
         ImGui::DragFloat("End Size", &pe.emitter.EndSize, 0.01f, 0.0f, 100.0f);
         ImGui::ColorEdit4("Start Color", &pe.emitter.StartColor.r);
         ImGui::ColorEdit4("End Color", &pe.emitter.EndColor.r);
         ImGui::DragFloat3("Min Velocity", &pe.emitter.MinVelocity.x, 0.1f);
         ImGui::DragFloat3("Max Velocity", &pe.emitter.MaxVelocity.x, 0.1f);
+        ImGui::DragFloat3("Gravity##Part", &pe.emitter.Gravity.x, 0.05f);
+        ImGui::DragFloat("Drag##Part", &pe.emitter.Drag, 0.01f, 0.0f, 100.0f);
+        int shape = static_cast<int>(pe.emitter.Shape);
+        if (ImGui::Combo("Emission Shape", &shape, "Directional\0Cone\0Figure Eight\0"))
+            pe.emitter.Shape = static_cast<ParticleEmitter::EmissionShape>(shape);
+        int maxParticles = static_cast<int>(pe.maxParticles);
+        if (ImGui::DragInt("Max Particles", &maxParticles, 10.0f, 1, 1000000))
+            pe.maxParticles = static_cast<unsigned int>(std::max(1, maxParticles));
+        if (ImGui::Button("Apply Particle Capacity"))
+            pe.emitter.Initialize(pe.maxParticles);
 
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto textureNames = rm.GetLoadedTextures();
@@ -1032,6 +1043,9 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         {
             pe.emitter.texture = rm.GetTexture(pe.textureName);
         }
+        auto shaderNames = rm.GetLoadedShaders();
+        DrawResourceDropdownStr("Custom Shader", pe.customShader, shaderNames);
+        ImGui::TextDisabled("Advanced modules are edited in Tools > VFX Graph.");
     });
 
     DrawComponent<PostProcessComponent>("Post Process", reg, entity, [](auto& pp) {
@@ -1152,6 +1166,22 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::DragFloat("Start Time", &anim.startTime, 0.1f, 0.0f, 100.0f);
         ImGui::DragFloat("Rate", &anim.rate, 1.0f, 0.0f, 240.0f);
         ImGui::DragFloat("Blend Factor", &anim.blendFactor, 0.01f, 0.0f, 1.0f);
+
+        if (ImGui::Button("Rebuild Animator From Clips") && !anim.animations.empty())
+        {
+            auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
+            if (auto first = resources.GetAnimation(anim.animations.front()))
+            {
+                anim.animator = std::make_shared<Animator>(first);
+                for (const auto& clipName : anim.animations)
+                    if (auto clip = resources.GetAnimation(clipName))
+                        anim.animator->AddAnimation(clipName, clip);
+                anim.animator->SetTime(anim.startTime);
+                anim.animator->SetUpdateRate(anim.rate);
+                anim.graph.activeState = 0;
+            }
+        }
+        ImGui::TextDisabled("Transitions and parameters are edited in Tools > Animation Graph.");
 
         if (anim.animator)
         {
@@ -1879,6 +1909,8 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         animation.startTime = sourceAnimation.startTime;
         animation.rate = sourceAnimation.rate;
         animation.blendFactor = sourceAnimation.blendFactor;
+        animation.graph = sourceAnimation.graph;
+        animation.graph.activeState = 0;
         if (!animation.animations.empty())
         {
             if (auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>())
@@ -1892,7 +1924,6 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
                         if (auto clip = resources->GetAnimation(animation.animations[i]))
                             animation.animator->AddAnimation(animation.animations[i], clip);
                     }
-                    animation.animator->SetSpeed(animation.speed);
                     animation.animator->SetTime(animation.startTime);
                     animation.animator->SetUpdateRate(animation.rate);
                     animation.animator->SetBlendFactor(animation.blendFactor);
@@ -1908,6 +1939,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         dstPe.maxParticles = srcPe.maxParticles;
         dstPe.textureName = srcPe.textureName;
         dstPe.customShader = srcPe.customShader;
+        dstPe.graph = srcPe.graph;
         dstPe.emitter.MinVelocity = srcPe.emitter.MinVelocity;
         dstPe.emitter.MaxVelocity = srcPe.emitter.MaxVelocity;
         dstPe.emitter.StartColor = srcPe.emitter.StartColor;
@@ -1916,6 +1948,8 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
         dstPe.emitter.EndSize = srcPe.emitter.EndSize;
         dstPe.emitter.LifeTime = srcPe.emitter.LifeTime;
         dstPe.emitter.SpawnRate = srcPe.emitter.SpawnRate;
+        dstPe.emitter.Gravity = srcPe.emitter.Gravity;
+        dstPe.emitter.Drag = srcPe.emitter.Drag;
         dstPe.emitter.Shape = srcPe.emitter.Shape;
         dstPe.emitter.texture = srcPe.emitter.texture;
         dstPe.emitter.Initialize(dstPe.maxParticles);

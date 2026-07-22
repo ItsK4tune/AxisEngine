@@ -10,7 +10,7 @@ in vec4 ParticleColor;
 
 
 
-uniform sampler2D sprite;
+uniform sampler2D u_AlbedoMap;
 
 
 
@@ -18,7 +18,7 @@ void main()
 
 {
 
-    vec4 texColor = texture(sprite, TexCoords);
+    vec4 texColor = texture(u_AlbedoMap, TexCoords);
 
     vec3 linearColor = pow(texColor.rgb, vec3(2.2));
 

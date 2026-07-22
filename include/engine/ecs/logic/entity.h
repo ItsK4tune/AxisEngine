@@ -91,6 +91,9 @@ public:
     void AddAnimationClip(const std::string& name, std::shared_ptr<class Animation> animation);
     void CrossFade(const std::string& name, float transitionDuration);
     void PlayBlend(const std::string& nameA, const std::string& nameB, float factor);
+    void SetAnimationFloat(const std::string& parameter, float value);
+    void SetAnimationBool(const std::string& parameter, bool value);
+    void SetAnimationTrigger(const std::string& parameter);
 
     // Physics
     void SetLinearVelocity(const glm::vec3& velocity);

@@ -156,6 +156,15 @@ Effects default to color-only for compatibility and cost control; request every 
 ---
 
 ## 10. Skeletal Animation (Skinning)
+AxisEngine supports multiple named clips per animated entity, direct playback, two-clip blending, timed cross-fades,
+and an optional parameter-driven animation graph. Animation graph states reference clips already registered on the
+Animator component. A transition combines its conditions with AND, OR, XOR, NAND, NOR, or XNOR; each individual
+condition can also be inverted with NOT. Trigger parameters are consumed only by the transition that uses them. A
+transition with exit time waits until the current clip reaches the configured normalized time.
+
+The current graph is a whole-skeleton state machine. Animation layers, masks, retargeting, root motion, IK, and 2D
+blend trees remain future extensions.
+
 For animated models, you must handle bone weights and matrices in the vertex shader. Use the snippet below:
 
 ### Vertex Shader Skinning Snippet

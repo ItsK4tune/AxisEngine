@@ -10,3 +10,6 @@ logs/
 imgui.ini
 
 vcpkg_installed/
+tmp/
+temp/
+vcpkg/

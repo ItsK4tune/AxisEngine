@@ -1,4 +1,5 @@
 #include <ecs/logic/particle_system.h>
+#include <ecs/logic/effect_graph_runtime.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
@@ -110,6 +111,9 @@ void ParticleSystem::Update(Scene& scene, float dt)
             continue;
 
         auto& emitterComp = view.get<ParticleEmitterComponent>(entity);
+        if (!emitterComp.isActive)
+            continue;
+        VFXGraphRuntime::Apply(emitterComp);
         const auto& pos = scene.GetComponent<PositionComponent>(entity);
         emitterComp.emitter.SetSpawnBudget(m_SpawnBudgetEnabled, m_MaxSpawnPerFrame);
 
@@ -181,6 +185,8 @@ void ParticleSystem::RenderParticles(Scene& scene, int width, int height, float 
             continue;
 
         auto& emitterComp = view.get<ParticleEmitterComponent>(entity);
+        if (!emitterComp.isActive)
+            continue;
         {
             uint32_t activeCount = emitterComp.emitter.GetActiveParticleCount();
             if (activeCount == 0)

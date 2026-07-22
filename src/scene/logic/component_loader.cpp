@@ -23,6 +23,7 @@
 #include <resource/logic/resource_manager.h>
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
@@ -405,7 +406,11 @@ void ComponentLoader::LoadRenderer(Scene& scene, entt::entity entity, const YAML
 
 void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAMLNode& node, ResourceManager& res)
 {
-    LoaderUtils::ValidateKeys(node, {"Animation", "Speed", "StartTime", "Rate", "BlendFactor"}, "Animator");
+    LoaderUtils::ValidateKeys(node,
+                              {"Animation", "Speed", "StartTime", "Rate", "BlendFactor", "GraphEnabled",
+                               "GraphEntry", "GraphParameter", "GraphState", "GraphTransition",
+                               "GraphTransitionV2"},
+                              "Animator");
 
     auto& a = scene.AddComponent<AnimationComponent>(entity);
 
@@ -428,6 +433,66 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
     a.startTime = LoaderUtils::SafeStof(node.GetChildValue("StartTime", "0.0"));
     a.rate = LoaderUtils::SafeStof(node.GetChildValue("Rate", "30.0"));
     a.blendFactor = LoaderUtils::SafeStof(node.GetChildValue("BlendFactor", "0.0"));
+    a.graph.enabled = node.GetChildValue("GraphEnabled", "false") == "true";
+    a.graph.entryState = static_cast<uint32_t>(LoaderUtils::SafeStoul(node.GetChildValue("GraphEntry", "0")));
+
+    for (const auto& child : node.children)
+    {
+        std::istringstream record(child.value);
+        if (child.key == "GraphParameter")
+        {
+            AnimationGraphParameter parameter;
+            int type = 0;
+            record >> std::quoted(parameter.name) >> type >> parameter.floatValue >> parameter.boolValue >>
+                parameter.triggerValue;
+            parameter.type = static_cast<AnimationParameterType>(type);
+            if (!parameter.name.empty())
+                a.graph.parameters.push_back(std::move(parameter));
+        }
+        else if (child.key == "GraphState")
+        {
+            AnimationGraphState state;
+            record >> state.id >> std::quoted(state.name) >> std::quoted(state.clip) >> state.speed >>
+                state.editorPosition.x >> state.editorPosition.y;
+            if (state.id != 0)
+            {
+                a.graph.nextId = std::max(a.graph.nextId, state.id + 1);
+                a.graph.states.push_back(std::move(state));
+            }
+        }
+        else if (child.key == "GraphTransition" || child.key == "GraphTransitionV2")
+        {
+            AnimationGraphTransition transition;
+            size_t conditionCount = 0;
+            record >> transition.id >> transition.fromState >> transition.toState >> transition.duration >>
+                transition.hasExitTime >> transition.exitTime;
+            if (child.key == "GraphTransitionV2")
+            {
+                int logic = 0;
+                record >> logic >> conditionCount;
+                transition.conditionLogic = static_cast<GraphConditionLogic>(logic);
+            }
+            else
+            {
+                record >> conditionCount;
+            }
+            for (size_t index = 0; index < conditionCount; ++index)
+            {
+                AnimationGraphCondition condition;
+                int op = 0;
+                record >> std::quoted(condition.parameter) >> op >> condition.threshold;
+                if (child.key == "GraphTransitionV2")
+                    record >> condition.negated;
+                condition.op = static_cast<AnimationConditionOp>(op);
+                transition.conditions.push_back(std::move(condition));
+            }
+            if (transition.id != 0)
+            {
+                a.graph.nextId = std::max(a.graph.nextId, transition.id + 1);
+                a.graph.transitions.push_back(std::move(transition));
+            }
+        }
+    }
 
     if (a.speed < 0.0f)
         LOGGER_WARN("ComponentLoader") << "Animator Speed should not be negative: " << a.speed;
@@ -445,7 +510,6 @@ void ComponentLoader::LoadAnimator(Scene& scene, entt::entity entity, const YAML
         {
             a.animator = std::make_shared<Animator>(firstAnim);
             a.animator->AddAnimation(a.animations[0], firstAnim);
-            a.animator->SetSpeed(a.speed);
             a.animator->SetTime(a.startTime);
             a.animator->SetUpdateRate(a.rate);
             a.animator->SetBlendFactor(a.blendFactor);
@@ -862,7 +926,8 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
     LoaderUtils::ValidateKeys(node,
                               {"Active", "SpawnRate", "Lifetime", "Duration", "StartSize", "EndSize", "StartColor",
                                "EndColor", "MinVelocity", "MaxVelocity", "Texture", "Shader", "MaxParticles",
-                               "Shape"},
+                               "Shape", "Gravity", "Drag", "GraphEnabled", "GraphParameter", "GraphNode",
+                               "GraphLink", "GraphLinkV2"},
                               "ParticleEmitter");
     auto& pe = scene.AddComponent<ParticleEmitterComponent>(entity);
 
@@ -881,6 +946,65 @@ void ComponentLoader::LoadParticleEmitter(Scene& scene, entt::entity entity, con
     pe.emissionDuration = LoaderUtils::SafeStof(node.GetChildValue("Duration", "-1.0"));
     pe.emitter.StartSize = LoaderUtils::SafeStof(node.GetChildValue("StartSize", "0.1"));
     pe.emitter.EndSize = LoaderUtils::SafeStof(node.GetChildValue("EndSize", "0.1"));
+    pe.emitter.Drag = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("Drag", "0.0")));
+    std::stringstream gravity(node.GetChildValue("Gravity", "0 0 0"));
+    gravity >> pe.emitter.Gravity.x >> pe.emitter.Gravity.y >> pe.emitter.Gravity.z;
+
+    pe.graph.enabled = node.GetChildValue("GraphEnabled", "false") == "true";
+    for (const auto& child : node.children)
+    {
+        std::istringstream record(child.value);
+        if (child.key == "GraphParameter")
+        {
+            AnimationGraphParameter parameter;
+            int type = 0;
+            record >> std::quoted(parameter.name) >> type >> parameter.floatValue >> parameter.boolValue >>
+                parameter.triggerValue;
+            parameter.type = static_cast<AnimationParameterType>(type);
+            if (!parameter.name.empty())
+                pe.graph.parameters.push_back(std::move(parameter));
+        }
+        else if (child.key == "GraphNode")
+        {
+            VFXGraphNode graphNode;
+            int type = 0;
+            record >> graphNode.id >> type >> std::quoted(graphNode.name) >> graphNode.enabled >> graphNode.scalarA >>
+                graphNode.scalarB >> graphNode.valueA.x >> graphNode.valueA.y >> graphNode.valueA.z >>
+                graphNode.valueA.w >> graphNode.valueB.x >> graphNode.valueB.y >> graphNode.valueB.z >>
+                graphNode.valueB.w >> graphNode.editorPosition.x >> graphNode.editorPosition.y;
+            graphNode.type = static_cast<VFXNodeType>(type);
+            if (graphNode.id != 0)
+            {
+                pe.graph.nextId = std::max(pe.graph.nextId, graphNode.id + 1);
+                pe.graph.nodes.push_back(std::move(graphNode));
+            }
+        }
+        else if (child.key == "GraphLink" || child.key == "GraphLinkV2")
+        {
+            VFXGraphLink link;
+            record >> link.id >> link.fromNode >> link.toNode;
+            if (child.key == "GraphLinkV2")
+            {
+                int logic = 0;
+                size_t conditionCount = 0;
+                record >> logic >> conditionCount;
+                link.conditionLogic = static_cast<GraphConditionLogic>(logic);
+                for (size_t index = 0; index < conditionCount; ++index)
+                {
+                    AnimationGraphCondition condition;
+                    int op = 0;
+                    record >> std::quoted(condition.parameter) >> op >> condition.threshold >> condition.negated;
+                    condition.op = static_cast<AnimationConditionOp>(op);
+                    link.conditions.push_back(std::move(condition));
+                }
+            }
+            if (link.id != 0)
+            {
+                pe.graph.nextId = std::max(pe.graph.nextId, link.id + 1);
+                pe.graph.links.push_back(link);
+            }
+        }
+    }
 
     std::string texName = node.GetChildValue("Texture");
     if (!texName.empty())

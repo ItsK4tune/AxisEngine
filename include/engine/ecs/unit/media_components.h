@@ -9,6 +9,7 @@
 #include <glm/glm.hpp>
 #include <memory>
 #include <string>
+#include <cstdint>
 #include <vector>
 
 
@@ -81,6 +82,85 @@ inline void SeekVideo(VideoPlayerComponent& vp, double time)
         vp.decoder->Seek(time);
 }
 
+enum class AnimationParameterType : uint8_t
+{
+    Float,
+    Bool,
+    Trigger
+};
+
+struct AnimationGraphParameter
+{
+    std::string name;
+    AnimationParameterType type = AnimationParameterType::Float;
+    float floatValue = 0.0f;
+    bool boolValue = false;
+    bool triggerValue = false;
+};
+
+enum class AnimationConditionOp : uint8_t
+{
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Equal,
+    NotEqual,
+    IsTrue,
+    IsFalse,
+    Triggered
+};
+
+enum class GraphConditionLogic : uint8_t
+{
+    And,
+    Or,
+    Xor,
+    Nand,
+    Nor,
+    Xnor
+};
+
+struct AnimationGraphCondition
+{
+    std::string parameter;
+    AnimationConditionOp op = AnimationConditionOp::Greater;
+    float threshold = 0.0f;
+    bool negated = false;
+};
+
+struct AnimationGraphState
+{
+    uint32_t id = 0;
+    std::string name;
+    std::string clip;
+    float speed = 1.0f;
+    glm::vec2 editorPosition = glm::vec2(0.0f);
+};
+
+struct AnimationGraphTransition
+{
+    uint32_t id = 0;
+    uint32_t fromState = 0;
+    uint32_t toState = 0;
+    float duration = 0.2f;
+    bool hasExitTime = false;
+    float exitTime = 0.9f;
+    std::vector<AnimationGraphCondition> conditions;
+    GraphConditionLogic conditionLogic = GraphConditionLogic::And;
+};
+
+struct AnimationGraph
+{
+    bool enabled = false;
+    uint32_t entryState = 0;
+    uint32_t activeState = 0;
+    uint32_t nextId = 1;
+    std::vector<AnimationGraphParameter> parameters;
+    std::vector<AnimationGraphState> states;
+    std::vector<AnimationGraphTransition> transitions;
+};
+
 struct AnimationComponent
 {
     std::vector<std::string> animations;
@@ -91,6 +171,50 @@ struct AnimationComponent
 
     std::shared_ptr<Animator> animator = nullptr;
     std::vector<glm::mat4> boneMatrices;
+    AnimationGraph graph;
+};
+
+enum class VFXNodeType : uint8_t
+{
+    Spawn,
+    Lifetime,
+    Velocity,
+    Gravity,
+    Drag,
+    ColorOverLife,
+    SizeOverLife,
+    Output
+};
+
+struct VFXGraphNode
+{
+    uint32_t id = 0;
+    VFXNodeType type = VFXNodeType::Spawn;
+    std::string name;
+    glm::vec4 valueA = glm::vec4(0.0f);
+    glm::vec4 valueB = glm::vec4(0.0f);
+    float scalarA = 0.0f;
+    float scalarB = 0.0f;
+    bool enabled = true;
+    glm::vec2 editorPosition = glm::vec2(0.0f);
+};
+
+struct VFXGraphLink
+{
+    uint32_t id = 0;
+    uint32_t fromNode = 0;
+    uint32_t toNode = 0;
+    std::vector<AnimationGraphCondition> conditions;
+    GraphConditionLogic conditionLogic = GraphConditionLogic::And;
+};
+
+struct VFXGraph
+{
+    bool enabled = false;
+    uint32_t nextId = 1;
+    std::vector<AnimationGraphParameter> parameters;
+    std::vector<VFXGraphNode> nodes;
+    std::vector<VFXGraphLink> links;
 };
 
 struct ParticleEmitterComponent
@@ -103,4 +227,5 @@ struct ParticleEmitterComponent
     unsigned int maxParticles = 500;
     std::string textureName = "";
     std::string customShader;
+    VFXGraph graph;
 };

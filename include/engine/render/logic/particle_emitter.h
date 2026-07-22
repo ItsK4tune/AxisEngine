@@ -74,6 +74,8 @@ public:
     float EndSize = 0.0f;
     float LifeTime = 1.0f;
     float SpawnRate = 10.0f;
+    glm::vec3 Gravity = glm::vec3(0.0f);
+    float Drag = 0.0f;
     EmissionShape Shape = EmissionShape::DIRECTIONAL;
 
     std::shared_ptr<Texture> texture = nullptr;
