@@ -107,7 +107,9 @@ void AnimationGraphPanel::OnImGui(Scene& scene)
         m_CanvasPanY = mouse.y - worldY * nextZoom;
         m_CanvasZoom = nextZoom;
     }
-    if (canvasHovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle))
+    const bool dragEmptyCanvas = canvasHovered && ImGui::IsMouseDragging(ImGuiMouseButton_Left) &&
+                                 !ImGui::IsAnyItemActive();
+    if (canvasHovered && (ImGui::IsMouseDragging(ImGuiMouseButton_Middle) || dragEmptyCanvas))
     {
         m_CanvasPanX += io.MouseDelta.x;
         m_CanvasPanY += io.MouseDelta.y;
@@ -179,7 +181,7 @@ void AnimationGraphPanel::OnImGui(Scene& scene)
     }
     draw->PopClipRect();
     ImGui::SetCursorScreenPos(ImVec2(origin.x + 8.0f, origin.y + 8.0f));
-    ImGui::TextDisabled("Middle-drag: pan | Wheel: zoom | %.0f%%", m_CanvasZoom * 100.0f);
+    ImGui::TextDisabled("Drag empty space: pan | Wheel: zoom | %.0f%%", m_CanvasZoom * 100.0f);
     ImGui::EndChild();
 
     ImGui::SameLine();

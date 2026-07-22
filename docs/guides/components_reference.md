@@ -138,7 +138,7 @@ component. Gameplay scripts drive the graph through `Entity::SetAnimationFloat`,
 `SetAnimationTrigger`. Direct `PlayAnimation`, `CrossFade`, and `PlayBlend` calls remain available when the graph is
 disabled.
 
-The panel can be toggled with `Ctrl+Shift+1`. Middle-drag pans the graph, the mouse wheel zooms around the cursor,
+The panel can be toggled with `Ctrl+Shift+1`. Left-dragging empty canvas space or middle-dragging pans the graph, the mouse wheel zooms around the cursor,
 and the divider between canvas and inspector is draggable. Transition conditions support AND, OR, XOR, NAND, NOR,
 XNOR, and per-condition NOT.
 
@@ -151,7 +151,7 @@ The particle emitter supports spawn rate, finite or infinite emission duration, 
 emission, velocity ranges, gravity, exponential drag, color over life, size over life, textures, and custom shaders.
 Open **Tools > VFX Graph** (or press `Ctrl+Shift+2`) to connect emitter modules to an Output node. Once a graph contains
 links, only modules that can reach an enabled Output node through passing links affect the emitter. VFX links can use
-float, bool, and trigger parameters with the same grouped logical conditions as animation transitions. Middle-drag
+float, bool, and trigger parameters with the same grouped logical conditions as animation transitions. Left-dragging empty canvas space or middle-dragging
 pans, the mouse wheel zooms, and the canvas/inspector divider is draggable.
 
 ```yaml
