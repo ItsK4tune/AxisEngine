@@ -18,12 +18,14 @@ struct SceneRecord
     std::vector<entt::entity> entities;
 
     std::vector<std::string> ownedShaders;
+    std::vector<std::string> ownedComputeShaders;
     std::vector<std::string> ownedModels;
     std::vector<std::string> ownedTextures;
     std::vector<std::string> ownedFonts;
     std::vector<std::string> ownedSkyboxes;
     std::vector<std::string> ownedAnimations;
     std::vector<std::string> ownedSounds;
+    std::vector<std::string> ownedVideos;
 };
 
 struct SceneLoadResult
@@ -31,12 +33,14 @@ struct SceneLoadResult
     std::vector<entt::entity> entities;
 
     std::vector<std::string> loadedShaders;
+    std::vector<std::string> loadedComputeShaders;
     std::vector<std::string> loadedModels;
     std::vector<std::string> loadedTextures;
     std::vector<std::string> loadedFonts;
     std::vector<std::string> loadedSkyboxes;
     std::vector<std::string> loadedAnimations;
     std::vector<std::string> loadedSounds;
+    std::vector<std::string> loadedVideos;
 
     SceneValidationResult validation;
     bool usedFallbackCamera = false;

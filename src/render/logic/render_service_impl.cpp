@@ -1258,7 +1258,6 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
                 shader->setInt("u_ShadowSoftness", shadowRenderer->GetShadowSoftness());
             }
 
-            shader->setBool("u_ProbeUnlit", isCapturing);
             shader->setVec2("u_ScreenSize", screenSize);
 
             if (!isCapturing)

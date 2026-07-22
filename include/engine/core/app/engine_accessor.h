@@ -89,6 +89,7 @@ public:
     bool GetAction(const std::string& name) const;
     bool GetActionDown(const std::string& name) const;
     bool GetActionUp(const std::string& name) const;
+    float GetAxis(const std::string& name) const;
     void SetCursorMode(CursorMode mode);
 
     void LoadLanguage(const std::string& path, const std::string& name = "");

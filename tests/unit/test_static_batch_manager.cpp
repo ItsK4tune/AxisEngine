@@ -25,8 +25,8 @@ AXIS_TEST_CASE("StaticBatchManager loads and saves portable v2 batch files")
         }
 
         writeU32(0);
-        writeU32(1);
-        writeU32(2);
+        writeU32(0);
+        writeU32(0);
     }
 
     StaticBatchManager manager;
@@ -63,6 +63,23 @@ AXIS_TEST_CASE("StaticBatchManager loads and saves portable v2 batch files")
     AXIS_CHECK_NEAR(values[3], 4.0f, 0.0001f);
     AXIS_CHECK_NEAR(values[6], 0.25f, 0.0001f);
     AXIS_CHECK(readU32() == 0);
-    AXIS_CHECK(readU32() == 1);
-    AXIS_CHECK(readU32() == 2);
+    AXIS_CHECK(readU32() == 0);
+    AXIS_CHECK(readU32() == 0);
+}
+
+AXIS_TEST_CASE("StaticBatchManager rejects oversized and inconsistent files before allocation")
+{
+    auto path = axis_test_support::TempPath("unsafe_static_batch.btch");
+    {
+        std::ofstream os(path, std::ios::binary);
+        auto writeU32 = [&](uint32_t value) { os.write(reinterpret_cast<const char*>(&value), sizeof(value)); };
+        writeU32(0x48435442);
+        writeU32(2);
+        writeU32(10'000'001);
+        writeU32(3);
+    }
+    StaticBatchManager manager;
+    AXIS_EXPECT_ERROR_LOGS(1);
+    AXIS_CHECK(!manager.LoadBatchFromFile("unsafe", path.string()));
+    AXIS_CHECK(!manager.HasBatch("unsafe"));
 }

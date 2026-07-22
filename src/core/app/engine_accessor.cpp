@@ -285,6 +285,11 @@ bool EngineAccessor::GetActionUp(const std::string& name) const
     auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
     return io ? io->GetInputManager().GetActionUp(name) : false;
 }
+float EngineAccessor::GetAxis(const std::string& name) const
+{
+    auto* io = ServiceLocator::Instance().Resolve<IOHandler>();
+    return io ? io->GetInputManager().GetAxis(name) : 0.0f;
+}
 
 void EngineAccessor::SetTimeScale(float scale)
 {

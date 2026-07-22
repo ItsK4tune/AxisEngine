@@ -13,6 +13,8 @@ namespace
 {
 constexpr uint32_t BATCH_FILE_MAGIC = 0x48435442;
 constexpr uint32_t BATCH_FILE_VERSION = 2;
+constexpr uint32_t MAX_BATCH_VERTICES = 10'000'000;
+constexpr uint32_t MAX_BATCH_INDICES = 30'000'000;
 
 struct BatchFileHeader
 {
@@ -87,6 +89,8 @@ bool ReadPortableBatchData(std::istream& file, const BatchFileHeader& header, st
         if (!ReadScalar(file, rawIndex))
             return false;
         index = static_cast<unsigned int>(rawIndex);
+        if (rawIndex >= header.vertexCount)
+            return false;
     }
 
     return true;
@@ -322,6 +326,28 @@ bool StaticBatchManager::LoadBatchFromFile(const std::string& name, const std::s
     if (header.indexCount > static_cast<uint32_t>((std::numeric_limits<unsigned int>::max)()))
     {
         LOGGER_ERROR("StaticBatchManager") << "Batch file index count is too large";
+        return false;
+    }
+
+    if (header.vertexCount == 0 || header.indexCount == 0 || header.vertexCount > MAX_BATCH_VERTICES ||
+        header.indexCount > MAX_BATCH_INDICES)
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Batch file dimensions exceed safe limits";
+        return false;
+    }
+
+    const uint64_t vertexBytes = header.version == BATCH_FILE_VERSION
+                                     ? static_cast<uint64_t>(header.vertexCount) * 8u * sizeof(float)
+                                     : static_cast<uint64_t>(header.vertexCount) * sizeof(StaticVertex);
+    const uint64_t indexBytes = static_cast<uint64_t>(header.indexCount) *
+                                (header.version == BATCH_FILE_VERSION ? sizeof(uint32_t) : sizeof(unsigned int));
+    const auto dataStart = file.tellg();
+    file.seekg(0, std::ios::end);
+    const auto dataEnd = file.tellg();
+    file.seekg(dataStart);
+    if (dataStart < 0 || dataEnd < dataStart || static_cast<uint64_t>(dataEnd - dataStart) != vertexBytes + indexBytes)
+    {
+        LOGGER_ERROR("StaticBatchManager") << "Batch file size does not match its header";
         return false;
     }
 

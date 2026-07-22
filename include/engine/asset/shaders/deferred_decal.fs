@@ -16,7 +16,6 @@ uniform bool u_HasDecalTexture;
 uniform uint u_AllowedTagsMask;
 
 uniform mat4 u_InvModel;
-uniform mat4 u_Model;
 uniform float u_Opacity;
 uniform int u_LightingMode; // 0=NONE (Unlit), 1=LIGHT, 2=LIGHT+SHADOW
 uniform vec4 u_TintColor;

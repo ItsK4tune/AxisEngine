@@ -39,6 +39,8 @@ public:
 
     bool GetKey(Key key) const override;
     bool GetMouseButton(Mouse button) const override;
+    bool GetGamepadButton(int deviceIndex, Gamepad button) const override;
+    float GetGamepadAxis(int deviceIndex, GamepadAxis axis) const override;
     void GetCursorPos(double& x, double& y) const override;
     void SetCursorPos(double x, double y) override;
 

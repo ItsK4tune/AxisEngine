@@ -105,13 +105,16 @@ bool VideoDecoder::Load(const std::string& filepath)
     }
 
     m_VideoStreamIndex = -1;
+    m_AudioStreamIndex = -1;
     for (unsigned int i = 0; i < m_FormatCtx->nb_streams; i++)
     {
         if (m_FormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
         {
-            m_VideoStreamIndex = i;
-            break;
+            if (m_VideoStreamIndex < 0)
+                m_VideoStreamIndex = static_cast<int>(i);
         }
+        else if (m_FormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && m_AudioStreamIndex < 0)
+            m_AudioStreamIndex = static_cast<int>(i);
     }
 
     if (m_VideoStreamIndex == -1)
@@ -232,7 +235,10 @@ void VideoDecoder::Unload()
     m_CodecCtx = nullptr;
     m_SwsCtx = nullptr;
     m_ProceduralFallback = false;
+    m_VideoStreamIndex = -1;
+    m_AudioStreamIndex = -1;
     m_State.store(State::Stopped, std::memory_order_release);
+    m_DecodeReachedEnd.store(false, std::memory_order_release);
     m_CurrentTime = 0.0;
     m_LastFrameTime = 0.0;
 }
@@ -259,6 +265,8 @@ void VideoDecoder::Play()
     if (m_State.load(std::memory_order_acquire) != State::Playing)
     {
         m_State.store(State::Playing, std::memory_order_release);
+        if (m_DecodeReachedEnd.load(std::memory_order_acquire))
+            Seek(0.0);
         StartDecodeWorker();
         m_DecodeCondition.notify_all();
     }
@@ -297,6 +305,8 @@ void VideoDecoder::Update(float dt)
     const double duration = GetDuration();
     if (m_Loop.load(std::memory_order_acquire) && duration > 0.0 && m_CurrentTime >= duration)
         Seek(std::fmod(m_CurrentTime, duration));
+    else if (!m_Loop.load(std::memory_order_acquire) && duration > 0.0 && m_CurrentTime >= duration)
+        m_CurrentTime = duration;
 
     if (!m_AsyncDecodeEnabled.load(std::memory_order_acquire))
     {
@@ -312,6 +322,8 @@ void VideoDecoder::Update(float dt)
         }
         if (hasFrame)
             UploadFrame(m_UploadPixels);
+        if (!hasFrame && duration > 0.0 && m_CurrentTime >= duration)
+            m_State.store(State::Stopped, std::memory_order_release);
         return;
     }
     bool hasFrame = false;
@@ -339,6 +351,16 @@ void VideoDecoder::Update(float dt)
 
     if (consumedFrame)
         m_DecodeCondition.notify_all();
+
+    if (m_DecodeReachedEnd.load(std::memory_order_acquire))
+    {
+        std::lock_guard lock(m_DecodeMutex);
+        if (m_DecodedFrames.empty())
+        {
+            m_State.store(State::Stopped, std::memory_order_release);
+            m_DecodeCondition.notify_all();
+        }
+    }
 }
 
 bool VideoDecoder::DecodeFrame(DecodedFrame& output)
@@ -443,7 +465,7 @@ void VideoDecoder::DecodeWorkerLoop()
         m_DecodeCondition.wait(lock, [this]() {
             return m_StopDecodeThread.load(std::memory_order_acquire) || m_SeekRequested ||
                    (m_State.load(std::memory_order_acquire) == State::Playing &&
-                    m_DecodedFrames.size() < MaxQueuedFrames);
+                    m_DecodedFrames.size() < m_MaxQueuedFrames.load(std::memory_order_acquire));
         });
         if (m_StopDecodeThread.load(std::memory_order_acquire))
             break;
@@ -453,6 +475,7 @@ void VideoDecoder::DecodeWorkerLoop()
             const double target = m_RequestedSeekTime;
             m_SeekRequested = false;
             m_DecodedFrames.clear();
+            m_DecodeReachedEnd.store(false, std::memory_order_release);
             lock.unlock();
             const int64_t targetPts = static_cast<int64_t>(target / m_TimeBase);
             av_seek_frame(m_FormatCtx, m_VideoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
@@ -466,7 +489,7 @@ void VideoDecoder::DecodeWorkerLoop()
         if (DecodeFrame(decoded))
         {
             std::lock_guard queueLock(m_DecodeMutex);
-            if (m_DecodedFrames.size() < MaxQueuedFrames)
+            if (m_DecodedFrames.size() < m_MaxQueuedFrames.load(std::memory_order_acquire))
                 m_DecodedFrames.push_back(std::move(decoded));
             continue;
         }
@@ -476,10 +499,16 @@ void VideoDecoder::DecodeWorkerLoop()
             av_seek_frame(m_FormatCtx, m_VideoStreamIndex, 0, AVSEEK_FLAG_BACKWARD);
             avcodec_flush_buffers(m_CodecCtx);
             m_LastFrameTime = 0.0;
+            m_DecodeReachedEnd.store(false, std::memory_order_release);
         }
         else
         {
-            m_State.store(State::Stopped, std::memory_order_release);
+            m_DecodeReachedEnd.store(true, std::memory_order_release);
+            lock.lock();
+            m_DecodeCondition.wait(lock, [this]() {
+                return m_StopDecodeThread.load(std::memory_order_acquire) || m_SeekRequested ||
+                       m_State.load(std::memory_order_acquire) != State::Playing;
+            });
         }
     }
 }
@@ -517,6 +546,7 @@ void VideoDecoder::UploadProceduralFrame()
 
 void VideoDecoder::Seek(double timestamp)
 {
+    m_DecodeReachedEnd.store(false, std::memory_order_release);
     if (m_ProceduralFallback)
     {
         m_CurrentTime = timestamp;

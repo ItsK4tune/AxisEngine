@@ -90,6 +90,7 @@ void PostProcessPipeline::Initialize(IGraphicsContext& context, int width, int h
             m_Exposure = cfg.render.hdrEnabled ? cfg.render.exposure : 1.0f;
             m_Gamma = cfg.render.hdrEnabled ? cfg.render.gamma : 2.2f;
             m_TonemappingMode = cfg.render.hdrEnabled ? (int)cfg.render.tonemappingMode : 0;
+            SetTAAFeedback(cfg.render.taaFeedback);
         }));
 }
 
@@ -198,6 +199,7 @@ void PostProcessPipeline::UpdateConfig()
     m_Exposure = cfg->render.hdrEnabled ? cfg->render.exposure : 1.0f;
     m_Gamma = cfg->render.hdrEnabled ? cfg->render.gamma : 2.2f;
     m_TonemappingMode = cfg->render.hdrEnabled ? (int)cfg->render.tonemappingMode : 0;
+    SetTAAFeedback(cfg->render.taaFeedback);
 }
 
 void PostProcessPipeline::Shutdown()
@@ -723,7 +725,7 @@ void PostProcessPipeline::RenderBloom(uint32_t srcTexture)
 }
 
 void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4& prevViewProj,
-                                            const glm::mat4& currViewProj, const glm::vec2& jitterOffset)
+                                            const glm::mat4& currViewProj)
 {
     if (mode == AntiAliasingMode::NONE || !m_Context)
         return;
@@ -770,7 +772,7 @@ void PostProcessPipeline::ApplyAntiAliasing(AntiAliasingMode mode, const glm::ma
         shader->setBool("resetHistory", resetHistory);
         shader->setMat4("invViewProj", resetHistory ? glm::mat4(1.0f) : glm::inverse(currViewProj));
         shader->setMat4("prevViewProj", resetHistory ? safeCurrViewProj : prevViewProj);
-        shader->setVec2("jitterOffset", jitterOffset);
+        shader->setFloat("historyFeedback", m_TAAFeedback);
 
         const int nextHistory = 1 - m_HistoryIndex;
         rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_HistoryFBO[nextHistory]->Get());

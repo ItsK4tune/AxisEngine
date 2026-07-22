@@ -7,7 +7,6 @@
 #include <ecs/unit/script_component.h>
 #include <physics/interface/i_physics_world.h>
 #include <scene/logic/scene.h>
-#include <script/logic/physics_scriptable.h>
 #include <script/logic/scriptable.h>
 #include <utility>
 

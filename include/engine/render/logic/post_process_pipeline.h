@@ -39,8 +39,7 @@ public:
 
     void BeginCapture();
     void EndCapture();
-    void ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4& prevViewProj, const glm::mat4& currViewProj,
-                           const glm::vec2& jitterOffset);
+    void ApplyAntiAliasing(AntiAliasingMode mode, const glm::mat4& prevViewProj, const glm::mat4& currViewProj);
 
     void AddEffect(std::shared_ptr<Shader> shader, bool affectUI = false,
                    PostProcessInput inputs = PostProcessInput::Color);
@@ -96,6 +95,10 @@ public:
     void SetBloomRadius(float radius)
     {
         m_BloomRadius = radius;
+    }
+    void SetTAAFeedback(float feedback)
+    {
+        m_TAAFeedback = glm::clamp(feedback, 0.0f, 0.999f);
     }
     void SetHDREnabled(bool enabled)
     {
@@ -184,6 +187,7 @@ private:
 
     std::shared_ptr<Shader> m_FXAAShader;
     std::shared_ptr<Shader> m_TAAShader;
+    float m_TAAFeedback = 0.95f;
     std::shared_ptr<Shader> m_BloomDownsampleShader;
     std::shared_ptr<Shader> m_BloomUpsampleShader;
     std::shared_ptr<Shader> m_HDRFinalShader;

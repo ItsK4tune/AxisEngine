@@ -240,12 +240,14 @@ void SceneManager::LoadScene(const std::string& filePath, bool persistent)
     rec.loadOrder = m_NextLoadOrder++;
     rec.entities = std::move(res.entities);
     rec.ownedShaders = std::move(res.loadedShaders);
+    rec.ownedComputeShaders = std::move(res.loadedComputeShaders);
     rec.ownedModels = std::move(res.loadedModels);
     rec.ownedTextures = std::move(res.loadedTextures);
     rec.ownedFonts = std::move(res.loadedFonts);
     rec.ownedSkyboxes = std::move(res.loadedSkyboxes);
     rec.ownedAnimations = std::move(res.loadedAnimations);
     rec.ownedSounds = std::move(res.loadedSounds);
+    rec.ownedVideos = std::move(res.loadedVideos);
 
     auto& lookup = m_SceneEntityLookup[rec.name];
     lookup.reserve(rec.entities.size());
@@ -506,12 +508,14 @@ void SceneManager::Internal_UnloadOrphanedResources(const SceneRecord& rec)
     auto& resources = ServiceLocator::Instance().Require<ResourceManager>();
 
     for (const auto& shader : rec.ownedShaders) resources.UnloadShader(shader);
+    for (const auto& shader : rec.ownedComputeShaders) resources.UnloadComputeShader(shader);
     for (const auto& model : rec.ownedModels) resources.UnloadModel(model);
     for (const auto& texture : rec.ownedTextures) resources.UnloadTexture(texture);
     for (const auto& font : rec.ownedFonts) resources.UnloadFont(font);
     for (const auto& sky : rec.ownedSkyboxes) resources.UnloadSkybox(sky);
     for (const auto& anim : rec.ownedAnimations) resources.UnloadAnimation(anim);
     for (const auto& sound : rec.ownedSounds) resources.UnloadSound(sound);
+    for (const auto& video : rec.ownedVideos) resources.UnloadVideo(video);
 }
 
 void SceneManager::Internal_ReindexScenes()

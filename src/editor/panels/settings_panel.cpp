@@ -241,6 +241,10 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (!conf.render.bloomEnabled)
             ImGui::EndDisabled();
 
+        if (conf.graphics.antialiasing == 2 &&
+            ImGui::SliderFloat("TAA History Feedback", &conf.render.taaFeedback, 0.0f, 0.999f))
+            changed = true;
+
         ImGui::Separator();
         if (ImGui::SliderFloat("Skybox Intensity", &conf.render.skyboxIntensity, 0.0f, 5.0f))
             changed = true;
@@ -350,6 +354,8 @@ void SettingsPanel::OnImGui(Scene& scene)
         if (ImGui::Checkbox("Invert Y", &conf.input.mouseInvertY))
             changed = true;
         if (ImGui::Checkbox("Raw Mouse Input", &conf.input.rawMouseInput))
+            changed = true;
+        if (ImGui::SliderFloat("Gamepad Dead Zone", &conf.input.gamepadDeadZone, 0.0f, 0.99f))
             changed = true;
 
         ImGui::Separator();

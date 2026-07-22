@@ -52,7 +52,6 @@
 #include <editor/panels/resource_browser_panel.h>
 #include <editor/panels/scene_hierarchy_panel.h>
 #include <editor/panels/settings_panel.h>
-#include <editor/panels/stats_panel.h>
 #include <editor/panels/state_panel.h>
 #include <editor/panels/network_panel.h>
 #include <editor/panels/tools_panel.h>

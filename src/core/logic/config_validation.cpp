@@ -90,6 +90,7 @@ ConfigValidationResult ValidateAndSanitizeConfig(const AppConfig& input, const C
     ClampFinite(config.render.bloomIntensity, 0.0f, 100.0f, 1.0f, "render.bloomIntensity", issues);
     ClampFinite(config.render.bloomThreshold, 0.0f, 100.0f, 1.0f, "render.bloomThreshold", issues);
     ClampFinite(config.render.bloomRadius, 0.0f, 1.0f, 0.005f, "render.bloomRadius", issues);
+    ClampFinite(config.render.taaFeedback, 0.0f, 0.999f, 0.95f, "render.taaFeedback", issues);
     ClampFinite(config.render.skyboxIntensity, 0.0f, 100.0f, 1.0f, "render.skyboxIntensity", issues);
     ClampFinite(config.render.ambientIntensity, 0.0f, 100.0f, 1.0f, "render.ambientIntensity", issues);
     ClampFinite(config.render.uiReferenceWidth, 1.0f, 16384.0f, 1920.0f, "render.uiReferenceWidth", issues);
@@ -115,6 +116,7 @@ ConfigValidationResult ValidateAndSanitizeConfig(const AppConfig& input, const C
 
     ClampFinite(config.input.mouseSensitivityX, 0.0f, 100.0f, 0.1f, "input.mouseSensitivityX", issues);
     ClampFinite(config.input.mouseSensitivityY, 0.0f, 100.0f, 0.1f, "input.mouseSensitivityY", issues);
+    ClampFinite(config.input.gamepadDeadZone, 0.0f, 0.99f, 0.15f, "input.gamepadDeadZone", issues);
     ClampFinite(config.timeScale, 0.0f, 100.0f, 1.0f, "timeScale", issues);
     ClampFinite(config.audio.masterVolume, 0.0f, 100.0f, 100.0f, "audio.masterVolume", issues);
 
@@ -176,6 +178,11 @@ ConfigValidationResult ValidateAndSanitizeConfig(const AppConfig& input, const C
     }
     ClampValue(config.optimization.maxModelUploadsPerFrame, 1, 65536,
                "optimization.maxModelUploadsPerFrame", issues);
+    ClampValue(config.optimization.videoDecodeQueueSize, 1, 60, "optimization.videoDecodeQueueSize", issues);
+    ClampFinite(config.optimization.videoAVSyncThresholdSeconds, 0.0f, 5.0f, 0.20f,
+                "optimization.videoAVSyncThresholdSeconds", issues);
+    ClampFinite(config.optimization.videoLoadRetrySeconds, 0.05f, 60.0f, 1.0f,
+                "optimization.videoLoadRetrySeconds", issues);
     ClampValue(config.optimization.maxTextureUploadsPerFrame, 1, 65536,
                "optimization.maxTextureUploadsPerFrame", issues);
     ClampFinite(config.optimization.streamingCheckIntervalSeconds, 0.0f, 60.0f, 1.0f,

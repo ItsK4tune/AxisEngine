@@ -43,4 +43,7 @@ private:
     bool m_Enabled = true;
     Scene* m_BoundScene = nullptr;
     bool m_AsyncDecodeEnabled = true;
+    size_t m_DecodeQueueSize = 3;
+    float m_AVSyncThresholdSeconds = 0.20f;
+    float m_LoadRetrySeconds = 1.0f;
 };

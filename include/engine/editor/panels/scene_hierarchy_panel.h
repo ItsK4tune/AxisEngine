@@ -2,6 +2,7 @@
 
 #include <editor/i_editor_panel.h>
 #include <entt/entt.hpp>
+#include <array>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,11 @@ private:
     void DuplicateEntity(Scene& scene, entt::entity entity);
 
     char m_SearchFilter[256] = "";
+    entt::entity m_InfoEditEntity = entt::null;
+    std::array<char, 256> m_InfoNameBuffer{};
+    std::array<char, 256> m_InfoTagBuffer{};
+    bool m_NameEditUndoCaptured = false;
+    bool m_TagEditUndoCaptured = false;
     bool m_CtrlDPressed = false;
     bool m_DeletePressed = false;
 };

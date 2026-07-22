@@ -12,7 +12,6 @@ uniform vec4 u_TintColor;
 uniform int u_LightingMode; // 0=NONE, 1=LIGHT, 2=LIGHT+SHADOW
 
 uniform float u_Roughness;
-uniform float u_Metallic;
 uniform float u_Reflectivity;
 
 layout(binding = 10) uniform sampler2DArray u_ShadowMapDir;

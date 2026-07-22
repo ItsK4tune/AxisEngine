@@ -13,7 +13,7 @@ The **ResourceManager** handles the lifecycle of all game assets, ensuring optim
 | **Textures** | `.png`, `.jpg`, `.tga` | PNG for transparency, JPG for high-res albedo. |
 | **Audio** | `.wav`, `.mp3`, `.ogg` | WAV for SFX, MP3/OGG for music. |
 | **Video** | `.mp4` | Uses FFmpeg for asynchronous decoding. |
-| **Shaders** | `.vs`, `.fs` | Glsl-compatible text files. |
+| **Shaders** | `.vs`, `.fs`, `.cs` | GLSL-compatible graphics and compute shader files. |
 
 ---
 
@@ -33,6 +33,12 @@ axis_scene:
     Sound:
       Name: footsteps
       Path: audio/steps.wav
+    ComputeShader:
+      Name: particle_update
+      Path: shaders/particle_update.cs
+    Video:
+      Name: intro
+      Path: videos/intro.mp4
 ```
 
 ### Pre-loading vs. Lazy Loading
@@ -75,11 +81,19 @@ Debug builds can keep using internal error shaders, checkerboard textures, and m
 ### Hot Reloading
 In Debug mode, the engine monitors registered shader and texture files:
 - **Shaders**: Vertex, fragment, and geometry shader stages trigger recompilation on file save.
+- **Compute shaders**: Registered `.cs` programs recompile on file save while retaining the previous valid program if recompilation fails.
 - **Textures**: Registered file-backed textures are uploaded again without restarting.
 - **Scripts and metadata**: Runtime reload is not supported by the current compile-time script registry.
 
 ### Deduplication
 The `ResourceManager` caches assets by their **Name**. Loading the same file path under the same name multiple times will return a shared pointer to the existing instance, saving memory.
+
+### Compute dispatch
+Retrieve a loaded compute shader with `ResourceManager::GetComputeShader`, set uniforms, then call `Dispatch(x, y, z, barrier)`. Dispatch rejects zero-sized groups and automatically applies the requested memory barrier. The built-in OpenGL provider requires OpenGL 4.6; compute resources are unavailable in headless mode.
+
+### Video resources
+
+Use `ResourceManager::LoadVideo`, `GetVideo`, and `UnloadVideo` for tool previews or explicitly managed playback. `VideoPlayerComponent` creates an independent decoder because playback time, seek state, and output size are entity-local; it does not share the mutable cached decoder.
 
 ---
 

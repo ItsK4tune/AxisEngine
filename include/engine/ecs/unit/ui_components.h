@@ -123,5 +123,4 @@ struct UIAnimationComponent
     float currentScale = 1.0f;
     float visualScale = 1.0f;
     float transitionSpeed = 12.0f;
-    glm::vec2 baseSize = glm::vec2(0.0f);
 };

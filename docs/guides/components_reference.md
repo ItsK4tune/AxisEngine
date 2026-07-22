@@ -228,10 +228,10 @@ Component: UIText
 ```yaml
 Component: AudioSource
   Path: "audio/music.mp3"
-    Volume: 80.0              # Playback percentage, 0.0 - 100.0
+  Volume: 80.0              # Playback percentage, 0.0 - 100.0
   Loop: 1
-    Is3d: true                # Enables spatial attenuation
-  MinDistance: 5.0          # Distance at which volume starts dropping
+  Is3d: true                # Enables spatial attenuation
+  MinDistance: 5.0          # Full-volume radius; attenuation starts outside it
   PlayOnAwake: 1
 ```
 
@@ -241,5 +241,6 @@ Component: VideoPlayer
   Path: "video/intro.mp4"
   Loop: 0
   Speed: 1.0
+  Volume: 1.0              # Embedded audio volume, 0.0 - 1.0
   PlayOnAwake: 1
 ```

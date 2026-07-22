@@ -5,6 +5,7 @@
 #include <platform/interface/input_codes.h>
 #include <iostream>
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 InputManager::InputManager(const KeyboardManager& keyboard, const MouseManager& mouse, const IWindow& window)
@@ -31,6 +32,14 @@ void InputManager::FlushBindings()
 
 void InputManager::Update()
 {
+    if (m_ActiveDeviceId != "merged_input")
+    {
+        const auto devices = GetAllDevices();
+        if (std::none_of(devices.begin(), devices.end(),
+                         [&](const DeviceInfo& device) { return device.id == m_ActiveDeviceId; }))
+            m_ActiveDeviceId = "merged_input";
+    }
+
     float xOffset = m_Mouse.GetXOffset();
     float yOffset = m_Mouse.GetYOffset();
     if ((xOffset != 0.0f || yOffset != 0.0f) && EventManager::Instance().HasListeners<MouseMovedEvent>())
@@ -93,6 +102,12 @@ bool InputManager::GetAction(const std::string& actionName) const
             else if (m_Mouse.IsButtonPressed(btn))
                 return true;
         }
+        else if (binding.type == InputType::GamepadButton && IsGamepadButtonPressed(binding.code))
+        {
+            return true;
+        }
+        else if (binding.type == InputType::GamepadAxis && std::abs(ReadGamepadAxis(binding.code)) > 0.0f)
+            return true;
     }
     return false;
 }
@@ -103,6 +118,7 @@ bool InputManager::GetActionDown(const std::string& actionName) const
     if (it == m_ActionMap.end())
         return false;
 
+    bool hasActiveGamepadBinding = false;
     for (const auto& binding : it->second.bindings)
     {
         if (!IsBindingTypeActive(binding.type))
@@ -128,8 +144,14 @@ bool InputManager::GetActionDown(const std::string& actionName) const
             else if (m_Mouse.IsMouseClicked(btn))
                 return true;
         }
+        else if (binding.type == InputType::GamepadButton || binding.type == InputType::GamepadAxis)
+        {
+            hasActiveGamepadBinding = true;
+        }
     }
-    return false;
+    const auto previous = m_PreviousState.find(actionName);
+    return hasActiveGamepadBinding && GetAction(actionName) &&
+           (previous == m_PreviousState.end() || !previous->second);
 }
 
 bool InputManager::GetActionUp(const std::string& actionName) const
@@ -138,6 +160,7 @@ bool InputManager::GetActionUp(const std::string& actionName) const
     if (it == m_ActionMap.end())
         return false;
 
+    bool hasActiveGamepadBinding = false;
     for (const auto& binding : it->second.bindings)
     {
         if (!IsBindingTypeActive(binding.type))
@@ -153,8 +176,13 @@ bool InputManager::GetActionUp(const std::string& actionName) const
             if (m_Mouse.IsMouseReleased(btn))
                 return true;
         }
+        else if (binding.type == InputType::GamepadButton || binding.type == InputType::GamepadAxis)
+        {
+            hasActiveGamepadBinding = true;
+        }
     }
-    return false;
+    const auto previous = m_PreviousState.find(actionName);
+    return hasActiveGamepadBinding && !GetAction(actionName) && previous != m_PreviousState.end() && previous->second;
 }
 
 std::vector<DeviceInfo> InputManager::GetAllDevices() const
@@ -163,7 +191,8 @@ std::vector<DeviceInfo> InputManager::GetAllDevices() const
     devices.push_back({"merged_input", "Keyboard & Mouse", DeviceType::Keyboard, true});
     for (const auto& device : m_Window.GetConnectedDevices())
     {
-        if (device.type == DeviceType::Keyboard || device.type == DeviceType::Mouse)
+        if (device.type == DeviceType::Keyboard || device.type == DeviceType::Mouse ||
+            device.type == DeviceType::Gamepad || device.type == DeviceType::Joystick)
             devices.push_back(device);
     }
     return devices;
@@ -198,5 +227,99 @@ bool InputManager::IsBindingTypeActive(InputType type) const
         return type == InputType::Key;
     if (m_ActiveDeviceId == "mouse_0")
         return type == InputType::MouseButton;
+    int gamepadIndex = -1;
+    if (TryParseGamepadDeviceIndex(m_ActiveDeviceId, gamepadIndex))
+        return type == InputType::GamepadButton || type == InputType::GamepadAxis;
+    return false;
+}
+
+float InputManager::GetAxis(const std::string& actionName) const
+{
+    const auto found = m_ActionMap.find(actionName);
+    if (found == m_ActionMap.end())
+        return 0.0f;
+    float strongest = 0.0f;
+    for (const auto& binding : found->second.bindings)
+    {
+        if (binding.type != InputType::GamepadAxis || !IsBindingTypeActive(binding.type))
+            continue;
+        const float value = ReadGamepadAxis(binding.code);
+        if (std::abs(value) > std::abs(strongest))
+            strongest = value;
+    }
+    return strongest;
+}
+
+float InputManager::ReadGamepadAxis(int code) const
+{
+    const auto axis = static_cast<GamepadAxis>(code);
+    auto applyDeadZone = [&](float value) {
+        const bool trigger = axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger;
+        const float magnitude = trigger ? value : std::abs(value);
+        if (magnitude <= m_GamepadDeadZone)
+            return 0.0f;
+        const float scaled = (magnitude - m_GamepadDeadZone) / (1.0f - m_GamepadDeadZone);
+        return trigger || value >= 0.0f ? scaled : -scaled;
+    };
+    int activeIndex = -1;
+    if (TryParseGamepadDeviceIndex(m_ActiveDeviceId, activeIndex))
+        return applyDeadZone(m_Window.GetGamepadAxis(activeIndex, axis));
+    if (m_ActiveDeviceId != "merged_input")
+        return 0.0f;
+    float strongest = 0.0f;
+    for (const auto& device : m_Window.GetConnectedDevices())
+    {
+        int index = -1;
+        if ((device.type == DeviceType::Gamepad || device.type == DeviceType::Joystick) &&
+            TryParseGamepadDeviceIndex(device.id, index))
+        {
+            const float value = applyDeadZone(m_Window.GetGamepadAxis(index, axis));
+            if (std::abs(value) > std::abs(strongest))
+                strongest = value;
+        }
+    }
+    return strongest;
+}
+
+bool InputManager::IsGamepadButtonPressed(int code) const
+{
+    const auto button = static_cast<Gamepad>(code);
+    int activeIndex = -1;
+    if (TryParseGamepadDeviceIndex(m_ActiveDeviceId, activeIndex))
+        return m_Window.GetGamepadButton(activeIndex, button);
+
+    if (m_ActiveDeviceId != "merged_input")
+        return false;
+
+    for (const auto& device : m_Window.GetConnectedDevices())
+    {
+        if (device.type != DeviceType::Gamepad && device.type != DeviceType::Joystick)
+            continue;
+        int index = -1;
+        if (TryParseGamepadDeviceIndex(device.id, index) && m_Window.GetGamepadButton(index, button))
+            return true;
+    }
+    return false;
+}
+
+bool InputManager::TryParseGamepadDeviceIndex(const std::string& deviceId, int& index)
+{
+    constexpr const char* prefixes[] = {"gamepad_", "joystick_"};
+    for (const char* prefix : prefixes)
+    {
+        const std::string prefixValue(prefix);
+        if (deviceId.rfind(prefixValue, 0) != 0)
+            continue;
+        try
+        {
+            size_t consumed = 0;
+            index = std::stoi(deviceId.substr(prefixValue.size()), &consumed);
+            return consumed == deviceId.size() - prefixValue.size() && index >= 0;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
     return false;
 }

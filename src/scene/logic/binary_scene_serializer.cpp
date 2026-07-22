@@ -608,7 +608,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
         entt::entity entity = scene.GetRegistry().create();
         entities.push_back(entity);
 
-        auto& info = scene.AddComponent<InfoComponent>(entity, name, tag);
+        auto& info = scene.AddComponent<InfoComponent>(entity, name, CanonicalizeEntityTag(std::move(tag)));
         info.layer = layer;
 
         bool hasP = false;

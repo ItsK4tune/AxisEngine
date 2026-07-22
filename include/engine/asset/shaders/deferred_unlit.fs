@@ -11,7 +11,6 @@ in vec3 Normal;
 
 uniform sampler2D u_AlbedoMap;
 uniform vec4 u_BaseColor = vec4(1.0);
-uniform uint u_EntityID;
 flat in uint EntityID;
 
 layout(std140, binding = 20) uniform CameraData {

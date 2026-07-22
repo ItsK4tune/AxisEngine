@@ -9,10 +9,79 @@
 #include <sstream>
 #include <string>
 
+namespace
+{
+void ReadHeightfieldData(const YAMLNode& node, std::vector<float>& samples, int& width, int& length,
+                         float& minHeight, float& maxHeight, glm::vec3& scale)
+{
+    width = LoaderUtils::SafeStoi(node.GetChildValue("HeightfieldWidth", "0"));
+    length = LoaderUtils::SafeStoi(node.GetChildValue("HeightfieldLength", "0"));
+    minHeight = LoaderUtils::SafeStof(node.GetChildValue("MinHeight", "0.0"));
+    maxHeight = LoaderUtils::SafeStof(node.GetChildValue("MaxHeight", "1.0"));
+
+    std::stringstream scaleStream(node.GetChildValue("HeightfieldScale", "1 1 1"));
+    scaleStream >> scale.x >> scale.y >> scale.z;
+
+    samples.clear();
+    const std::string heightText = node.GetChildValue("Heights");
+    if (width == 0 && length == 0 && heightText.empty())
+        return;
+    const size_t expected = width > 0 && length > 0 && static_cast<size_t>(width) <= MaxHeightfieldSamples / static_cast<size_t>(length)
+                                ? static_cast<size_t>(width) * static_cast<size_t>(length)
+                                : 0;
+    if (expected == 0 || expected > MaxHeightfieldSamples)
+    {
+        LOGGER_ERROR("PhysicsLoader") << "Rejected heightfield dimensions " << width << "x" << length;
+        width = 0;
+        length = 0;
+        return;
+    }
+    samples.reserve(expected);
+    std::stringstream heights(heightText);
+    for (float value = 0.0f; samples.size() < expected && heights >> value;)
+        samples.push_back(value);
+    if (heights >> std::ws && !heights.eof())
+    {
+        LOGGER_ERROR("PhysicsLoader") << "Rejected heightfield with more samples than declared";
+        samples.clear();
+    }
+}
+
+RigidShapeComponent::ChildShape ReadChildShape(YAMLNode& node)
+{
+    RigidShapeComponent::ChildShape child;
+    child.type = ShapeTypeFromString(node.GetChildValue("Type", "BOX"));
+
+    std::stringstream posSS(node.GetChildValue("Position", "0 0 0"));
+    posSS >> child.position.x >> child.position.y >> child.position.z;
+
+    std::stringstream rotSS(node.GetChildValue("Rotation", "0 0 0"));
+    glm::vec3 rotationEuler(0.0f);
+    rotSS >> rotationEuler.x >> rotationEuler.y >> rotationEuler.z;
+    child.rotation = glm::quat(glm::radians(rotationEuler));
+
+    std::stringstream szSS(node.GetChildValue("Size", "1 1 1"));
+    szSS >> child.size.x >> child.size.y >> child.size.z;
+    child.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "0.5"));
+    child.height = LoaderUtils::SafeStof(node.GetChildValue("Height", "1.0"));
+    ReadHeightfieldData(node, child.heightSamples, child.heightfieldWidth, child.heightfieldLength, child.minHeight,
+                        child.maxHeight, child.heightfieldScale);
+
+    if (auto* shapesNode = node.GetChild("Shapes"))
+    {
+        for (auto& nestedNode : shapesNode->children)
+            if (nestedNode.key == "Shape")
+                child.children.push_back(ReadChildShape(nestedNode));
+    }
+    return child;
+}
+}  // namespace
+
 void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAMLNode& node, IPhysicsWorld* physics)
 {
     LoaderUtils::ValidateKeys(
-        node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes"},
+        node, {"Type", "Size", "Radius", "Height", "Offset", "Rotation", "Friction", "Restitution", "Shapes",
+               "HeightfieldWidth", "HeightfieldLength", "MinHeight", "MaxHeight", "HeightfieldScale", "Heights"},
         "RigidShape");
 
     auto& rs = scene.GetOrAddComponent<RigidShapeComponent>(entity);
@@ -25,6 +94,8 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
     }
     rs.radius = LoaderUtils::SafeStof(node.GetChildValue("Radius", "0.5"));
     rs.height = LoaderUtils::SafeStof(node.GetChildValue("Height", "1.0"));
+    ReadHeightfieldData(node, rs.heightSamples, rs.heightfieldWidth, rs.heightfieldLength, rs.minHeight, rs.maxHeight,
+                        rs.heightfieldScale);
 
     if (!node.GetChildValue("Offset").empty())
     {
@@ -42,30 +113,14 @@ void PhysicsLoader::LoadRigidShape(Scene& scene, entt::entity entity, const YAML
     rs.friction = LoaderUtils::SafeStof(node.GetChildValue("Friction", "0.5"));
     rs.restitution = LoaderUtils::SafeStof(node.GetChildValue("Restitution", "0.0"));
 
+    rs.children.clear();
     if (auto* shapesNode = const_cast<YAMLNode*>(&node)->GetChild("Shapes"))
     {
         for (auto& shapeNode : shapesNode->children)
         {
             if (shapeNode.key != "Shape")
                 continue;
-            RigidShapeComponent::ChildShape child;
-            child.type = ShapeTypeFromString(shapeNode.GetChildValue("Type", "BOX"));
-
-            std::stringstream posSS(shapeNode.GetChildValue("Position", "0 0 0"));
-            posSS >> child.position.x >> child.position.y >> child.position.z;
-
-            std::stringstream rotSS(shapeNode.GetChildValue("Rotation", "0 0 0"));
-            float rrx, rry, rrz;
-            rotSS >> rrx >> rry >> rrz;
-            child.rotation = glm::quat(glm::radians(glm::vec3(rrx, rry, rrz)));
-
-            std::stringstream szSS(shapeNode.GetChildValue("Size", "1 1 1"));
-            szSS >> child.size.x >> child.size.y >> child.size.z;
-
-            child.radius = LoaderUtils::SafeStof(shapeNode.GetChildValue("Radius", "0.5"));
-            child.height = LoaderUtils::SafeStof(shapeNode.GetChildValue("Height", "1.0"));
-
-            rs.children.push_back(child);
+            rs.children.push_back(ReadChildShape(shapeNode));
         }
     }
 }
@@ -77,7 +132,8 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
                                      "AttachToParent", "ParentMatter",   "ChildrenMatter", "CollisionEnabled",
                                      "IsTrigger",      "Type",           "Size",           "Radius",
                                      "Height",         "Offset",         "Rotation",       "Restitution",
-                                     "Friction",       "Shapes"},
+                                     "Friction",       "Shapes",         "HeightfieldWidth", "HeightfieldLength",
+                                     "MinHeight",      "MaxHeight",      "HeightfieldScale", "Heights"},
                               "RigidBody");
 
     // Check if we are loading the "unified" legacy format or just the dynamic part
@@ -125,8 +181,6 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
     rb.angularDamping = LoaderUtils::SafeStof(node.GetChildValue("AngularDamping", "0.0"));
 
     rb.isAttachedToParent = node.GetChildValue("AttachToParent", "false") == "true";
-    rb.isParentMatter = node.GetChildValue("ParentMatter", "false") == "true";
-    rb.isChildrenMatter = node.GetChildValue("ChildrenMatter", "false") == "true";
     rb.isCollisionEnabled = node.GetChildValue("CollisionEnabled", "true") == "true";
     rb.isTrigger = node.GetChildValue("IsTrigger", "false") == "true" || node.GetChildValue("IsTrigger", "0") == "1";
 

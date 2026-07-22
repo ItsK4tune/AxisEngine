@@ -41,6 +41,14 @@ public:
 
     virtual bool GetKey(Key key) const = 0;
     virtual bool GetMouseButton(Mouse button) const = 0;
+    virtual bool GetGamepadButton(int deviceIndex, Gamepad button) const
+    {
+        return false;
+    }
+    virtual float GetGamepadAxis(int deviceIndex, GamepadAxis axis) const
+    {
+        return 0.0f;
+    }
     virtual void GetCursorPos(double& x, double& y) const = 0;
     virtual void SetCursorPos(double x, double y) = 0;
 

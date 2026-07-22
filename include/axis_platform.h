@@ -8,7 +8,6 @@
 #include <platform/logic/io_handler.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/monitor_manager.h>
-#include <platform/unit/io_context.h>
 
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>

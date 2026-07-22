@@ -60,6 +60,7 @@ public:
     {
         return m_State.load(std::memory_order_acquire) == State::Playing;
     }
+    bool HasAudioStream() const { return m_AudioStreamIndex >= 0; }
 
     void SetOutputSize(int width, int height);
 
@@ -103,6 +104,11 @@ public:
         }
     }
     bool IsAsyncDecodeEnabled() const { return m_AsyncDecodeEnabled.load(std::memory_order_acquire); }
+    void SetMaxQueuedFrames(size_t frames)
+    {
+        m_MaxQueuedFrames.store((std::max)(size_t{1}, frames), std::memory_order_release);
+        m_DecodeCondition.notify_all();
+    }
 
     static void SetTextureManager(ITextureManager& textureManager);
     static void SetBufferManager(IBufferManager& bufferManager);
@@ -116,6 +122,7 @@ private:
     AVFrame* m_Frame = nullptr;
     AVPacket* m_Packet = nullptr;
     int m_VideoStreamIndex = -1;
+    int m_AudioStreamIndex = -1;
 
     unsigned int m_TextureID = 0;
     int m_Width = 0;
@@ -127,7 +134,6 @@ private:
     double m_FrameRate = 0.0;
     double m_CurrentTime = 0.0;
     double m_LastFrameTime = 0.0;
-    double m_Limit = 0.0;
     double m_Speed = 1.0;
     std::atomic<bool> m_Loop{true};
     bool m_ProceduralFallback = false;
@@ -155,13 +161,14 @@ private:
     std::deque<DecodedFrame> m_DecodedFrames;
     std::atomic<bool> m_StopDecodeThread{false};
     std::atomic<bool> m_AsyncDecodeEnabled{true};
+    std::atomic<bool> m_DecodeReachedEnd{false};
     bool m_SeekRequested = false;
     double m_RequestedSeekTime = 0.0;
     std::vector<uint8_t> m_UploadPixels;
     unsigned int m_UploadPbos[2] = {0, 0};
     size_t m_UploadPboCapacities[2] = {0, 0};
     size_t m_UploadPboIndex = 0;
-    static constexpr size_t MaxQueuedFrames = 3;
+    std::atomic<size_t> m_MaxQueuedFrames{3};
 
     static ITextureManager* s_TextureManager;
     static IBufferManager* s_BufferManager;

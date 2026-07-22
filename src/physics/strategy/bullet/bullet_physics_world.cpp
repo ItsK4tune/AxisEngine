@@ -425,9 +425,9 @@ std::shared_ptr<ICollisionShape> BulletPhysicsWorld::CreateHeightfieldShape(cons
                                                                             int width, int length, float minHeight,
                                                                             float maxHeight)
 {
-    if (heights.empty())
+    if (!IsValidHeightfieldSize(width, length, heights.size()) || !(minHeight < maxHeight))
     {
-        LOGGER_ERROR("BulletPhysicsWorld") << "Cannot create heightfield: heights vector is empty.";
+        LOGGER_ERROR("BulletPhysicsWorld") << "Cannot create heightfield: invalid dimensions, sample count, or range.";
         return nullptr;
     }
 

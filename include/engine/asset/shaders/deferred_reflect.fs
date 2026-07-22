@@ -33,10 +33,8 @@ layout(std140, binding = 20) uniform CameraData {
 
 uniform float u_Roughness;
 uniform float u_Metallic;
-uniform float u_AO;
 uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
-uniform uint u_EntityID;
 flat in uint EntityID;
 
 void main()

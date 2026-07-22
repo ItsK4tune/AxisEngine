@@ -40,10 +40,11 @@ Manages asynchronous video playback using **FFmpeg**.
 ### Responsibilities
 - **Decoding**: Frame processing happens in the background.
 - **Auto-Injection**: Automatically updates the texture of a `UIRendererComponent` on the same entity.
-- **Sync**: Playback speed and internal clock synchronization.
+- **Sync**: Playback speed, end-of-stream behavior, and audio/video clock synchronization.
+- **Embedded Audio**: FFmpeg decodes embedded audio to a cached stereo PCM WAV before handing it to the selected audio backend. Playback follows play, pause, stop, seek, loop, speed, and volume changes consistently across providers.
 
 ### VideoPlayerComponent
-- **Settings**: `Path`, `IsPlaying`, `IsLooping`, `Speed`.
+- **Settings**: `Path`, `IsPlaying`, `IsLooping`, `Speed`, `Volume` (`0.0` to `1.0`).
 - **Playback Controls**: `Play()`, `Pause()`, `Stop()`, `Seek(double)`.
 
 ---

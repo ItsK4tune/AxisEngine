@@ -121,46 +121,4 @@ private:
     void DrawMenuBar();
 };
 
-#else
-
-class NullEditorSystem : public IUpdateSystem, public IRenderSystem, public IECSSystem
-{
-public:
-    void Update(Scene&, float) override
-    {
-    }
-    bool IsEnabled() const override
-    {
-        return false;
-    }
-    void SetEnabled(bool) override
-    {
-    }
-    std::string GetName() const override
-    {
-        return "EditorSystem";
-    }
-    int GetPriority() const override
-    {
-        return 1000;
-    }
-    SystemCategory GetCategory() const override
-    {
-        return SystemCategory::EditorOverlay;
-    }
-    SystemRequirement GetRequirements() const override
-    {
-        return SystemRequirement::Graphics;
-    }
-
-    std::vector<entt::id_type> GetReadComponents() const override
-    {
-        return {};
-    }
-    std::vector<entt::id_type> GetWriteComponents() const override
-    {
-        return {};
-    }
-};
-
 #endif

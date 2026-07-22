@@ -4,7 +4,6 @@ layout (location = 5) in ivec4 aBoneIds;
 layout (location = 6) in vec4 aWeights;
 
 uniform mat4 u_Model;
-uniform mat4 u_ShadowMatrices[6];
 
 uniform bool u_HasAnimation;
 const int MAX_BONES = 128;

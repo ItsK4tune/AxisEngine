@@ -120,6 +120,39 @@ AXIS_TEST_CASE("PhysicsLoader legacy RigidBody with Type creates shape and body 
     AXIS_CHECK_NEAR(body.angularDamping, 0.3f, 0.0001f);
 }
 
+AXIS_TEST_CASE("PhysicsLoader parses heightfield samples and nested compound children")
+{
+    Scene scene;
+    FakePhysicsWorld physics;
+    auto entity = scene.CreateEntity("TerrainCollider");
+    auto node = SingleNode(
+        "RigidShape:\n"
+        "  Type: COMPOUND\n"
+        "  Shapes:\n"
+        "    Shape:\n"
+        "      Type: HEIGHTFIELD\n"
+        "      HeightfieldWidth: 2\n"
+        "      HeightfieldLength: 2\n"
+        "      MinHeight: 0\n"
+        "      MaxHeight: 3\n"
+        "      HeightfieldScale: 2 1 2\n"
+        "      Heights: 0 1 2 3\n"
+        "    Shape:\n"
+        "      Type: COMPOUND\n"
+        "      Shapes:\n"
+        "        Shape:\n"
+        "          Type: SPHERE\n"
+        "          Radius: 2\n");
+
+    PhysicsLoader::LoadRigidShape(scene, entity, node, physics);
+    const auto& shape = scene.GetComponent<RigidShapeComponent>(entity);
+    AXIS_CHECK(shape.children.size() == 2);
+    AXIS_CHECK(shape.children[0].heightSamples.size() == 4);
+    AXIS_CHECK(shape.children[0].heightfieldWidth == 2);
+    AXIS_CHECK(shape.children[1].children.size() == 1);
+    AXIS_CHECK_NEAR(shape.children[1].children[0].radius, 2.0f, 0.0001f);
+}
+
 AXIS_TEST_CASE("PhysicsSystem auto-adds RigidBodyComponent for shape-only entity")
 {
     axis_test_support::ResetServices();
@@ -184,6 +217,41 @@ AXIS_TEST_CASE("PhysicsSystem wraps offset shape in compound")
     AXIS_CHECK(physics.childShapeCalls.size() == 1);
     AXIS_CHECK_NEAR(physics.childShapeCalls[0].position.x, 1.0f, 0.0001f);
     AXIS_CHECK(physics.lastRigidBodyShape->GetType() == CollisionShapeType::CompoundHull);
+}
+
+AXIS_TEST_CASE("PhysicsSystem creates heightfield and recursive compound shapes")
+{
+    Scene scene;
+    FakePhysicsWorld physics;
+    PhysicsSystem system;
+
+    auto heightfieldEntity = scene.CreateEntity("Heightfield");
+    auto& heightfield = scene.AddComponent<RigidShapeComponent>(heightfieldEntity);
+    auto& heightfieldBody = scene.AddComponent<RigidBodyComponent>(heightfieldEntity);
+    heightfield.type = ShapeType::Heightfield;
+    heightfield.heightfieldWidth = 2;
+    heightfield.heightfieldLength = 2;
+    heightfield.minHeight = 0.0f;
+    heightfield.maxHeight = 3.0f;
+    heightfield.heightSamples = {0.0f, 1.0f, 2.0f, 3.0f};
+    heightfield.heightfieldScale = {2.0f, 1.0f, 2.0f};
+    system.InitializeRigidBodyDirect(scene, heightfieldEntity, heightfield, heightfieldBody, physics);
+    AXIS_CHECK(heightfieldBody.body != nullptr);
+    AXIS_CHECK(physics.heightfieldSampleCount == 4);
+    AXIS_CHECK(physics.heightfieldWidth == 2);
+
+    auto compoundEntity = scene.CreateEntity("Compound");
+    auto& compound = scene.AddComponent<RigidShapeComponent>(compoundEntity);
+    auto& compoundBody = scene.AddComponent<RigidBodyComponent>(compoundEntity);
+    compound.type = ShapeType::Compound;
+    RigidShapeComponent::ChildShape nested;
+    nested.type = ShapeType::Compound;
+    nested.children.emplace_back();
+    nested.children.back().type = ShapeType::Sphere;
+    compound.children.push_back(std::move(nested));
+    system.InitializeRigidBodyDirect(scene, compoundEntity, compound, compoundBody, physics);
+    AXIS_CHECK(compoundBody.body != nullptr);
+    AXIS_CHECK(physics.childShapeCalls.size() >= 2);
 }
 
 AXIS_TEST_CASE("PhysicsSystem collision filter respects disabled collision flag")

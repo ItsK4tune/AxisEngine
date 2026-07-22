@@ -25,6 +25,7 @@
 #include <resource/logic/resource_manager.h>
 #include <script/logic/scriptable.h>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <functional>
 
 PhysicsSystem::PhysicsSystem()
 {
@@ -378,76 +379,104 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
         }
     }
 
-    std::shared_ptr<ICollisionShape> finalShape = nullptr;
-    if (shape.type == ShapeType::Box)
-        finalShape = physics.CreateBoxShape(shape.size);
-    else if (shape.type == ShapeType::Sphere)
-        finalShape = physics.CreateSphereShape(shape.radius);
-    else if (shape.type == ShapeType::Capsule)
-        finalShape = physics.CreateCapsuleShape(shape.radius, shape.height);
-    else if (shape.type == ShapeType::Cylinder)
-        finalShape = physics.CreateCylinderShape(shape.radius, shape.height);
-    else if (shape.type == ShapeType::Mesh)
-    {
-        if (auto* meshComp = scene.GetRegistry().try_get<MeshRendererComponent>(entity))
-        {
-            if (meshComp->model)
-            {
-                const glm::vec3 entityScale = scene.GetRegistry().all_of<ScaleComponent>(entity)
-                                                  ? scene.GetRegistry().get<ScaleComponent>(entity).value
-                                                  : glm::vec3(1.0f);
-                const MeshShapeCacheKey cacheKey{meshComp->model.get(), entityScale};
-                if (m_MeshShapeCacheEnabled)
-                {
-                    if (const auto cached = m_MeshShapeCache.find(cacheKey); cached != m_MeshShapeCache.end())
-                        finalShape = cached->second.lock();
-                }
+    const glm::vec3 entityScale = scene.GetRegistry().all_of<ScaleComponent>(entity)
+                                      ? scene.GetRegistry().get<ScaleComponent>(entity).value
+                                      : glm::vec3(1.0f);
 
-                if (!finalShape)
+    auto createMeshShape = [&](const glm::vec3& vertexScale) -> std::shared_ptr<ICollisionShape> {
+        auto* meshComp = scene.GetRegistry().try_get<MeshRendererComponent>(entity);
+        if (!meshComp || !meshComp->model)
+            return nullptr;
+
+        const MeshShapeCacheKey cacheKey{meshComp->model.get(), vertexScale};
+        if (m_MeshShapeCacheEnabled)
+            if (const auto cached = m_MeshShapeCache.find(cacheKey); cached != m_MeshShapeCache.end())
+                if (auto cachedShape = cached->second.lock())
+                    return cachedShape;
+
+        std::vector<float> vertices;
+        std::vector<uint32_t> indices;
+        for (auto& mesh : meshComp->model->meshes)
+        {
+            const uint32_t offset = static_cast<uint32_t>(vertices.size() / 3);
+            for (size_t vertexIndex = 0; vertexIndex < mesh.m_VertexCount; ++vertexIndex)
+            {
+                const glm::vec3 vertex = mesh.GetPosition(vertexIndex) * vertexScale;
+                vertices.insert(vertices.end(), {vertex.x, vertex.y, vertex.z});
+            }
+            for (auto index : mesh.indices)
+                indices.push_back(index + offset);
+        }
+        auto result = physics.CreateMeshShape(vertices, indices);
+        if (result && m_MeshShapeCacheEnabled)
+            m_MeshShapeCache[cacheKey] = result;
+        return result;
+    };
+
+    std::function<std::shared_ptr<ICollisionShape>(const RigidShapeComponent::ChildShape&)> createChildShape;
+    createChildShape = [&](const RigidShapeComponent::ChildShape& childData) -> std::shared_ptr<ICollisionShape> {
+        std::shared_ptr<ICollisionShape> child;
+        switch (childData.type)
+        {
+            case ShapeType::Box: child = physics.CreateBoxShape(childData.size); break;
+            case ShapeType::Sphere: child = physics.CreateSphereShape(childData.radius); break;
+            case ShapeType::Capsule: child = physics.CreateCapsuleShape(childData.radius, childData.height); break;
+            case ShapeType::Cylinder: child = physics.CreateCylinderShape(childData.radius, childData.height); break;
+            case ShapeType::Mesh: child = createMeshShape(glm::vec3(1.0f)); break;
+            case ShapeType::Heightfield:
+                if (IsValidHeightfieldSize(childData.heightfieldWidth, childData.heightfieldLength,
+                                           childData.heightSamples.size()))
                 {
-                    std::vector<float> vertices;
-                    std::vector<uint32_t> indices;
-                    for (auto& mesh : meshComp->model->meshes)
-                    {
-                        uint32_t offset = (uint32_t)vertices.size() / 3;
-                        for (size_t vIdx = 0; vIdx < mesh.m_VertexCount; ++vIdx)
-                        {
-                            const glm::vec3 pos = mesh.GetPosition(vIdx);
-                            vertices.push_back(pos.x * entityScale.x);
-                            vertices.push_back(pos.y * entityScale.y);
-                            vertices.push_back(pos.z * entityScale.z);
-                        }
-                        for (auto idx : mesh.indices)
-                            indices.push_back(idx + offset);
-                    }
-                    if (!vertices.empty())
-                    {
-                        finalShape = physics.CreateMeshShape(vertices, indices);
-                        if (finalShape && m_MeshShapeCacheEnabled)
-                            m_MeshShapeCache[cacheKey] = finalShape;
-                    }
+                    child = physics.CreateHeightfieldShape(childData.heightSamples, childData.heightfieldWidth,
+                                                           childData.heightfieldLength, childData.minHeight,
+                                                           childData.maxHeight);
+                    if (child)
+                        child->SetLocalScaling(childData.heightfieldScale);
                 }
+                break;
+            case ShapeType::Compound:
+            {
+                auto compound = physics.CreateCompoundShape();
+                for (const auto& nestedData : childData.children)
+                    if (auto nested = createChildShape(nestedData))
+                        physics.AddChildShape(compound, nested, nestedData.position, nestedData.rotation);
+                child = compound;
+                break;
             }
         }
-    }
-    else if (shape.type == ShapeType::Compound)
+        return child;
+    };
+
+    std::shared_ptr<ICollisionShape> finalShape;
+    switch (shape.type)
     {
-        auto compound = physics.CreateCompoundShape();
-        for (auto& cs : shape.children)
+        case ShapeType::Box: finalShape = physics.CreateBoxShape(shape.size); break;
+        case ShapeType::Sphere: finalShape = physics.CreateSphereShape(shape.radius); break;
+        case ShapeType::Capsule: finalShape = physics.CreateCapsuleShape(shape.radius, shape.height); break;
+        case ShapeType::Cylinder: finalShape = physics.CreateCylinderShape(shape.radius, shape.height); break;
+        case ShapeType::Mesh: finalShape = createMeshShape(entityScale); break;
+        case ShapeType::Heightfield:
+            if (IsValidHeightfieldSize(shape.heightfieldWidth, shape.heightfieldLength, shape.heightSamples.size()))
+                finalShape = physics.CreateHeightfieldShape(shape.heightSamples, shape.heightfieldWidth,
+                                                            shape.heightfieldLength, shape.minHeight, shape.maxHeight);
+            else
+                LOGGER_ERROR("PhysicsSystem") << "Invalid heightfield dimensions or sample count for entity "
+                                               << static_cast<uint32_t>(entity) << ".";
+            break;
+        case ShapeType::Compound:
         {
-            std::shared_ptr<ICollisionShape> child = nullptr;
-            if (cs.type == ShapeType::Box)
-                child = physics.CreateBoxShape(cs.size);
-            else if (cs.type == ShapeType::Sphere)
-                child = physics.CreateSphereShape(cs.radius);
-            else if (cs.type == ShapeType::Capsule)
-                child = physics.CreateCapsuleShape(cs.radius, cs.height);
-            else if (cs.type == ShapeType::Cylinder)
-                child = physics.CreateCylinderShape(cs.radius, cs.height);
-            if (child)
-                physics.AddChildShape(compound, child, cs.position, cs.rotation);
+            auto compound = physics.CreateCompoundShape();
+            for (const auto& childData : shape.children)
+            {
+                if (auto child = createChildShape(childData))
+                    physics.AddChildShape(compound, child, childData.position, childData.rotation);
+                else
+                    LOGGER_ERROR("PhysicsSystem") << "Unable to create compound child shape for entity "
+                                                   << static_cast<uint32_t>(entity) << ".";
+            }
+            finalShape = compound;
+            break;
         }
-        finalShape = compound;
     }
 
     bool hasOffset = glm::length(shape.offset) > 0.001f;
@@ -465,8 +494,9 @@ void PhysicsSystem::InitializeRigidBodyDirect(Scene& scene, entt::entity entity,
         glm::vec3 totalScale(1.0f);
         if (shape.type != ShapeType::Mesh)
         {
-            if (auto* scl = scene.GetRegistry().try_get<ScaleComponent>(entity))
-                totalScale = scl->value;
+            totalScale = entityScale;
+            if (shape.type == ShapeType::Heightfield)
+                totalScale *= shape.heightfieldScale;
         }
 
         if (shape.type == ShapeType::Mesh)

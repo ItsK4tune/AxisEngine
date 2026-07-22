@@ -7,10 +7,13 @@
 #include <resource/unit/animation.h>
 #include <resource/unit/animator.h>
 #include <glm/glm.hpp>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <cstdint>
 #include <vector>
+#include <future>
+#include <optional>
 
 
 struct AudioSourceComponent
@@ -47,6 +50,10 @@ struct VideoPlayerComponent
     int maxDecodes = 1;
 
     std::shared_ptr<VideoDecoder> decoder = nullptr;
+    std::shared_ptr<ISound> audio = nullptr;
+    float loadRetryRemaining = 0.0f;
+    std::shared_future<std::optional<std::string>> embeddedAudioFuture;
+    bool embeddedAudioPending = false;
 };
 
 inline void PlayVideo(VideoPlayerComponent& vp)
@@ -54,18 +61,27 @@ inline void PlayVideo(VideoPlayerComponent& vp)
     vp.isPlaying = true;
     if (vp.decoder)
         vp.decoder->Play();
+    if (vp.audio)
+        vp.audio->Resume();
 }
 inline void PauseVideo(VideoPlayerComponent& vp)
 {
     vp.isPlaying = false;
     if (vp.decoder)
         vp.decoder->Pause();
+    if (vp.audio)
+        vp.audio->Pause();
 }
 inline void StopVideo(VideoPlayerComponent& vp)
 {
     vp.isPlaying = false;
     if (vp.decoder)
         vp.decoder->Stop();
+    if (vp.audio)
+    {
+        vp.audio->Pause();
+        vp.audio->SetPlayPosition(0);
+    }
 }
 inline void ReplayVideo(VideoPlayerComponent& vp)
 {
@@ -75,11 +91,18 @@ inline void ReplayVideo(VideoPlayerComponent& vp)
         vp.decoder->Seek(0);
         vp.decoder->Play();
     }
+    if (vp.audio)
+    {
+        vp.audio->SetPlayPosition(0);
+        vp.audio->Resume();
+    }
 }
 inline void SeekVideo(VideoPlayerComponent& vp, double time)
 {
     if (vp.decoder)
         vp.decoder->Seek(time);
+    if (vp.audio)
+        vp.audio->SetPlayPosition(static_cast<unsigned int>((std::max)(0.0, time) * 1000.0));
 }
 
 enum class AnimationParameterType : uint8_t

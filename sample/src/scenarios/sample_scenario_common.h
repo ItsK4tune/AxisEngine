@@ -2,6 +2,7 @@
 
 #include "sample_state.h"
 
+#include <core/logic/filesystem.h>
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -17,11 +18,15 @@ inline std::string SamplePath(const char* relativePath)
 {
     std::filesystem::path path(relativePath);
     if (std::filesystem::exists(path))
-        return path.generic_string();
+        return std::filesystem::absolute(path).lexically_normal().generic_string();
 
     std::filesystem::path parentPath = std::filesystem::path("..") / path;
     if (std::filesystem::exists(parentPath))
-        return parentPath.generic_string();
+        return std::filesystem::absolute(parentPath).lexically_normal().generic_string();
+
+    std::filesystem::path rootedPath(FileSystem::getPath(relativePath));
+    if (std::filesystem::exists(rootedPath))
+        return std::filesystem::absolute(rootedPath).lexically_normal().generic_string();
 
     return path.generic_string();
 }

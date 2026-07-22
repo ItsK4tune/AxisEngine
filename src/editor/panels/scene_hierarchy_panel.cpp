@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <utility>
@@ -494,15 +495,50 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     if (auto* info = reg.try_get<InfoComponent>(entity))
     {
+        if (m_InfoEditEntity != entity)
+        {
+            m_InfoEditEntity = entity;
+            std::snprintf(m_InfoNameBuffer.data(), m_InfoNameBuffer.size(), "%s", info->name.c_str());
+            std::snprintf(m_InfoTagBuffer.data(), m_InfoTagBuffer.size(), "%s", info->tag.c_str());
+            m_NameEditUndoCaptured = false;
+            m_TagEditUndoCaptured = false;
+        }
+
         if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            char buffer[256];
-            strncpy(buffer, info->name.c_str(), sizeof(buffer) - 1);
-            buffer[sizeof(buffer) - 1] = '\0';
-            if (ImGui::InputText("Name", buffer, sizeof(buffer)))
-                info->name = buffer;
+            if (!m_NameEditUndoCaptured && info->name != m_InfoNameBuffer.data())
+                std::snprintf(m_InfoNameBuffer.data(), m_InfoNameBuffer.size(), "%s", info->name.c_str());
+            if (ImGui::InputText("Name", m_InfoNameBuffer.data(), m_InfoNameBuffer.size()))
+            {
+                if (!m_NameEditUndoCaptured)
+                {
+                    EditorSystem::PushUndoState(scene);
+                    m_NameEditUndoCaptured = true;
+                }
+                info->name = m_InfoNameBuffer.data();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                m_NameEditUndoCaptured = false;
+
             ImGui::Text("Scene: %s", info->sceneName.c_str());
-            ImGui::Text("Tag: %s", info->tag.c_str());
+
+            if (!m_TagEditUndoCaptured && info->tag != m_InfoTagBuffer.data())
+                std::snprintf(m_InfoTagBuffer.data(), m_InfoTagBuffer.size(), "%s", info->tag.c_str());
+            if (ImGui::InputText("Tag", m_InfoTagBuffer.data(), m_InfoTagBuffer.size()))
+            {
+                if (!m_TagEditUndoCaptured)
+                {
+                    EditorSystem::PushUndoState(scene);
+                    m_TagEditUndoCaptured = true;
+                }
+                info->tag = m_InfoTagBuffer.data();
+            }
+            if (ImGui::IsItemDeactivatedAfterEdit())
+            {
+                info->tag = CanonicalizeEntityTag(std::move(info->tag));
+                std::snprintf(m_InfoTagBuffer.data(), m_InfoTagBuffer.size(), "%s", info->tag.c_str());
+                m_TagEditUndoCaptured = false;
+            }
         }
     }
 
@@ -634,6 +670,26 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             shapeChanged |= ImGui::DragFloat("Radius", &shape.radius, 0.1f);
         if (shape.type == ShapeType::Capsule || shape.type == ShapeType::Cylinder)
             shapeChanged |= ImGui::DragFloat("Height", &shape.height, 0.1f);
+        if (shape.type == ShapeType::Heightfield)
+        {
+            int dimensions[2] = {shape.heightfieldWidth, shape.heightfieldLength};
+            if (ImGui::DragInt2("Grid Size", dimensions, 1.0f, 2, 4096))
+            {
+                shape.heightfieldWidth = (std::max)(2, dimensions[0]);
+                shape.heightfieldLength = (std::max)(2, dimensions[1]);
+                shape.heightSamples.resize(static_cast<size_t>(shape.heightfieldWidth) * shape.heightfieldLength,
+                                           shape.minHeight);
+                shapeChanged = true;
+            }
+            shapeChanged |= ImGui::DragFloatRange2("Height Range", &shape.minHeight, &shape.maxHeight, 0.1f);
+            shapeChanged |= ImGui::DragFloat3("Heightfield Scale", &shape.heightfieldScale.x, 0.05f, 0.0001f);
+            ImGui::Text("Samples: %zu", shape.heightSamples.size());
+            if (ImGui::Button("Fill With Minimum Height"))
+            {
+                std::fill(shape.heightSamples.begin(), shape.heightSamples.end(), shape.minHeight);
+                shapeChanged = true;
+            }
+        }
 
         shapeChanged |= ImGui::DragFloat("Friction", &shape.friction, 0.05f, 0.0f, 1.0f);
         shapeChanged |= ImGui::DragFloat("Restitution", &shape.restitution, 0.05f, 0.0f, 1.0f);
@@ -652,8 +708,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             ImGui::Text("Child Shapes (%d)", (int)shape.children.size());
             if (ImGui::Button("Add Child Shape"))
             {
-                shape.children.push_back(
-                    {ShapeType::Box, glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f), 0.5f, 1.0f});
+                shape.children.emplace_back();
                 shapeChanged = true;
             }
 
@@ -678,6 +733,24 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
                         shapeChanged |= ImGui::DragFloat("Radius", &child.radius, 0.1f);
                     if (child.type == ShapeType::Capsule || child.type == ShapeType::Cylinder)
                         shapeChanged |= ImGui::DragFloat("Height", &child.height, 0.1f);
+                    if (child.type == ShapeType::Heightfield)
+                    {
+                        int childDimensions[2] = {child.heightfieldWidth, child.heightfieldLength};
+                        if (ImGui::DragInt2("Grid Size", childDimensions, 1.0f, 2, 4096))
+                        {
+                            child.heightfieldWidth = (std::max)(2, childDimensions[0]);
+                            child.heightfieldLength = (std::max)(2, childDimensions[1]);
+                            child.heightSamples.resize(
+                                static_cast<size_t>(child.heightfieldWidth) * child.heightfieldLength,
+                                child.minHeight);
+                            shapeChanged = true;
+                        }
+                        shapeChanged |=
+                            ImGui::DragFloatRange2("Height Range", &child.minHeight, &child.maxHeight, 0.1f);
+                        shapeChanged |=
+                            ImGui::DragFloat3("Heightfield Scale", &child.heightfieldScale.x, 0.05f, 0.0001f);
+                        ImGui::Text("Samples: %zu", child.heightSamples.size());
+                    }
 
                     shapeChanged |= ImGui::DragFloat3("Position", &child.position.x, 0.1f);
 
@@ -1011,7 +1084,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::Text("Path: %s", video.filePath.empty() ? "None" : video.filePath.c_str());
         ImGui::Checkbox("Loop##Video", &video.isLooping);
         ImGui::Checkbox("Play On Awake##Vid", &video.playOnAwake);
-        ImGui::DragFloat("Volume##Video", &video.volume, 0.01f, 0.0f, 2.0f);
+        ImGui::DragFloat("Volume##Video", &video.volume, 0.01f, 0.0f, 1.0f);
         ImGui::DragFloat("Speed##Video", &video.speed, 0.01f, 0.1f, 4.0f);
     });
 
@@ -1856,6 +1929,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     {
         auto video = reg.get<VideoPlayerComponent>(srcEntity);
         video.decoder.reset();
+        video.audio.reset();
         video.isLoaded = false;
         video.isPlaying = false;
         reg.emplace<VideoPlayerComponent>(newEntity, std::move(video));

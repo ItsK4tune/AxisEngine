@@ -13,9 +13,11 @@ public:
 
     virtual void SetDefaultPitch(float pitch) = 0;
     virtual float GetDefaultPitch() const = 0;
+    virtual bool SupportsDefaultPitch() const { return true; }
 
     virtual void SetDefaultPan(float pan) = 0;
     virtual float GetDefaultPan() const = 0;
+    virtual bool SupportsDefaultPan() const { return true; }
 
     virtual void SetDefaultSpeed(float speed) = 0;
     virtual float GetDefaultSpeed() const = 0;

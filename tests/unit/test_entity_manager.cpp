@@ -65,6 +65,18 @@ AXIS_TEST_CASE("EntityManager finds entities by name tag and scene")
     AXIS_CHECK(scene.FindAllBySceneName("arena").size() == 2);
 }
 
+AXIS_TEST_CASE("EntityManager canonicalizes the legacy default tag spelling")
+{
+    Scene scene;
+    auto entity = scene.CreateEntity("Legacy", "Default");
+    AXIS_CHECK(scene.FindByTag(DefaultEntityTag) == entity);
+    auto spaced = scene.CreateEntity("Spaced", "  DEFAULT  ");
+    auto empty = scene.CreateEntity("Empty", "   ");
+    AXIS_CHECK(scene.GetComponent<InfoComponent>(entity).tag == DefaultEntityTag);
+    AXIS_CHECK(scene.GetComponent<InfoComponent>(spaced).tag == DefaultEntityTag);
+    AXIS_CHECK(scene.GetComponent<InfoComponent>(empty).tag == DefaultEntityTag);
+}
+
 AXIS_TEST_CASE("EntityManager reparents child and removes it from old parent")
 {
     Scene scene;

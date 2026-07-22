@@ -32,7 +32,6 @@ layout (binding = 30) uniform sampler2D textureLayer2;
 layout (binding = 31) uniform sampler2D textureLayer3;
 
 uniform float textureScale;
-uniform float maxHeight;
 uniform int normalLayerCount;
 uniform int diffuseLayerCount;
 

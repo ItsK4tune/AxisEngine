@@ -29,8 +29,10 @@ virtual bool SetActiveDevice(const std::string& deviceId) = 0;
 - **Config**: Set via the `Config` block in your `.axs` scene file.
 
 ### InputManager
-- Manages Keyboards, Mice, and Joysticks.
-- Currently supports listing devices.
+- Manages keyboard, mouse, mapped gamepads, and raw joysticks.
+- Enumerates gamepads as `gamepad_N` and raw joysticks as `joystick_N`; disconnected active devices fall back to merged input.
+- Supports mapped buttons and axes. Bind axes with `GamepadAxis: leftx`, `lefty`, `rightx`, `righty`, `lefttrigger`, or `righttrigger`, then read the normalized value with `EngineAccessor::GetAxis`. `GAMEPAD_DEAD_ZONE` controls radial magnitude filtering for each axis.
+- `GamepadButton` bindings support held, pressed, and released action queries. Axis/dead-zone and rumble APIs are not currently exposed.
 
 ### Audio services
 - `IAudioEngine` owns playback and reports backend-specific output-device capabilities.

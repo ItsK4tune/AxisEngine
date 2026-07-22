@@ -330,7 +330,7 @@ Entity Scene::CreateEntity(const std::string& name, const std::string& tag)
     registry.emplace<ScaleComponent>(entity);
     registry.emplace<HierarchyComponent>(entity);
     registry.emplace<WorldTransformComponent>(entity);
-    registry.emplace<InfoComponent>(entity, name, tag);
+    registry.emplace<InfoComponent>(entity, name, CanonicalizeEntityTag(tag));
     return Entity(entity, this);
 }
 

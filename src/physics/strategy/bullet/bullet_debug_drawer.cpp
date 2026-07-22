@@ -122,8 +122,9 @@ void BulletDebugDrawer::reportErrorWarning(const char* warningString)
     LOGGER_WARN("Physics") << warningString;
 }
 
-void BulletDebugDrawer::draw3dText(const btVector3& location, const char* textString)
+void BulletDebugDrawer::draw3dText(const btVector3&, const char*)
 {
+    // Bullet requires this callback, but AxisEngine's line renderer has no text primitive.
 }
 
 void BulletDebugDrawer::setDebugMode(int debugMode)

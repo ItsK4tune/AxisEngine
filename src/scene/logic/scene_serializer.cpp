@@ -21,6 +21,7 @@
 #include <ecs/unit/script_component.h>
 #include <ecs/unit/terrain_component.h>
 #include <ecs/unit/network_components.h>
+#include <ecs/unit/physics_components.h>
 #include <engine/platform/logic/io_handler.h>
 #include <navigation/unit/pathfollower_component.h>
 #include <navigation/unit/navmesh_component.h>
@@ -37,6 +38,7 @@
 #include <cctype>
 #include <filesystem>
 #include <set>
+#include <sstream>
 #include <unordered_set>
 
 SceneSerializer::SceneSerializer(ResourceManager& res, IPhysicsWorld* phys, AudioService* audio)
@@ -138,6 +140,20 @@ bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::s
                     res.LoadShader(name, vs, fs, gs);
                     result.loadedShaders.push_back(name);
                 }
+                else if (resNode.key == "ComputeShader")
+                {
+                    const std::string name = resNode.GetChildValue("Name");
+                    const std::string path = resNode.GetChildValue("Path");
+                    if (res.LoadComputeShader(name, path))
+                        result.loadedComputeShaders.push_back(name);
+                }
+                else if (resNode.key == "Video")
+                {
+                    const std::string name = resNode.GetChildValue("Name");
+                    const std::string path = resNode.GetChildValue("Path");
+                    if (res.LoadVideo(name, path))
+                        result.loadedVideos.push_back(name);
+                }
                 else if (resNode.key == "Model")
                 {
                     std::string name = resNode.GetChildValue("Name");
@@ -206,7 +222,9 @@ bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::s
                 scene.AddComponent<ScaleComponent>(currentEntity);
                 scene.AddComponent<HierarchyComponent>(currentEntity);
                 scene.AddComponent<WorldTransformComponent>(currentEntity);
-                scene.AddComponent<InfoComponent>(currentEntity, entityName, entNode.GetChildValue("Tag", "default"));
+                scene.AddComponent<InfoComponent>(
+                    currentEntity, entityName,
+                    CanonicalizeEntityTag(entNode.GetChildValue("Tag", DefaultEntityTag)));
 
                 auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = entNode.GetChildValue("Scene", entNode.GetChildValue("SceneName", sceneName));
@@ -344,6 +362,49 @@ static std::string Vec4Str(const glm::vec4& v)
         (f) << (key) << ": " << (val) << "\n";          \
     } while (0)
 
+static std::string FloatListStr(const std::vector<float>& values)
+{
+    std::ostringstream stream;
+    for (size_t index = 0; index < values.size(); ++index)
+    {
+        if (index > 0)
+            stream << ' ';
+        stream << FloatStr(values[index]);
+    }
+    return stream.str();
+}
+
+static void WriteHeightfieldData(std::ostream& stream, int indent, const std::vector<float>& samples, int width,
+                                 int length, float minHeight, float maxHeight, const glm::vec3& scale)
+{
+    SerialWriteKV(stream, indent, "HeightfieldWidth", std::to_string(width));
+    SerialWriteKV(stream, indent, "HeightfieldLength", std::to_string(length));
+    SerialWriteKV(stream, indent, "MinHeight", FloatStr(minHeight));
+    SerialWriteKV(stream, indent, "MaxHeight", FloatStr(maxHeight));
+    SerialWriteKV(stream, indent, "HeightfieldScale", Vec3Str(scale));
+    SerialWriteKV(stream, indent, "Heights", FloatListStr(samples));
+}
+
+static void WriteChildShape(std::ostream& stream, int indent, const RigidShapeComponent::ChildShape& child)
+{
+    stream << std::string(indent * 2, ' ') << "Shape:\n";
+    SerialWriteKV(stream, indent + 1, "Type", ShapeTypeToString(child.type));
+    SerialWriteKV(stream, indent + 1, "Position", Vec3Str(child.position));
+    SerialWriteKV(stream, indent + 1, "Rotation", Vec3Str(glm::degrees(glm::eulerAngles(child.rotation))));
+    SerialWriteKV(stream, indent + 1, "Size", Vec3Str(child.size));
+    SerialWriteKV(stream, indent + 1, "Radius", FloatStr(child.radius));
+    SerialWriteKV(stream, indent + 1, "Height", FloatStr(child.height));
+    if (child.type == ShapeType::Heightfield)
+        WriteHeightfieldData(stream, indent + 1, child.heightSamples, child.heightfieldWidth, child.heightfieldLength,
+                             child.minHeight, child.maxHeight, child.heightfieldScale);
+    if (!child.children.empty())
+    {
+        stream << std::string((indent + 1) * 2, ' ') << "Shapes:\n";
+        for (const auto& nested : child.children)
+            WriteChildShape(stream, indent + 2, nested);
+    }
+}
+
 static std::string Vec2PercentStr(const glm::vec2& v, const glm::bvec2& p)
 {
     std::ostringstream ss;
@@ -387,6 +448,7 @@ struct UsedResources
     std::set<std::string> skyboxes;
     std::set<std::string> animations;
     std::set<std::string> sounds;
+    std::set<std::string> videos;
 };
 
 static void CollectResources(entt::registry& reg, entt::entity entity, UsedResources& ur, const std::string& sceneName)
@@ -472,6 +534,8 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
         if (!audio->resourceName.empty())
             ur.sounds.insert(audio->resourceName);
     }
+    if (auto* video = reg.try_get<VideoPlayerComponent>(entity); video && !video->filePath.empty())
+        ur.videos.insert(SceneSerializer::NormalizePath(video->filePath));
     if (auto* decal = reg.try_get<DecalComponent>(entity))
     {
         if (!decal->albedoTexture.empty())
@@ -738,6 +802,9 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         SerialWriteKV(f, ti, "Size", Vec3Str(rs->size));
         SerialWriteKV(f, ti, "Radius", FloatStr(rs->radius));
         SerialWriteKV(f, ti, "Height", FloatStr(rs->height));
+        if (rs->type == ShapeType::Heightfield)
+            WriteHeightfieldData(f, ti, rs->heightSamples, rs->heightfieldWidth, rs->heightfieldLength, rs->minHeight,
+                                 rs->maxHeight, rs->heightfieldScale);
         SerialWriteKV(f, ti, "Friction", FloatStr(rs->friction));
         SerialWriteKV(f, ti, "Restitution", FloatStr(rs->restitution));
         if (glm::length(rs->offset) > 0.0001f)
@@ -749,15 +816,7 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         {
             f << std::string(ti * 2, ' ') << "Shapes:\n";
             for (const auto& child : rs->children)
-            {
-                f << std::string((ti + 1) * 2, ' ') << "Shape:\n";
-                SerialWriteKV(f, ti + 2, "Type", ShapeTypeToString(child.type));
-                SerialWriteKV(f, ti + 2, "Position", Vec3Str(child.position));
-                SerialWriteKV(f, ti + 2, "Rotation", Vec3Str(glm::degrees(glm::eulerAngles(child.rotation))));
-                SerialWriteKV(f, ti + 2, "Size", Vec3Str(child.size));
-                SerialWriteKV(f, ti + 2, "Radius", FloatStr(child.radius));
-                SerialWriteKV(f, ti + 2, "Height", FloatStr(child.height));
-            }
+                WriteChildShape(f, ti + 1, child);
         }
     }
     if (auto* rb = reg.try_get<RigidBodyComponent>(entity))
@@ -770,8 +829,6 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         SerialWriteKV(f, ti, "LinearFactor", Vec3Str(rb->linearFactor));
         SerialWriteKV(f, ti, "AngularFactor", Vec3Str(rb->angularFactor));
         SerialWriteKV(f, ti, "AttachToParent", rb->isAttachedToParent ? "true" : "false");
-        SerialWriteKV(f, ti, "ParentMatter", rb->isParentMatter ? "true" : "false");
-        SerialWriteKV(f, ti, "ChildrenMatter", rb->isChildrenMatter ? "true" : "false");
         SerialWriteKV(f, ti, "CollisionEnabled", rb->isCollisionEnabled ? "true" : "false");
         const glm::vec3 linearVelocity = rb->body ? rb->body->GetLinearVelocity() : rb->initialLinearVelocity;
         const glm::vec3 angularVelocity = rb->body ? rb->body->GetAngularVelocity() : rb->initialAngularVelocity;
@@ -1397,6 +1454,8 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
             const std::vector<std::string>* list = nullptr;
             if (type == "Shader")
                 list = &otherRec.ownedShaders;
+            else if (type == "ComputeShader")
+                list = &otherRec.ownedComputeShaders;
             else if (type == "Model")
                 list = &otherRec.ownedModels;
             else if (type == "Texture")
@@ -1409,6 +1468,8 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
                 list = &otherRec.ownedAnimations;
             else if (type == "Audio" || type == "Sound")
                 list = &otherRec.ownedSounds;
+            else if (type == "Video")
+                list = &otherRec.ownedVideos;
 
             if (list && std::find(list->begin(), list->end(), name) != list->end())
                 return true;
@@ -1424,6 +1485,9 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
         if (def.type == "Shader")
             used = ur.shaders.count(def.name) || (rec && std::find(rec->ownedShaders.begin(), rec->ownedShaders.end(),
                                                                    def.name) != rec->ownedShaders.end());
+        else if (def.type == "ComputeShader")
+            used = rec && std::find(rec->ownedComputeShaders.begin(), rec->ownedComputeShaders.end(), def.name) !=
+                              rec->ownedComputeShaders.end();
         else if (def.type == "Model")
             used = ur.models.count(def.name) || (rec && std::find(rec->ownedModels.begin(), rec->ownedModels.end(),
                                                                   def.name) != rec->ownedModels.end());
@@ -1449,6 +1513,14 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
         else if (def.type == "Audio" || def.type == "Sound")
             used = ur.sounds.count(def.name) || (rec && std::find(rec->ownedSounds.begin(), rec->ownedSounds.end(),
                                                                   def.name) != rec->ownedSounds.end());
+        else if (def.type == "Video")
+        {
+            const std::string relPath = SceneSerializer::NormalizePath(
+                def.properties.count("Path") ? def.properties.at("Path") : std::string{});
+            used = ur.videos.count(def.name) || ur.videos.count(relPath) ||
+                   (rec && std::find(rec->ownedVideos.begin(), rec->ownedVideos.end(), def.name) !=
+                               rec->ownedVideos.end());
+        }
 
         if (!used)
             continue;

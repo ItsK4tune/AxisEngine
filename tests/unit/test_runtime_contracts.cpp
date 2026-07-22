@@ -18,10 +18,12 @@
 #include <core/logic/logger.h>
 #include <core/logic/runtime_profiler.h>
 #include <ecs/logic/system_manager.h>
+#include <ecs/logic/audio_system.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/logic/effect_graph_runtime.h>
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/post_process_system.h>
+#include <ecs/unit/media_components.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/monitor_manager.h>
@@ -47,6 +49,42 @@ using axis_test_mocks::FakePhysicsWorld;
 
 namespace
 {
+class RecordingAudioEngine final : public IAudioEngine
+{
+public:
+    bool Initialize() override { return true; }
+    void Update() override {}
+    void Shutdown() override {}
+    void SetListenerPosition(const glm::vec3&, const glm::vec3&) override {}
+    void SetGlobalVolume(float) override {}
+    std::shared_ptr<ISound> Play2D(const std::string& filename, bool, bool) override
+    {
+        path2D = filename;
+        return std::make_shared<NullSound>();
+    }
+    std::shared_ptr<ISound> Play2D(IAudioSource*, bool, bool) override
+    {
+        return std::make_shared<NullSound>();
+    }
+    std::shared_ptr<ISound> Play3D(const std::string& filename, const glm::vec3&, bool, bool) override
+    {
+        path3D = filename;
+        return std::make_shared<NullSound>();
+    }
+    std::shared_ptr<ISound> Play3D(IAudioSource*, const glm::vec3&, bool, bool) override
+    {
+        return std::make_shared<NullSound>();
+    }
+    std::shared_ptr<IAudioSource> AddSoundSourceFromFile(const std::string& filename) override
+    {
+        return std::make_shared<NullAudioSource>(filename);
+    }
+    void StopAllSounds() override {}
+
+    std::string path2D;
+    std::string path3D;
+};
+
 class FakeWindow final : public IWindow
 {
 public:
@@ -116,6 +154,14 @@ public:
     {
         return button == Mouse::Left && leftPressed;
     }
+    bool GetGamepadButton(int deviceIndex, Gamepad button) const override
+    {
+        return deviceIndex == 0 && button == Gamepad::ButtonA && gamepadAPressed;
+    }
+    float GetGamepadAxis(int deviceIndex, GamepadAxis axis) const override
+    {
+        return deviceIndex == 0 && axis == GamepadAxis::LeftX ? gamepadLeftX : 0.0f;
+    }
     void GetCursorPos(double& x, double& y) const override
     {
         x = y = 0.0;
@@ -127,7 +173,7 @@ public:
     {
         return {{"keyboard_0", "Keyboard", DeviceType::Keyboard, true},
                 {"mouse_0", "Mouse", DeviceType::Mouse, true},
-                {"0", "Gamepad", DeviceType::Joystick, false}};
+                {"gamepad_0", "Gamepad", DeviceType::Gamepad, false}};
     }
     void SetResizeCallback(const ResizeCallback&) override
     {
@@ -147,6 +193,8 @@ public:
 
     bool spacePressed = true;
     bool leftPressed = true;
+    bool gamepadAPressed = false;
+    float gamepadLeftX = 0.0f;
     int configuredMonitor = -1;
     std::vector<MonitorInfo> monitors;
 };
@@ -933,6 +981,8 @@ AXIS_TEST_CASE("InputManager validates and applies selectable input devices")
     InputManager input(keyboard, mouse, window);
     input.BindAction("key", InputType::Key, static_cast<int>(Key::Space));
     input.BindAction("mouse", InputType::MouseButton, static_cast<int>(Mouse::Left));
+    input.BindAction("gamepad", InputType::GamepadButton, static_cast<int>(Gamepad::ButtonA));
+    input.BindAction("move_x", InputType::GamepadAxis, static_cast<int>(GamepadAxis::LeftX));
 
     AXIS_CHECK(!input.SetActiveDevice("missing"));
     AXIS_CHECK(input.SetActiveDevice("keyboard_0"));
@@ -942,6 +992,19 @@ AXIS_TEST_CASE("InputManager validates and applies selectable input devices")
     AXIS_CHECK(!input.GetAction("key"));
     AXIS_CHECK(input.GetAction("mouse"));
     AXIS_CHECK(!input.SetActiveDevice("0"));
+    AXIS_CHECK(input.SetActiveDevice("gamepad_0"));
+    AXIS_CHECK(!input.GetAction("key"));
+    window.gamepadAPressed = true;
+    AXIS_CHECK(input.GetAction("gamepad"));
+    AXIS_CHECK(input.GetActionDown("gamepad"));
+    input.Update();
+    AXIS_CHECK(!input.GetActionDown("gamepad"));
+    window.gamepadAPressed = false;
+    AXIS_CHECK(input.GetActionUp("gamepad"));
+    window.gamepadLeftX = 0.1f;
+    AXIS_CHECK_NEAR(input.GetAxis("move_x"), 0.0f, 0.0001f);
+    window.gamepadLeftX = 0.575f;
+    AXIS_CHECK_NEAR(input.GetAxis("move_x"), 0.5f, 0.0001f);
 
     AXIS_CHECK(keyboard.IsKeyDown(Key::Space));
     window.spacePressed = false;
@@ -960,6 +1023,7 @@ AXIS_TEST_CASE("InputSerializer round trips extended keyboard mouse and gamepad 
     source.BindAction("Extended", InputType::Key, static_cast<int>(Key::RightSuper));
     source.BindAction("Extended", InputType::MouseButton, static_cast<int>(Mouse::Button8));
     source.BindAction("Extended", InputType::GamepadButton, static_cast<int>(Gamepad::ButtonGuide));
+    source.BindAction("Extended", InputType::GamepadAxis, static_cast<int>(GamepadAxis::RightY));
 
     const auto path = axis_test_support::TempPath("extended_input.axs");
     InputSerializer serializer;
@@ -968,7 +1032,7 @@ AXIS_TEST_CASE("InputSerializer round trips extended keyboard mouse and gamepad 
     InputManager loaded(keyboard, mouse, window);
     AXIS_CHECK(serializer.Deserialize(path.string(), loaded));
     const auto& bindings = loaded.GetActionMap().at("Extended").bindings;
-    AXIS_CHECK(bindings.size() == 5);
+    AXIS_CHECK(bindings.size() == 6);
     auto hasBinding = [&](InputType type, int code) {
         return std::any_of(bindings.begin(), bindings.end(),
                            [&](const InputBinding& binding) { return binding.type == type && binding.code == code; });
@@ -978,6 +1042,7 @@ AXIS_TEST_CASE("InputSerializer round trips extended keyboard mouse and gamepad 
     AXIS_CHECK(hasBinding(InputType::Key, static_cast<int>(Key::RightSuper)));
     AXIS_CHECK(hasBinding(InputType::MouseButton, static_cast<int>(Mouse::Button8)));
     AXIS_CHECK(hasBinding(InputType::GamepadButton, static_cast<int>(Gamepad::ButtonGuide)));
+    AXIS_CHECK(hasBinding(InputType::GamepadAxis, static_cast<int>(GamepadAxis::RightY)));
 }
 
 AXIS_TEST_CASE("DataNodeSerializer preserves empty documents and emits deterministic ordering")
@@ -1304,6 +1369,49 @@ AXIS_TEST_CASE("Null audio backend preserves pause and validates source playback
 
     audio.Shutdown();
     AXIS_CHECK(nullSound->IsFinished());
+}
+
+AXIS_TEST_CASE("AudioSystem resolves relative component paths for 2D and 3D playback")
+{
+    axis_test_support::ResetServices();
+
+    Scene scene;
+    ConfigManager configManager;
+    configManager.Initialize(AppConfig{});
+    ServiceLocator::Instance().Register<Scene>(&scene);
+    ServiceLocator::Instance().Register<ConfigManager>(&configManager);
+
+    auto recordingEngine = std::make_unique<RecordingAudioEngine>();
+    auto* recording = recordingEngine.get();
+    AudioService audioService;
+    AXIS_CHECK(audioService.Initialize(std::move(recordingEngine)));
+
+    const std::string relativePath = "sample/resource/audio/sample.wav";
+    auto entity2D = scene.CreateEntity("Relative2D");
+    auto& source2D = scene.AddComponent<AudioSourceComponent>(entity2D);
+    source2D.filePath = relativePath;
+    source2D.shouldPlay = true;
+
+    auto entity3D = scene.CreateEntity("Relative3D");
+    auto& source3D = scene.AddComponent<AudioSourceComponent>(entity3D);
+    source3D.filePath = relativePath;
+    source3D.is3D = true;
+    source3D.shouldPlay = true;
+
+    AudioSystem system;
+    system.Initialize();
+    system.Update(scene, 0.0f);
+
+    const std::string expected = FileSystem::getPath(relativePath);
+    AXIS_CHECK(recording->path2D == expected);
+    AXIS_CHECK(recording->path3D == expected);
+    AXIS_CHECK(std::filesystem::exists(std::filesystem::u8path(expected)));
+    AXIS_CHECK(source2D.sound != nullptr);
+    AXIS_CHECK(source3D.sound != nullptr);
+
+    system.Shutdown();
+    audioService.Shutdown();
+    axis_test_support::ResetServices();
 }
 
 AXIS_TEST_CASE("StateMachine exposes an explicit debug render pass")

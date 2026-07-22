@@ -33,6 +33,14 @@ void PostProcessSystem::Initialize()
     auto config = configManager->GetConfig();
 
     m_Pipeline.Initialize(*context, config.window.width, config.window.height, *resources);
+    m_Pipeline.SetBloomEnabled(config.render.bloomEnabled);
+    m_Pipeline.SetBloomThreshold(config.render.bloomThreshold);
+    m_Pipeline.SetBloomIntensity(config.render.bloomIntensity);
+    m_Pipeline.SetBloomRadius(config.render.bloomRadius);
+    m_Pipeline.SetTAAFeedback(config.render.taaFeedback);
+    m_Pipeline.SetExposure(config.render.exposure);
+    m_Pipeline.SetGamma(config.render.gamma);
+    m_Pipeline.SetTonemappingMode(static_cast<int>(config.render.tonemappingMode));
 
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<ConfigChangedEvent>([this](const ConfigChangedEvent& e) {
@@ -44,6 +52,7 @@ void PostProcessSystem::Initialize()
             m_Pipeline.SetBloomThreshold(cfg.render.bloomThreshold);
             m_Pipeline.SetBloomIntensity(cfg.render.bloomIntensity);
             m_Pipeline.SetBloomRadius(cfg.render.bloomRadius);
+            m_Pipeline.SetTAAFeedback(cfg.render.taaFeedback);
             m_Pipeline.SetExposure(cfg.render.exposure);
             m_Pipeline.SetGamma(cfg.render.gamma);
             m_Pipeline.SetTonemappingMode((int)cfg.render.tonemappingMode);
@@ -121,7 +130,7 @@ void PostProcessSystem::Render(Scene& scene)
             m_LastAntiAliasingMode = static_cast<int>(antiAliasingMode);
         }
         m_Pipeline.ApplyAntiAliasing(antiAliasingMode, m_RenderService->GetPrevViewProj(),
-                                     m_RenderService->GetCurrViewProj(), m_RenderService->GetJitterOffset());
+                                     m_RenderService->GetCurrViewProj());
     }
 
     auto* res = ServiceLocator::Instance().Resolve<IShaderLibrary>();

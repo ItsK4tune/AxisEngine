@@ -229,6 +229,10 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
         {"buttonstart", Gamepad::ButtonStart},
         {"buttonback", Gamepad::ButtonBack},
         {"buttonguide", Gamepad::ButtonGuide}};
+    static const std::unordered_map<std::string, GamepadAxis> gamepadAxisMap = {
+        {"leftx", GamepadAxis::LeftX}, {"lefty", GamepadAxis::LeftY},
+        {"rightx", GamepadAxis::RightX}, {"righty", GamepadAxis::RightY},
+        {"lefttrigger", GamepadAxis::LeftTrigger}, {"righttrigger", GamepadAxis::RightTrigger}};
 
     struct PendingBinding
     {
@@ -303,6 +307,15 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
                         << "Unknown Gamepad button: " << padName << " for action " << actionName;
                 }
             }
+            else if (triggerKey == "GamepadAxis")
+            {
+                const std::string axisName = ToLower(triggerValue);
+                if (const auto axis = gamepadAxisMap.find(axisName); axis != gamepadAxisMap.end())
+                    pendingBindings.push_back({actionName, InputType::GamepadAxis, static_cast<int>(axis->second)});
+                else
+                    LOGGER_WARN("InputSerializer") << "Unknown gamepad axis: " << axisName << " for action "
+                                                    << actionName;
+            }
         }
     }
 
@@ -335,6 +348,7 @@ bool InputSerializer::Serialize(const std::string& filepath, const InputManager&
     static std::unordered_map<int, std::string> keyToStringMap;
     static std::unordered_map<int, std::string> mouseToStringMap;
     static std::unordered_map<int, std::string> gamepadToStringMap;
+    static std::unordered_map<int, std::string> gamepadAxisToStringMap;
     static std::once_flag reverseMapsOnce;
 
     std::call_once(reverseMapsOnce, [&] {
@@ -490,6 +504,12 @@ bool InputSerializer::Serialize(const std::string& filepath, const InputManager&
         gamepadToStringMap[(int)Gamepad::ButtonStart] = "buttonstart";
         gamepadToStringMap[(int)Gamepad::ButtonBack] = "buttonback";
         gamepadToStringMap[(int)Gamepad::ButtonGuide] = "buttonguide";
+        gamepadAxisToStringMap[(int)GamepadAxis::LeftX] = "leftx";
+        gamepadAxisToStringMap[(int)GamepadAxis::LeftY] = "lefty";
+        gamepadAxisToStringMap[(int)GamepadAxis::RightX] = "rightx";
+        gamepadAxisToStringMap[(int)GamepadAxis::RightY] = "righty";
+        gamepadAxisToStringMap[(int)GamepadAxis::LeftTrigger] = "lefttrigger";
+        gamepadAxisToStringMap[(int)GamepadAxis::RightTrigger] = "righttrigger";
     });
 
     // Build YAMLNode tree: axis_input -> Bindings -> [action -> [list items]]
@@ -522,6 +542,12 @@ bool InputSerializer::Serialize(const std::string& filepath, const InputManager&
                 auto it = gamepadToStringMap.find(binding.code);
                 if (it != gamepadToStringMap.end())
                     actionNode.children.push_back({"- Gamepad", it->second, {}});
+            }
+            else if (binding.type == InputType::GamepadAxis)
+            {
+                auto it = gamepadAxisToStringMap.find(binding.code);
+                if (it != gamepadAxisToStringMap.end())
+                    actionNode.children.push_back({"- GamepadAxis", it->second, {}});
             }
         }
         bindingsNode.children.push_back(std::move(actionNode));

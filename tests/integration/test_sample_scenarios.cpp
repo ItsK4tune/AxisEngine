@@ -446,8 +446,16 @@ AXIS_TEST_CASE("Sample Scenario 31 creates 2D and 3D audio sources")
     AXIS_CHECK(audio2D.loop);
     AXIS_CHECK(audio3D.playOnAwake);
     AXIS_CHECK(!audio2D.playOnAwake);
+    AXIS_CHECK(std::filesystem::path(audio3D.filePath).is_absolute());
+    AXIS_CHECK(std::filesystem::path(audio2D.filePath).is_absolute());
+    AXIS_CHECK(std::filesystem::exists(std::filesystem::u8path(audio3D.filePath)));
+    AXIS_CHECK(std::filesystem::exists(std::filesystem::u8path(audio2D.filePath)));
     AXIS_CHECK_NEAR(audio3D.volume, fixture.state.m_S31Volume3D, 0.0001f);
     AXIS_CHECK_NEAR(audio2D.volume, fixture.state.m_S31Volume2D, 0.0001f);
+    AXIS_CHECK_NEAR(audio3D.volume, audio2D.volume, 0.0001f);
+    const auto& sourcePosition = fixture.scene.GetComponent<PositionComponent>(source3D).value;
+    const glm::vec3 initialListenerPosition(0.0f, 15.0f, 60.0f);
+    AXIS_CHECK(glm::distance(sourcePosition, initialListenerPosition) <= audio3D.minDistance);
     AXIS_CHECK(fixture.state.m_S31Volume3D <= TestSampleState::kScenario31MaxVolume);
     AXIS_CHECK(fixture.state.m_S31Volume2D <= TestSampleState::kScenario31MaxVolume);
 }

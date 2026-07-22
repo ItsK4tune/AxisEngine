@@ -1,4 +1,5 @@
 #include "sample_state.h"
+#include <core/logic/filesystem.h>
 #include <glad/glad.h>
 #include <render/unit/render_queue.h>
 #include <ecs/interface/i_lighting_service.h>
@@ -194,11 +195,15 @@ std::string SamplePath(const char* relativePath)
 {
     std::filesystem::path path(relativePath);
     if (std::filesystem::exists(path))
-        return path.generic_string();
+        return std::filesystem::absolute(path).lexically_normal().generic_string();
 
     std::filesystem::path parentPath = std::filesystem::path("..") / path;
     if (std::filesystem::exists(parentPath))
-        return parentPath.generic_string();
+        return std::filesystem::absolute(parentPath).lexically_normal().generic_string();
+
+    std::filesystem::path rootedPath(FileSystem::getPath(relativePath));
+    if (std::filesystem::exists(rootedPath))
+        return std::filesystem::absolute(rootedPath).lexically_normal().generic_string();
 
     return path.generic_string();
 }
@@ -284,23 +289,6 @@ void ApplyShapeSpec(RigidShapeComponent& shape, const Scenario21ShapeSpec& spec)
     shape.size = spec.boxSize;
     shape.radius = spec.radius;
     shape.height = spec.height;
-}
-
-void StopScenario31AudioHandles(std::shared_ptr<ISound>& audio2D, std::shared_ptr<ISound>& audio3D, bool& play2D,
-                                bool& play3D)
-{
-    if (audio2D)
-    {
-        audio2D->Stop();
-        audio2D = nullptr;
-    }
-    if (audio3D)
-    {
-        audio3D->Stop();
-        audio3D = nullptr;
-    }
-    play2D = false;
-    play3D = false;
 }
 
 void StopAudioSourceComponent(AudioSourceComponent& audio)
@@ -1229,7 +1217,15 @@ void SampleState::OnUpdate(float dt)
     if (m_CurrentScenario == 31)
     {
         m_S31OrbitAngle += m_S31Speed * dt;
-        glm::vec3 soundPos(sin(m_S31OrbitAngle) * 15.0f, 3.0f, cos(m_S31OrbitAngle) * 15.0f);
+        // Keep the source orbit centered on the scenario's listening area. The
+        // previous z=0 center teleported a source created at z=60 far away on
+        // the first update, so inverse-distance attenuation made it appear
+        // roughly 25-40x quieter than the matching 2D sound.
+        constexpr glm::vec3 orbitCenter(0.0f, 3.0f, 60.0f);
+        constexpr float orbitRadius = 8.0f;
+        glm::vec3 soundPos = orbitCenter +
+                             glm::vec3(sin(m_S31OrbitAngle) * orbitRadius, 0.0f,
+                                       cos(m_S31OrbitAngle) * orbitRadius);
 
         auto view = GetScene().View<PositionComponent, InfoComponent>();
         for (auto entity : view)
@@ -1960,7 +1956,8 @@ void SampleState::LoadScenario(int index)
 
 void SampleState::StopScenario31Audio()
 {
-    StopScenario31AudioHandles(m_S31Audio2D, m_S31Audio3D, m_S31Play2D, m_S31Play3D);
+    m_S31Play2D = false;
+    m_S31Play3D = false;
     if (auto* audio2D = FindScenario31AudioSource(kScenario31Audio2DName))
         StopAudioSourceComponent(*audio2D);
     if (auto* audio3D = FindScenario31AudioSource(kScenario31Audio3DName))
@@ -2872,7 +2869,7 @@ void SampleState::DrawGUI()
         audioSettingsChanged |= ImGui::SliderFloat("2D Volume", &m_S31Volume2D, 0.0f, kScenario31MaxVolume);
         audioSettingsChanged |= ImGui::SliderFloat("3D Volume", &m_S31Volume3D, 0.0f, kScenario31MaxVolume);
         audioSettingsChanged |= ImGui::SliderFloat("Playback Speed / Pitch", &m_S31Pitch, 0.25f, 3.0f);
-        audioSettingsChanged |= ImGui::SliderFloat("3D Min Distance", &m_S31MinDistance, 0.1f, 20.0f);
+        audioSettingsChanged |= ImGui::SliderFloat("3D Full-volume Radius", &m_S31MinDistance, 0.1f, 50.0f);
         audioSettingsChanged |= ImGui::SliderFloat("3D Max Distance", &m_S31MaxDistance, 1.0f, 120.0f);
 
         audioSettingsChanged |= ImGui::Checkbox("Play 2D Sound (sample.wav)", &m_S31Play2D);
@@ -2887,8 +2884,6 @@ void SampleState::DrawGUI()
                 audioService->StopAll();
             m_S31Play2D = false;
             m_S31Play3D = false;
-            m_S31Audio2D = nullptr;
-            m_S31Audio3D = nullptr;
             ApplyScenario31AudioSettings();
         }
     }

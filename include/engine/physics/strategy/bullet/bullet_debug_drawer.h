@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <LinearMath/btIDebugDraw.h>
+#include <string>
 #include <vector>
 
 class IBufferManager;

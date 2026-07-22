@@ -76,9 +76,6 @@ uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
 
 uniform float u_Reflectivity;
-uniform float u_ReflectionIntensity;
-uniform float u_FresnelPower;
-uniform float u_FresnelBias;
 uniform bool u_HasProbe;
 uniform vec3 u_ProbePos;
 uniform vec3 u_ProbeBoxMin;

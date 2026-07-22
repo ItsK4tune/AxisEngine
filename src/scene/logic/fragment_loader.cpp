@@ -91,7 +91,8 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 }
 
                 LoaderUtils::ValidateKeys(entNode, {"Tag", "Layer", "Parent", "Component"}, "Entity:" + entNode.key);
-                std::string entityTag = entNode.GetChildValue("Tag", "default");
+                std::string entityTag =
+                    CanonicalizeEntityTag(entNode.GetChildValue("Tag", DefaultEntityTag));
 
                 std::string namespacedName = namePrefix + entityName;
                 std::string namespacedTag = tagPrefix + entityTag;

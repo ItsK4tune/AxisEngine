@@ -33,9 +33,6 @@ private:
     bool IsEntityNamesEnabled() const;
     bool IsTransformGizmosEnabled() const;
     bool IsLightGizmosEnabled() const;
-    void ToggleEntityNames();
-    void ToggleTransformGizmos();
-    void ToggleLightGizmos();
 
     void UpdateDebugLabels(Scene& scene);
     void ClearDebugLabels(Scene& scene);

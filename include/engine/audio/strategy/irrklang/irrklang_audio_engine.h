@@ -5,6 +5,7 @@
 #include <audio/interface/i_sound.h>
 #include <irrKlang.h>
 #include <map>
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -37,6 +38,7 @@ public:
 
 private:
     irrklang::ISoundEngine* m_Engine = nullptr;
+    std::shared_ptr<std::atomic_bool> m_Lifetime = std::make_shared<std::atomic_bool>(false);
     std::map<std::string, std::shared_ptr<IrrKlangAudioSource>> m_Sources;
     std::vector<std::shared_ptr<IrrKlangSound>> m_ActiveSounds;
 };

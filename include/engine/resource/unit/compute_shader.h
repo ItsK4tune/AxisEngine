@@ -1,5 +1,6 @@
 #pragma once
 
+#include <render/type/graphics_types.h>
 #include <glm/glm.hpp>
 #include <string>
 
@@ -9,12 +10,16 @@ class IShaderManager;
 class ComputeShader
 {
 public:
-    unsigned int ID;
-
-    ComputeShader(IShaderManager& manager, const char* computePath);
+    ComputeShader(IShaderManager& manager, std::string computePath);
     ~ComputeShader();
 
     void use();
+    bool Reload();
+    bool IsValid() const { return m_Program != 0; }
+    unsigned int GetID() const { return m_Program; }
+    const std::string& GetPath() const { return m_Path; }
+    void Dispatch(unsigned int groupsX, unsigned int groupsY = 1, unsigned int groupsZ = 1,
+                  MemoryBarrierBit barrier = MemoryBarrierBit::All);
 
     void setBool(const std::string& name, bool value) const;
     void setInt(const std::string& name, int value) const;
@@ -31,6 +36,8 @@ public:
 
 private:
     IShaderManager& m_ShaderManager;
+    std::string m_Path;
+    unsigned int m_Program = 0;
 
-    void checkCompileErrors(unsigned int shader, std::string type);
+    bool CheckCompileErrors(unsigned int object, const char* type) const;
 };

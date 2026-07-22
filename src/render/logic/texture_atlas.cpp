@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <limits>
 
 ITextureManager* TextureAtlas::s_TextureManager = nullptr;
 
@@ -220,6 +221,16 @@ bool TextureAtlas::SaveToFile(const std::string& path)
         uint32_t pixelDataSize;
     };
 
+    if (m_Regions.size() > (std::numeric_limits<uint32_t>::max)() ||
+        m_AtlasPixels.size() > (std::numeric_limits<uint32_t>::max)() ||
+        std::any_of(m_Regions.begin(), m_Regions.end(), [](const auto& entry) {
+            return entry.first.empty() || entry.first.size() > (std::numeric_limits<uint32_t>::max)();
+        }))
+    {
+        LOGGER_ERROR("TextureAtlas") << "Atlas is too large or invalid to save: " << path;
+        return false;
+    }
+
     std::ofstream file(path, std::ios::binary);
     if (!file.is_open())
     {
@@ -229,7 +240,7 @@ bool TextureAtlas::SaveToFile(const std::string& path)
 
     AtlasFileHeader header;
     header.magic = 0x41585441;
-    header.version = 1;
+    header.version = 2;
     header.width = static_cast<uint32_t>(m_Width);
     header.height = static_cast<uint32_t>(m_Height);
     header.regionCount = static_cast<uint32_t>(m_Regions.size());
@@ -241,14 +252,19 @@ bool TextureAtlas::SaveToFile(const std::string& path)
         uint32_t nameSize = static_cast<uint32_t>(name.size());
         file.write(reinterpret_cast<const char*>(&nameSize), sizeof(nameSize));
         file.write(name.data(), name.size());
-        file.write(reinterpret_cast<const char*>(&region.uvMin), sizeof(region.uvMin));
-        file.write(reinterpret_cast<const char*>(&region.uvMax), sizeof(region.uvMax));
-        file.write(reinterpret_cast<const char*>(&region.uvScale), sizeof(region.uvScale));
-        file.write(reinterpret_cast<const char*>(&region.uvOffset), sizeof(region.uvOffset));
+        for (float value : {region.uvMin.x, region.uvMin.y, region.uvMax.x, region.uvMax.y, region.uvScale.x,
+                            region.uvScale.y, region.uvOffset.x, region.uvOffset.y})
+            file.write(reinterpret_cast<const char*>(&value), sizeof(value));
         file.write(reinterpret_cast<const char*>(&region.width), sizeof(region.width));
         file.write(reinterpret_cast<const char*>(&region.height), sizeof(region.height));
     }
     file.write(reinterpret_cast<const char*>(m_AtlasPixels.data()), m_AtlasPixels.size());
+
+    if (!file.good())
+    {
+        LOGGER_ERROR("TextureAtlas") << "Failed while writing atlas: " << path;
+        return false;
+    }
 
     LOGGER_INFO("TextureAtlas") << "Saved atlas to file: " << path;
     return true;
@@ -278,9 +294,22 @@ bool TextureAtlas::LoadFromFile(const std::string& path)
 
     AtlasFileHeader header;
     file.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (!file || header.magic != 0x41585441 || header.version != 1)
+    if (!file || header.magic != 0x41585441 || (header.version != 1 && header.version != 2))
     {
         LOGGER_ERROR("TextureAtlas") << "Invalid atlas file: " << path;
+        return false;
+    }
+
+    constexpr uint32_t MaxAtlasDimension = 16384;
+    constexpr uint32_t MaxAtlasRegions = 1'000'000;
+    constexpr uint32_t MaxRegionNameBytes = 4096;
+    constexpr uint64_t MaxAtlasPixelBytes = 512ull * 1024ull * 1024ull;
+    const uint64_t expectedPixels = static_cast<uint64_t>(header.width) * header.height * 4u;
+    if (header.width == 0 || header.height == 0 || header.width > MaxAtlasDimension ||
+        header.height > MaxAtlasDimension || header.regionCount > MaxAtlasRegions ||
+        expectedPixels > MaxAtlasPixelBytes || header.pixelDataSize != expectedPixels)
+    {
+        LOGGER_ERROR("TextureAtlas") << "Atlas dimensions or pixel payload are invalid: " << path;
         return false;
     }
 
@@ -289,17 +318,37 @@ bool TextureAtlas::LoadFromFile(const std::string& path)
     {
         uint32_t nameSize = 0;
         file.read(reinterpret_cast<char*>(&nameSize), sizeof(nameSize));
+        if (!file || nameSize == 0 || nameSize > MaxRegionNameBytes)
+        {
+            LOGGER_ERROR("TextureAtlas") << "Atlas contains an invalid region name";
+            return false;
+        }
         std::string name(nameSize, '\0');
         file.read(name.data(), name.size());
 
         AtlasRegion region;
         region.name = name;
-        file.read(reinterpret_cast<char*>(&region.uvMin), sizeof(region.uvMin));
-        file.read(reinterpret_cast<char*>(&region.uvMax), sizeof(region.uvMax));
-        file.read(reinterpret_cast<char*>(&region.uvScale), sizeof(region.uvScale));
-        file.read(reinterpret_cast<char*>(&region.uvOffset), sizeof(region.uvOffset));
+        if (header.version == 1)
+        {
+            file.read(reinterpret_cast<char*>(&region.uvMin), sizeof(region.uvMin));
+            file.read(reinterpret_cast<char*>(&region.uvMax), sizeof(region.uvMax));
+            file.read(reinterpret_cast<char*>(&region.uvScale), sizeof(region.uvScale));
+            file.read(reinterpret_cast<char*>(&region.uvOffset), sizeof(region.uvOffset));
+        }
+        else
+        {
+            for (float* value : {&region.uvMin.x, &region.uvMin.y, &region.uvMax.x, &region.uvMax.y,
+                                 &region.uvScale.x, &region.uvScale.y, &region.uvOffset.x, &region.uvOffset.y})
+                file.read(reinterpret_cast<char*>(value), sizeof(*value));
+        }
         file.read(reinterpret_cast<char*>(&region.width), sizeof(region.width));
         file.read(reinterpret_cast<char*>(&region.height), sizeof(region.height));
+        if (!file || region.width <= 0 || region.height <= 0 || region.width > static_cast<int>(header.width) ||
+            region.height > static_cast<int>(header.height))
+        {
+            LOGGER_ERROR("TextureAtlas") << "Atlas contains an invalid region";
+            return false;
+        }
         loadedRegions[name] = region;
     }
 
@@ -308,6 +357,11 @@ bool TextureAtlas::LoadFromFile(const std::string& path)
     if (!file)
     {
         LOGGER_ERROR("TextureAtlas") << "Atlas file is truncated: " << path;
+        return false;
+    }
+    if (file.peek() != std::char_traits<char>::eof())
+    {
+        LOGGER_ERROR("TextureAtlas") << "Atlas contains trailing data: " << path;
         return false;
     }
 

@@ -4,13 +4,29 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <functional>
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <string>
+#include <utility>
+
+inline constexpr char DefaultEntityTag[] = "default";
+
+inline std::string CanonicalizeEntityTag(std::string tag)
+{
+    tag.erase(tag.begin(), std::find_if(tag.begin(), tag.end(), [](unsigned char c) { return !std::isspace(c); }));
+    tag.erase(std::find_if(tag.rbegin(), tag.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), tag.end());
+    if (tag.empty())
+        return DefaultEntityTag;
+    std::string lower = tag;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return lower == DefaultEntityTag ? std::string(DefaultEntityTag) : std::move(tag);
+}
 
 struct InfoComponent
 {
     std::string name = "Entity";
-    std::string tag = "Default";
+    std::string tag = DefaultEntityTag;
     std::string sceneName = "";
     uint32_t layer = 0;
     int renderOrder = 0;

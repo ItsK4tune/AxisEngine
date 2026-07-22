@@ -179,6 +179,7 @@ bool ConfigSerializer::Serialize(const std::string& filepath, const AppConfig& c
     kv("BLOOM_INTENSITY", FloatStr(cfg.render.bloomIntensity));
     kv("BLOOM_THRESHOLD", FloatStr(cfg.render.bloomThreshold));
     kv("BLOOM_RADIUS", FloatStr(cfg.render.bloomRadius));
+    kv("TAA_FEEDBACK", FloatStr(cfg.render.taaFeedback));
     kv("SKYBOX_INTENSITY", FloatStr(cfg.render.skyboxIntensity));
     kv("AMBIENT_INTENSITY", FloatStr(cfg.render.ambientIntensity));
     kv("UI_REFERENCE_SIZE", FloatStr(cfg.render.uiReferenceWidth) + " " + FloatStr(cfg.render.uiReferenceHeight));
@@ -247,6 +248,7 @@ bool ConfigSerializer::Serialize(const std::string& filepath, const AppConfig& c
     kv("MOUSE_INVERT_X", cfg.input.mouseInvertX ? "1" : "0");
     kv("MOUSE_INVERT_Y", cfg.input.mouseInvertY ? "1" : "0");
     kv("RAW_MOUSE_INPUT", cfg.input.rawMouseInput ? "1" : "0");
+    kv("GAMEPAD_DEAD_ZONE", FloatStr(cfg.input.gamepadDeadZone));
 
     // --- Audio Settings ---
     auto AudioBackendToStr = [](AudioBackend backend) {
@@ -340,6 +342,9 @@ bool ConfigSerializer::Serialize(const std::string& filepath, const AppConfig& c
     kv("OPT_PHYSICS_MESH_SHAPE_CACHE", cfg.optimization.physicsMeshShapeCacheEnabled ? "1" : "0");
     kv("OPT_UI_LAYOUT_CACHE", cfg.optimization.uiLayoutCacheEnabled ? "1" : "0");
     kv("OPT_VIDEO_ASYNC_DECODE", cfg.optimization.videoAsyncDecodeEnabled ? "1" : "0");
+    kv("OPT_VIDEO_DECODE_QUEUE_SIZE", std::to_string(cfg.optimization.videoDecodeQueueSize));
+    kv("OPT_VIDEO_AV_SYNC_THRESHOLD", FloatStr(cfg.optimization.videoAVSyncThresholdSeconds));
+    kv("OPT_VIDEO_LOAD_RETRY_SECONDS", FloatStr(cfg.optimization.videoLoadRetrySeconds));
 
     // --- Debug Settings ---
 

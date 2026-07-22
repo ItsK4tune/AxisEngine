@@ -3,141 +3,189 @@
 #include <render/interface/i_shader_manager.h>
 #include <fstream>
 #include <sstream>
+#include <utility>
 
-ComputeShader::ComputeShader(IShaderManager& manager, const char* computePath) : ID(0), m_ShaderManager(manager)
+ComputeShader::ComputeShader(IShaderManager& manager, std::string computePath)
+    : m_ShaderManager(manager), m_Path(std::move(computePath))
 {
-    std::string computeCode;
-    std::ifstream cShaderFile;
+    Reload();
+}
 
-    cShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+bool ComputeShader::Reload()
+{
+    std::ifstream shaderFile;
+    std::string computeCode;
+
+    shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try
     {
-        cShaderFile.open(computePath);
-
-        std::stringstream cShaderStream;
-        cShaderStream << cShaderFile.rdbuf();
-        cShaderFile.close();
-        computeCode = cShaderStream.str();
+        shaderFile.open(m_Path);
+        std::stringstream stream;
+        stream << shaderFile.rdbuf();
+        computeCode = stream.str();
     }
-    catch (std::ifstream::failure& e)
+    catch (const std::ifstream::failure& error)
     {
-        LOGGER_ERROR("ComputeShader") << "FILE_NOT_SUCCESSFULLY_READ: " << e.what();
+        LOGGER_ERROR("ComputeShader") << "Failed to read '" << m_Path << "': " << error.what();
+        return false;
     }
-    const char* cShaderCode = computeCode.c_str();
 
-    unsigned int compute;
-    auto& sm = m_ShaderManager;
+    const unsigned int compute = m_ShaderManager.CreateShader(ShaderType::Compute);
+    m_ShaderManager.ShaderSource(compute, computeCode.c_str());
+    m_ShaderManager.CompileShader(compute);
+    if (!CheckCompileErrors(compute, "COMPUTE"))
+    {
+        m_ShaderManager.DeleteShader(compute);
+        return false;
+    }
 
-    compute = sm.CreateShader(ShaderType::Compute);
-    sm.ShaderSource(compute, cShaderCode);
-    sm.CompileShader(compute);
-    checkCompileErrors(compute, "COMPUTE");
+    const unsigned int program = m_ShaderManager.CreateProgram();
+    m_ShaderManager.AttachShader(program, compute);
+    m_ShaderManager.LinkProgram(program);
+    m_ShaderManager.DeleteShader(compute);
+    if (!CheckCompileErrors(program, "PROGRAM"))
+    {
+        m_ShaderManager.DeleteProgram(program);
+        return false;
+    }
 
-    ID = sm.CreateProgram();
-    sm.AttachShader(ID, compute);
-    sm.LinkProgram(ID);
-    checkCompileErrors(ID, "PROGRAM");
-
-    sm.DeleteShader(compute);
+    if (m_Program != 0)
+        m_ShaderManager.DeleteProgram(m_Program);
+    m_Program = program;
+    return true;
 }
 
 ComputeShader::~ComputeShader()
 {
-    if (ID != 0)
-    {
-        m_ShaderManager.DeleteProgram(ID);
-    }
+    if (m_Program != 0)
+        m_ShaderManager.DeleteProgram(m_Program);
 }
 
 void ComputeShader::use()
 {
-    m_ShaderManager.UseProgram(ID);
+    if (m_Program != 0)
+        m_ShaderManager.UseProgram(m_Program);
+}
+
+void ComputeShader::Dispatch(unsigned int groupsX, unsigned int groupsY, unsigned int groupsZ,
+                             MemoryBarrierBit barrier)
+{
+    if (!IsValid() || groupsX == 0 || groupsY == 0 || groupsZ == 0)
+        return;
+    use();
+    m_ShaderManager.DispatchCompute(groupsX, groupsY, groupsZ);
+    m_ShaderManager.MemoryBarrier(barrier);
 }
 
 void ComputeShader::setBool(const std::string& name, bool value) const
 {
-    m_ShaderManager.SetUniform1i(m_ShaderManager.GetUniformLocation(ID, name.c_str()), (int)value);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform1i(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), (int)value);
 }
 
 void ComputeShader::setInt(const std::string& name, int value) const
 {
-    m_ShaderManager.SetUniform1i(m_ShaderManager.GetUniformLocation(ID, name.c_str()), value);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform1i(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), value);
 }
 
 void ComputeShader::setFloat(const std::string& name, float value) const
 {
-    m_ShaderManager.SetUniform1f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), value);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform1f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), value);
 }
 
 void ComputeShader::setVec2(const std::string& name, const glm::vec2& value) const
 {
-    m_ShaderManager.SetUniform2f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), value.x, value.y);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform2f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), value.x, value.y);
 }
 
 void ComputeShader::setVec2(const std::string& name, float x, float y) const
 {
-    m_ShaderManager.SetUniform2f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), x, y);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform2f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), x, y);
 }
 
 void ComputeShader::setVec3(const std::string& name, const glm::vec3& value) const
 {
-    m_ShaderManager.SetUniform3f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), value.x, value.y, value.z);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform3f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), value.x, value.y, value.z);
 }
 
 void ComputeShader::setVec3(const std::string& name, float x, float y, float z) const
 {
-    m_ShaderManager.SetUniform3f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), x, y, z);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform3f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), x, y, z);
 }
 
 void ComputeShader::setVec4(const std::string& name, const glm::vec4& value) const
 {
-    m_ShaderManager.SetUniform4f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), value.x, value.y, value.z,
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform4f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), value.x, value.y, value.z,
                                  value.w);
 }
 
 void ComputeShader::setVec4(const std::string& name, float x, float y, float z, float w)
 {
-    m_ShaderManager.SetUniform4f(m_ShaderManager.GetUniformLocation(ID, name.c_str()), x, y, z, w);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniform4f(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), x, y, z, w);
 }
 
 void ComputeShader::setMat2(const std::string& name, const glm::mat2& mat) const
 {
-    m_ShaderManager.SetUniformMatrix2fv(m_ShaderManager.GetUniformLocation(ID, name.c_str()), &mat[0][0]);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniformMatrix2fv(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), &mat[0][0]);
 }
 
 void ComputeShader::setMat3(const std::string& name, const glm::mat3& mat) const
 {
-    m_ShaderManager.SetUniformMatrix3fv(m_ShaderManager.GetUniformLocation(ID, name.c_str()), &mat[0][0]);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniformMatrix3fv(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), &mat[0][0]);
 }
 
 void ComputeShader::setMat4(const std::string& name, const glm::mat4& mat) const
 {
-    m_ShaderManager.SetUniformMatrix4fv(m_ShaderManager.GetUniformLocation(ID, name.c_str()), &mat[0][0]);
+    if (!IsValid())
+        return;
+    m_ShaderManager.SetUniformMatrix4fv(m_ShaderManager.GetUniformLocation(m_Program, name.c_str()), &mat[0][0]);
 }
 
-void ComputeShader::checkCompileErrors(unsigned int shader, std::string type)
+bool ComputeShader::CheckCompileErrors(unsigned int object, const char* type) const
 {
     auto& sm = m_ShaderManager;
 
     bool success;
-    if (type != "PROGRAM")
+    if (std::string(type) != "PROGRAM")
     {
-        success = sm.GetShaderCompileStatus(shader);
+        success = sm.GetShaderCompileStatus(object);
         if (!success)
         {
-            std::string infoLog = sm.GetShaderInfoLog(shader);
+            std::string infoLog = sm.GetShaderInfoLog(object);
             LOGGER_ERROR("ComputeShader") << "COMPILATION_ERROR of type: " << type << "\n"
                                           << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
     else
     {
-        success = sm.GetProgramLinkStatus(shader);
+        success = sm.GetProgramLinkStatus(object);
         if (!success)
         {
-            std::string infoLog = sm.GetProgramInfoLog(shader);
+            std::string infoLog = sm.GetProgramInfoLog(object);
             LOGGER_ERROR("ComputeShader") << "LINKING_ERROR of type: " << type << "\n"
                                           << infoLog << "\n -- --------------------------------------------------- -- ";
         }
     }
+    return success;
 }

@@ -5,6 +5,7 @@
 #include <resource/logic/stb_image_loader.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/config_manager.h>
+#include <algorithm>
 
 #ifdef _WIN32
 #undef APIENTRY
@@ -123,13 +124,16 @@ bool GLFWWindow::Initialize(int width, int height, const std::string& title, int
         return false;
     }
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 #ifdef __APPLE__
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-#else
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+    LOGGER_ERROR("GLFWWindow")
+        << "The built-in renderer requires OpenGL/GLSL 4.6, while macOS exposes at most OpenGL 4.1. "
+           "A compatible graphics provider is required; refusing to start with shaders that cannot compile.";
+    glfwTerminate();
+    return false;
 #endif
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     if (msaaSamples > 0)
@@ -446,10 +450,11 @@ std::vector<DeviceInfo> GLFWWindow::GetConnectedDevices() const
         if (glfwJoystickPresent(i))
         {
             DeviceInfo joyInfo;
-            joyInfo.id = std::to_string(i);
+            const bool isGamepad = glfwJoystickIsGamepad(i) == GLFW_TRUE;
+            joyInfo.id = std::string(isGamepad ? "gamepad_" : "joystick_") + std::to_string(i);
             const char* name = glfwGetJoystickName(i);
             joyInfo.name = name ? name : "Unknown Joystick";
-            joyInfo.type = DeviceType::Joystick;
+            joyInfo.type = isGamepad ? DeviceType::Gamepad : DeviceType::Joystick;
             joyInfo.isDefault = false;
             devices.push_back(joyInfo);
         }
@@ -474,6 +479,50 @@ bool GLFWWindow::GetMouseButton(Mouse button) const
     if (!m_Window)
         return false;
     return glfwGetMouseButton(m_Window, GLFWTranslator::ToGLFWMouse(button)) == GLFW_PRESS;
+}
+
+bool GLFWWindow::GetGamepadButton(int deviceIndex, Gamepad button) const
+{
+    if (deviceIndex < GLFW_JOYSTICK_1 || deviceIndex > GLFW_JOYSTICK_LAST || !glfwJoystickPresent(deviceIndex))
+        return false;
+
+    const int buttonIndex = static_cast<int>(button);
+    if (glfwJoystickIsGamepad(deviceIndex))
+    {
+        GLFWgamepadstate state{};
+        return glfwGetGamepadState(deviceIndex, &state) == GLFW_TRUE && buttonIndex >= 0 &&
+               buttonIndex <= GLFW_GAMEPAD_BUTTON_LAST && state.buttons[buttonIndex] == GLFW_PRESS;
+    }
+
+    int count = 0;
+    const unsigned char* buttons = glfwGetJoystickButtons(deviceIndex, &count);
+    return buttons && buttonIndex >= 0 && buttonIndex < count && buttons[buttonIndex] == GLFW_PRESS;
+}
+
+float GLFWWindow::GetGamepadAxis(int deviceIndex, GamepadAxis axis) const
+{
+    if (deviceIndex < GLFW_JOYSTICK_1 || deviceIndex > GLFW_JOYSTICK_LAST || !glfwJoystickPresent(deviceIndex))
+        return 0.0f;
+    const int axisIndex = static_cast<int>(axis);
+    float value = 0.0f;
+    if (glfwJoystickIsGamepad(deviceIndex))
+    {
+        GLFWgamepadstate state{};
+        if (glfwGetGamepadState(deviceIndex, &state) != GLFW_TRUE || axisIndex < 0 || axisIndex > GLFW_GAMEPAD_AXIS_LAST)
+            return 0.0f;
+        value = state.axes[axisIndex];
+    }
+    else
+    {
+        int count = 0;
+        const float* axes = glfwGetJoystickAxes(deviceIndex, &count);
+        if (!axes || axisIndex < 0 || axisIndex >= count)
+            return 0.0f;
+        value = axes[axisIndex];
+    }
+    if (axis == GamepadAxis::LeftTrigger || axis == GamepadAxis::RightTrigger)
+        return (std::clamp)(value * 0.5f + 0.5f, 0.0f, 1.0f);
+    return (std::clamp)(value, -1.0f, 1.0f);
 }
 
 void GLFWWindow::GetCursorPos(double& x, double& y) const

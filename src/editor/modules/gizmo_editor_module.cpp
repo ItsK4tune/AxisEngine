@@ -83,37 +83,6 @@ bool GizmoEditorModule::IsLightGizmosEnabled() const
     return cm ? cm->GetConfigSnapshot()->debug.lightGizmos : false;
 }
 
-void GizmoEditorModule::ToggleEntityNames()
-{
-    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    if (cm)
-    {
-        auto c = cm->GetConfig();
-        c.debug.entityNames = !c.debug.entityNames;
-        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
-    }
-}
-void GizmoEditorModule::ToggleTransformGizmos()
-{
-    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    if (cm)
-    {
-        auto c = cm->GetConfig();
-        c.debug.gizmos = !c.debug.gizmos;
-        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
-    }
-}
-void GizmoEditorModule::ToggleLightGizmos()
-{
-    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    if (cm)
-    {
-        auto c = cm->GetConfig();
-        c.debug.lightGizmos = !c.debug.lightGizmos;
-        cm->UpdateConfig(c, ConfigChangedEvent::Debug);
-    }
-}
-
 void GizmoEditorModule::SetSharedResources(std::shared_ptr<Font> font, std::shared_ptr<Shader> shader,
                                            std::shared_ptr<UIModel> quad)
 {

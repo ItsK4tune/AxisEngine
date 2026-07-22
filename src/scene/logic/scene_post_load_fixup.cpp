@@ -83,7 +83,7 @@ bool ScenePostLoadFixup::EnsureFallbackCamera(Scene& scene)
     entt::entity cameraEntity = scene.CreateEntity();
     auto& info = scene.GetComponent<InfoComponent>(cameraEntity);
     info.name = "Default Spectator Camera";
-    info.tag = "Default";
+    info.tag = DefaultEntityTag;
 
     auto& position = scene.GetComponent<PositionComponent>(cameraEntity);
     position.value = glm::vec3(0.0f, 2.0f, 10.0f);

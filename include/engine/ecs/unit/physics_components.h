@@ -9,6 +9,18 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <limits>
+
+inline constexpr size_t MaxHeightfieldSamples = 4096u * 4096u;
+
+inline bool IsValidHeightfieldSize(int width, int length, size_t sampleCount)
+{
+    if (width < 2 || length < 2)
+        return false;
+    const size_t w = static_cast<size_t>(width);
+    const size_t l = static_cast<size_t>(length);
+    return w <= MaxHeightfieldSamples / l && w * l == sampleCount && sampleCount <= MaxHeightfieldSamples;
+}
 
 
 struct RigidShapeComponent
@@ -17,6 +29,12 @@ struct RigidShapeComponent
     glm::vec3 size = glm::vec3(1.0f);
     float radius = 0.5f;
     float height = 1.0f;
+    std::vector<float> heightSamples;
+    int heightfieldWidth = 0;
+    int heightfieldLength = 0;
+    float minHeight = 0.0f;
+    float maxHeight = 1.0f;
+    glm::vec3 heightfieldScale = glm::vec3(1.0f);
 
     glm::vec3 offset = glm::vec3(0.0f);
     glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
@@ -27,11 +45,18 @@ struct RigidShapeComponent
     struct ChildShape
     {
         ShapeType type = ShapeType::Box;
-        glm::vec3 position;
-        glm::quat rotation;
-        glm::vec3 size;
-        float radius;
-        float height;
+        glm::vec3 position = glm::vec3(0.0f);
+        glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+        glm::vec3 size = glm::vec3(1.0f);
+        float radius = 0.5f;
+        float height = 1.0f;
+        std::vector<float> heightSamples;
+        int heightfieldWidth = 0;
+        int heightfieldLength = 0;
+        float minHeight = 0.0f;
+        float maxHeight = 1.0f;
+        glm::vec3 heightfieldScale = glm::vec3(1.0f);
+        std::vector<ChildShape> children;
     };
     std::vector<ChildShape> children;
 };
@@ -46,8 +71,6 @@ struct RigidBodyComponent
     bool isTrigger = false;
 
     bool isAttachedToParent = false;
-    bool isParentMatter = false;
-    bool isChildrenMatter = false;
     bool isCollisionEnabled = true;
 
     std::vector<std::shared_ptr<IConstraint>> constraints;

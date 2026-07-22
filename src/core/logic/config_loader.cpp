@@ -95,6 +95,7 @@ bool LoadOptimizationSetting(const std::string& key, std::stringstream& stream, 
         {"OPT_NETWORK_MAX_BYTES_PER_UPDATE", &OptimizationConfig::networkMaxBytesPerUpdate},
         {"OPT_PARTICLE_MAX_SPAWN_PER_FRAME", &OptimizationConfig::particleMaxSpawnPerFrame},
         {"OPT_TILED_LIGHT_TILE_SIZE", &OptimizationConfig::tiledLightTileSize},
+        {"OPT_VIDEO_DECODE_QUEUE_SIZE", &OptimizationConfig::videoDecodeQueueSize},
     };
     static const std::unordered_map<std::string, float OptimizationConfig::*> floatFields = {
         {"OPT_STREAMING_CHECK_INTERVAL", &OptimizationConfig::streamingCheckIntervalSeconds},
@@ -103,6 +104,8 @@ bool LoadOptimizationSetting(const std::string& key, std::stringstream& stream, 
         {"OPT_NETWORK_MAX_EVENT_PROCESSING_MS", &OptimizationConfig::networkMaxEventProcessingMs},
         {"OPT_NETWORK_REPLICATION_RATE_HZ", &OptimizationConfig::networkReplicationRateHz},
         {"OPT_NETWORK_INTEREST_RADIUS", &OptimizationConfig::networkInterestRadius},
+        {"OPT_VIDEO_AV_SYNC_THRESHOLD", &OptimizationConfig::videoAVSyncThresholdSeconds},
+        {"OPT_VIDEO_LOAD_RETRY_SECONDS", &OptimizationConfig::videoLoadRetrySeconds},
     };
 
     if (const auto field = boolFields.find(key); field != boolFields.end())
@@ -362,6 +365,10 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
         ss >> enable;
         config.input.rawMouseInput = (enable != 0);
     }
+    else if (subCmd == "GAMEPAD_DEAD_ZONE")
+    {
+        ss >> config.input.gamepadDeadZone;
+    }
     else if (subCmd == "MSAA")
     {
         ss >> config.graphics.msaaSamples;
@@ -423,6 +430,10 @@ void ConfigLoader::LoadConfig(std::stringstream& ss, AppConfig& config, bool hea
     else if (subCmd == "BLOOM_RADIUS")
     {
         ss >> config.render.bloomRadius;
+    }
+    else if (subCmd == "TAA_FEEDBACK")
+    {
+        ss >> config.render.taaFeedback;
     }
     else if (subCmd == "SKYBOX_INTENSITY")
     {

@@ -53,6 +53,7 @@ struct RenderConfig
     float bloomIntensity = 1.0f;
     float bloomThreshold = 1.0f;
     float bloomRadius = 0.005f;
+    float taaFeedback = 0.95f;
     float skyboxIntensity = 1.0f;
     float ambientIntensity = 1.0f;
     float uiReferenceWidth = 1920.0f;
@@ -91,6 +92,7 @@ struct InputConfig
     bool mouseInvertX = false;
     bool mouseInvertY = false;
     bool rawMouseInput = true;
+    float gamepadDeadZone = 0.15f;
 };
 
 struct AudioConfig
@@ -195,6 +197,9 @@ struct OptimizationConfig
     bool physicsMeshShapeCacheEnabled = true;
     bool uiLayoutCacheEnabled = true;
     bool videoAsyncDecodeEnabled = true;
+    int videoDecodeQueueSize = 3;
+    float videoAVSyncThresholdSeconds = 0.20f;
+    float videoLoadRetrySeconds = 1.0f;
 };
 
 struct DebugConfig

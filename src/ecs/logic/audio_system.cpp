@@ -3,12 +3,14 @@
 #include <audio/logic/audio_service.h>
 #include <core/logic/config_manager.h>
 #include <core/logic/event_manager.h>
+#include <core/logic/filesystem.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <core/type/event_types.h>
 #include <ecs/logic/system_factory.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/media_components.h>
+#include <algorithm>
 
 
 void AudioSystem::Initialize()
@@ -149,13 +151,14 @@ void AudioSystem::Update(Scene& scene, float dt)
             }
             else if (!audio.filePath.empty())
             {
+                const std::string resolvedPath = FileSystem::getPath(audio.filePath);
                 if (audio.is3D)
                 {
-                    audio.sound = engine->Play3D(audio.filePath, sourcePosition, audio.loop);
+                    audio.sound = engine->Play3D(resolvedPath, sourcePosition, audio.loop);
                 }
                 else
                 {
-                    audio.sound = engine->Play2D(audio.filePath, audio.loop);
+                    audio.sound = engine->Play2D(resolvedPath, audio.loop);
                 }
             }
 
@@ -195,6 +198,8 @@ void AudioSystem::Update(Scene& scene, float dt)
 
             if (audio.is3D)
             {
+                audio.minDistance = (std::max)(0.001f, audio.minDistance);
+                audio.maxDistance = (std::max)(audio.minDistance, audio.maxDistance);
                 glm::vec3 sourcePosition(0.0f);
                 uint32_t transformVersion = 0;
                 if (auto* world = scene.TryGetComponent<WorldTransformComponent>(entity))

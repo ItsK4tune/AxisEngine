@@ -27,6 +27,10 @@ void ResourceManager::SubscribeReloadEvents()
         {
             ReloadShader(e.name);
         }
+        else if (e.type == "COMPUTE_SHADER")
+        {
+            ReloadComputeShader(e.name);
+        }
         else if (e.type == "Texture")
         {
             ReloadTexture(e.name);
@@ -100,6 +104,7 @@ void ResourceManager::Initialize(IShaderManager* shaderManager, ITextureManager*
     if (m_ReloadListenerId == -1)
         SubscribeReloadEvents();
     m_HeadlessMode = (shaderManager == nullptr && textureManager == nullptr);
+    m_LowLevelShaderManager = shaderManager;
 
     if (shaderManager)
         m_ShaderManager = std::make_unique<ShaderManager>(*shaderManager);
@@ -162,6 +167,7 @@ void ResourceManager::Shutdown()
         m_ReloadListenerId = -1;
     }
     ClearResource();
+    m_LowLevelShaderManager = nullptr;
     m_IsShutdown = true;
 }
 
@@ -239,6 +245,16 @@ void ResourceManager::ReloadShader(const std::string& name)
     }
 }
 
+void ResourceManager::ReloadComputeShader(const std::string& name)
+{
+    const auto found = m_ComputeShaders.find(name);
+    if (found != m_ComputeShaders.end() && found->second)
+    {
+        LOGGER_INFO("HotReload") << "Reloading compute shader: " << name;
+        found->second->Reload();
+    }
+}
+
 void ResourceManager::ReloadTexture(const std::string& name)
 {
     LOGGER_INFO("HotReload") << "Reloading Texture: " << name;
@@ -311,6 +327,25 @@ void ResourceManager::LoadShader(const std::string& name, const std::string& vsP
     if (!gsPath.empty())
         props["Geometry"] = gsPath;
     AddResourceDefinition("Shader", name, props);
+}
+
+bool ResourceManager::LoadComputeShader(const std::string& name, const std::string& path)
+{
+    if (!m_LowLevelShaderManager || name.empty() || path.empty())
+        return false;
+    const std::string fullPath = FileSystem::getPath(path);
+    auto shader = std::make_shared<ComputeShader>(*m_LowLevelShaderManager, fullPath);
+    if (!shader->IsValid())
+        return false;
+    m_ComputeShaders[name] = std::move(shader);
+    m_ResourceWatcher.Watch(name, fullPath, "COMPUTE_SHADER");
+    AddResourceDefinition("ComputeShader", name, {{"Path", path}});
+    return true;
+}
+
+void ResourceManager::UnloadComputeShader(const std::string& name)
+{
+    m_ComputeShaders.erase(name);
 }
 
 void ResourceManager::LoadTexture(const std::string& name, const std::string& path, bool async, bool keepCpuData)
@@ -418,6 +453,16 @@ void ResourceManager::LoadFragment(const std::string& name, const std::string& p
     m_FragmentManager->Load(path);
 }
 
+bool ResourceManager::LoadVideo(const std::string& name, const std::string& path)
+{
+    if (m_HeadlessMode || !m_VideoManager || name.empty() || path.empty())
+        return false;
+    if (!m_VideoManager->Load(name, FileSystem::getPath(path)))
+        return false;
+    AddResourceDefinition("Video", name, {{"Path", path}});
+    return true;
+}
+
 void ResourceManager::CreateUIModel(const std::string& name, UIType type)
 {
     if (m_HeadlessMode || !m_UIModelManager)
@@ -456,10 +501,21 @@ void ResourceManager::UnloadFragment(const std::string& name)
     if (m_FragmentManager)
         m_FragmentManager->Unload(name);
 }
+void ResourceManager::UnloadVideo(const std::string& name)
+{
+    if (m_VideoManager)
+        m_VideoManager->Unload(name);
+}
 
 std::shared_ptr<Shader> ResourceManager::GetShader(const std::string& name)
 {
     return m_ShaderManager ? m_ShaderManager->Get(name) : nullptr;
+}
+
+std::shared_ptr<ComputeShader> ResourceManager::GetComputeShader(const std::string& name)
+{
+    const auto found = m_ComputeShaders.find(name);
+    return found != m_ComputeShaders.end() ? found->second : nullptr;
 }
 std::shared_ptr<Texture> ResourceManager::GetTexture(const std::string& name)
 {
@@ -505,6 +561,15 @@ std::vector<std::string> ResourceManager::GetLoadedModels() const
 std::vector<std::string> ResourceManager::GetLoadedShaders() const
 {
     return m_ShaderManager ? m_ShaderManager->GetAllNames() : std::vector<std::string>{};
+}
+std::vector<std::string> ResourceManager::GetLoadedComputeShaders() const
+{
+    std::vector<std::string> names;
+    names.reserve(m_ComputeShaders.size());
+    for (const auto& [name, shader] : m_ComputeShaders)
+        names.push_back(name);
+    std::sort(names.begin(), names.end());
+    return names;
 }
 std::vector<std::string> ResourceManager::GetLoadedSounds() const
 {
@@ -710,6 +775,7 @@ bool ResourceManager::HasUIModel(const std::string& name)
 
 void ResourceManager::ClearResource()
 {
+    m_ComputeShaders.clear();
     if (m_ShaderManager)
         m_ShaderManager->Clear();
     if (m_TextureManager)

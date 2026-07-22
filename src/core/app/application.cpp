@@ -27,7 +27,6 @@
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/monitor_manager.h>
-#include <platform/unit/io_context.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/logic/post_process_pipeline.h>
 #include <render/logic/render_service_impl.h>
@@ -386,6 +385,7 @@ bool Application::Initialize(const AppConfig& incomingConfig)
                 m_Impl->m_Lifecycle = ApplicationLifecycle::Failed;
                 return false;
             }
+            m_Impl->m_IOHandler->GetInputManager().SetGamepadDeadZone(config.input.gamepadDeadZone);
 
             auto& mm = m_Impl->m_IOHandler->GetMonitorManager();
             m_Impl->m_ConfigManager->SetResolution(mm.GetWidth(), mm.GetHeight());
@@ -594,6 +594,7 @@ bool Application::Initialize(const AppConfig& incomingConfig)
                     {
                         auto mode = m_Impl->m_IOHandler->GetMouse().GetCursorMode();
                         m_Impl->m_IOHandler->GetMouse().SetCursorMode(mode);
+                        m_Impl->m_IOHandler->GetInputManager().SetGamepadDeadZone(e.config.input.gamepadDeadZone);
                     }
                 }
                 if (m_Impl->m_AudioCaptureService && HasConfigChanged(e, ConfigChangedEvent::Audio))

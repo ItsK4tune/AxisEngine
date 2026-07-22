@@ -15,11 +15,13 @@
 #include <resource/logic/ui_model_manager.h>
 #include <resource/logic/video_manager.h>
 #include <resource/unit/ui_model.h>
+#include <resource/unit/compute_shader.h>
 #include <future>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class ResourceManager : public IShaderLibrary,
@@ -59,6 +61,7 @@ public:
 
     void LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath,
                     const std::string& gsPath = "") override;
+    bool LoadComputeShader(const std::string& name, const std::string& path);
     void LoadTexture(const std::string& name, const std::string& path, bool async = true,
                      bool keepCpuData = false) override;
     void CreateTextureFromData(const std::string& name, const unsigned char* pixels, int width, int height,
@@ -74,16 +77,20 @@ public:
     void LoadSound(const std::string& name, const std::string& path) override;
     void LoadSkybox(const std::string& name, const std::vector<std::string>& faces) override;
     void LoadFragment(const std::string& name, const std::string& path);
+    bool LoadVideo(const std::string& name, const std::string& path);
     void CreateUIModel(const std::string& name, UIType type) override;
 
     void UnloadShader(const std::string& name) override;
+    void UnloadComputeShader(const std::string& name);
     void UnloadFont(const std::string& name) override;
     void UnloadSound(const std::string& name) override;
     void UnloadSkybox(const std::string& name) override;
     void UnloadAnimation(const std::string& name);
     void UnloadFragment(const std::string& name);
+    void UnloadVideo(const std::string& name);
 
     std::shared_ptr<Shader> GetShader(const std::string& name) override;
+    std::shared_ptr<ComputeShader> GetComputeShader(const std::string& name);
     std::shared_ptr<Texture> GetTexture(const std::string& name) override;
     std::shared_ptr<Model> GetModel(const std::string& name) override;
     std::shared_ptr<Animation> GetAnimation(const std::string& name);
@@ -98,6 +105,7 @@ public:
     std::vector<std::string> GetLoadedTextures() const;
     std::vector<std::string> GetLoadedModels() const;
     std::vector<std::string> GetLoadedShaders() const;
+    std::vector<std::string> GetLoadedComputeShaders() const;
     std::vector<std::string> GetLoadedSounds() const;
     std::vector<std::string> GetLoadedSkyboxes() const;
     std::vector<std::string> GetLoadedAnimations() const;
@@ -131,9 +139,12 @@ private:
     bool RegisterLoaderInternal(std::unique_ptr<ILoaderStrategy> strategy, bool replaceExisting);
     void SubscribeReloadEvents();
     void ReloadShader(const std::string& name);
+    void ReloadComputeShader(const std::string& name);
     void ReloadTexture(const std::string& name);
 
     std::unique_ptr<ShaderManager> m_ShaderManager;
+    IShaderManager* m_LowLevelShaderManager = nullptr;
+    std::unordered_map<std::string, std::shared_ptr<ComputeShader>> m_ComputeShaders;
     std::unique_ptr<TextureManager> m_TextureManager;
     std::unique_ptr<ModelManager> m_ModelManager;
     std::unique_ptr<AudioAssetManager> m_AudioManager;

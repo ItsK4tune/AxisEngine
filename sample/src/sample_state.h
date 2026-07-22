@@ -232,14 +232,12 @@ private:
 
     // Scenario 31 UI variables
     static constexpr float kScenario31MaxVolume = 100.0f;
-    std::shared_ptr<ISound> m_S31Audio2D = nullptr;
-    std::shared_ptr<ISound> m_S31Audio3D = nullptr;
     float m_S31OrbitAngle = 0.0f;
     float m_S31Speed = 1.0f;
-    float m_S31Volume2D = 35.0f;
-    float m_S31Volume3D = 80.0f;
+    float m_S31Volume2D = 60.0f;
+    float m_S31Volume3D = 60.0f;
     float m_S31Pitch = 1.0f;
-    float m_S31MinDistance = 2.0f;
+    float m_S31MinDistance = 15.0f;
     float m_S31MaxDistance = 50.0f;
     bool m_S31Play2D = false;
     bool m_S31Play3D = false;

@@ -139,6 +139,7 @@ Configuration for the `IPhysicsWorld` abstraction. The current build provides th
 - **`AUDIO_CAPTURE_PULSE_THRESHOLD` / `AUDIO_CAPTURE_PULSE_COOLDOWN` / `AUDIO_CAPTURE_PULSE_DURATION`**: Pulse detection and lifetime controls.
 - **`MOUSE_SENSITIVITY`**: Global X/Y look speed.
 - **`MOUSE_INVERT_Y`**: Toggle vertical mouse axis inversion.
+- **`GAMEPAD_DEAD_ZONE`**: Per-axis dead zone in the range `0.0-0.99` (default `0.15`).
 
 ---
 
@@ -178,7 +179,8 @@ All of these values are available in the editor's **Runtime Optimizations** sett
 - `OPT_RENDER_STATE_CACHE`, `OPT_PERSISTENT_MAPPED_BUFFERS`, `OPT_TILED_LIGHT_CULLING`,
   `OPT_TILED_LIGHT_TILE_SIZE`, `OPT_GBUFFER_ENTITY_ID`,
   `OPT_PHYSICS_MESH_SHAPE_CACHE`, `OPT_UI_LAYOUT_CACHE`,
-  `OPT_VIDEO_ASYNC_DECODE`
+  `OPT_VIDEO_ASYNC_DECODE`, `OPT_VIDEO_DECODE_QUEUE_SIZE`, `OPT_VIDEO_AV_SYNC_THRESHOLD`,
+  `OPT_VIDEO_LOAD_RETRY_SECONDS`
 
 CPU mesh discard keeps positions and indices for physics, navigation, and editor previews, but removes normals/UVs and
 other interleaved render attributes. Explicit static batching must therefore run before the model upload when this

@@ -21,7 +21,6 @@ uniform vec3 u_Emission;
 uniform vec4 u_BaseColor;
 uniform vec2 u_UVScale = vec2(1.0);
 uniform vec2 u_UVOffset = vec2(0.0);
-uniform uint u_EntityID;
 flat in uint EntityID;
 uniform float u_Reflectivity;
 uniform float u_FresnelPower;

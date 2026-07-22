@@ -10,6 +10,7 @@
 #include <ecs/unit/render_components.h>
 #include <ecs/unit/script_component.h>
 #include <navigation/unit/navmesh_component.h>
+#include <ecs/unit/physics_components.h>
 #include <scene/logic/scene_manager.h>
 #include <scene/logic/component_loader.h>
 #include <scene/logic/scene_post_load_fixup.h>
@@ -323,6 +324,7 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     config.window.width = 1024;
     config.window.height = 768;
     config.physics.gravity[1] = -9.81f;
+    config.render.taaFeedback = 0.82f;
     config.audio.captureInputVolume = 1.75f;
     config.audio.captureNoiseGate = 0.06f;
     config.audio.captureAttackSeconds = 0.025f;
@@ -377,6 +379,10 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     config.optimization.physicsMeshShapeCacheEnabled = false;
     config.optimization.uiLayoutCacheEnabled = false;
     config.optimization.videoAsyncDecodeEnabled = false;
+    config.optimization.videoDecodeQueueSize = 7;
+    config.optimization.videoAVSyncThresholdSeconds = 0.35f;
+    config.optimization.videoLoadRetrySeconds = 2.5f;
+    config.input.gamepadDeadZone = 0.22f;
 
     auto path = axis_test_support::TempPath("test_config.axs");
     ConfigSerializer serializer;
@@ -392,6 +398,7 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     AXIS_CHECK(loadedConfig.window.width == 1024);
     AXIS_CHECK(loadedConfig.window.height == 768);
     AXIS_CHECK_NEAR(loadedConfig.physics.gravity[1], -9.81f, 0.0001f);
+    AXIS_CHECK_NEAR(loadedConfig.render.taaFeedback, 0.82f, 0.0001f);
     AXIS_CHECK_NEAR(loadedConfig.audio.captureInputVolume, 1.75f, 0.0001f);
     AXIS_CHECK_NEAR(loadedConfig.audio.captureNoiseGate, 0.06f, 0.0001f);
     AXIS_CHECK_NEAR(loadedConfig.audio.captureAttackSeconds, 0.025f, 0.0001f);
@@ -446,6 +453,10 @@ AXIS_TEST_CASE("ConfigSerializer serializes and deserializes config")
     AXIS_CHECK(!loadedConfig.optimization.physicsMeshShapeCacheEnabled);
     AXIS_CHECK(!loadedConfig.optimization.uiLayoutCacheEnabled);
     AXIS_CHECK(!loadedConfig.optimization.videoAsyncDecodeEnabled);
+    AXIS_CHECK(loadedConfig.optimization.videoDecodeQueueSize == 7);
+    AXIS_CHECK_NEAR(loadedConfig.optimization.videoAVSyncThresholdSeconds, 0.35f, 0.0001f);
+    AXIS_CHECK_NEAR(loadedConfig.optimization.videoLoadRetrySeconds, 2.5f, 0.0001f);
+    AXIS_CHECK_NEAR(loadedConfig.input.gamepadDeadZone, 0.22f, 0.0001f);
 }
 
 AXIS_TEST_CASE("SceneSerializer round trips script and particle emission shape")
@@ -474,6 +485,42 @@ AXIS_TEST_CASE("SceneSerializer round trips script and particle emission shape")
     AXIS_CHECK(loaded.GetComponent<ScriptComponent>(loadedEntity).className == "RoundTripScript");
     AXIS_CHECK(loaded.GetComponent<ParticleEmitterComponent>(loadedEntity).emitter.Shape ==
                ParticleEmitter::EmissionShape::CONE);
+}
+
+AXIS_TEST_CASE("SceneSerializer round trips heightfield collision data")
+{
+    axis_test_support::HeadlessResourceFixture fixture;
+    Scene source;
+    ConfigManager configManager;
+    InitializeConfigManager(configManager);
+    ServiceLocator::Instance().Register<ConfigManager>(&configManager);
+
+    auto entity = source.CreateEntity("HeightfieldBody", "terrain");
+    source.GetComponent<InfoComponent>(entity).sceneName = "physics";
+    auto& shape = source.AddComponent<RigidShapeComponent>(entity);
+    shape.type = ShapeType::Heightfield;
+    shape.heightfieldWidth = 2;
+    shape.heightfieldLength = 2;
+    shape.minHeight = -1.0f;
+    shape.maxHeight = 2.0f;
+    shape.heightfieldScale = {2.0f, 0.5f, 3.0f};
+    shape.heightSamples = {-1.0f, 0.0f, 1.0f, 2.0f};
+
+    const auto path = axis_test_support::TempPath("heightfield_roundtrip.axs");
+    SceneSerializer serializer(fixture.resources, nullptr, nullptr);
+    AXIS_CHECK(serializer.Serialize(path.string(), source, "physics"));
+
+    Scene loaded;
+    AXIS_CHECK(serializer.Deserialize(path.string(), loaded));
+    const auto view = loaded.View<RigidShapeComponent>();
+    AXIS_CHECK(view.size() == 1);
+    const auto& restored = view.get<RigidShapeComponent>(*view.begin());
+    AXIS_CHECK(restored.type == ShapeType::Heightfield);
+    AXIS_CHECK(restored.heightfieldWidth == 2);
+    AXIS_CHECK(restored.heightfieldLength == 2);
+    AXIS_CHECK(restored.heightSamples.size() == 4);
+    AXIS_CHECK_NEAR(restored.heightSamples[3], 2.0f, 0.0001f);
+    AXIS_CHECK_NEAR(restored.heightfieldScale.z, 3.0f, 0.0001f);
 }
 
 AXIS_TEST_CASE("SceneSerializer round trips animation and VFX graphs")

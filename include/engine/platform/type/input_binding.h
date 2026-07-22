@@ -6,7 +6,8 @@ enum class InputType
 {
     Key,
     MouseButton,
-    GamepadButton
+    GamepadButton,
+    GamepadAxis
 };
 
 struct InputBinding

@@ -20,17 +20,15 @@ uniform mat4 invViewProj;
 
 uniform mat4 prevViewProj;
 
-uniform vec2 jitterOffset;
 
 uniform bool resetHistory;
+uniform float historyFeedback;
 
 
 
 
 
-const float feedbackMin = 0.88; 
 
-const float feedbackMax = 0.97;
 
 
 
@@ -261,7 +259,7 @@ void main()
 
 
 
-    float blendFactor = validPrevUV ? 0.95 : 0.0;
+    float blendFactor = validPrevUV ? clamp(historyFeedback, 0.0, 0.999) : 0.0;
 
     
 

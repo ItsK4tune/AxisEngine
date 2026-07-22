@@ -114,6 +114,19 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                     m_SelectedType = "Shader";
                 }
             }
+            ImGui::SeparatorText("Compute");
+            auto computeShaders = rm->GetLoadedComputeShaders();
+            if (computeShaders.empty())
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No compute shaders loaded.");
+            for (const auto& name : computeShaders)
+            {
+                bool selected = (m_SelectedName == name && m_SelectedType == "ComputeShader");
+                if (ImGui::Selectable(name.c_str(), selected))
+                {
+                    m_SelectedName = name;
+                    m_SelectedType = "ComputeShader";
+                }
+            }
             ImGui::EndTabItem();
         }
 
@@ -572,14 +585,26 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
                 }
             }
         }
+        else if (m_SelectedType == "ComputeShader")
+        {
+            ImGui::Text("Compute shader: %s", m_SelectedName.c_str());
+            const auto shader = rm->GetComputeShader(m_SelectedName);
+            ImGui::Text("Status: %s", shader && shader->IsValid() ? "Ready" : "Invalid");
+        }
         else if (m_SelectedType == "Audio")
         {
             auto soundSource = rm->GetSound(m_SelectedName);
             if (soundSource)
             {
                 ImGui::Text("Default Volume: %.2f", soundSource->GetDefaultVolume());
-                ImGui::Text("Default Pitch: %.2f", soundSource->GetDefaultPitch());
-                ImGui::Text("Default Pan: %.2f", soundSource->GetDefaultPan());
+                if (soundSource->SupportsDefaultPitch())
+                    ImGui::Text("Default Pitch: %.2f", soundSource->GetDefaultPitch());
+                else
+                    ImGui::TextDisabled("Default Pitch: unsupported");
+                if (soundSource->SupportsDefaultPan())
+                    ImGui::Text("Default Pan: %.2f", soundSource->GetDefaultPan());
+                else
+                    ImGui::TextDisabled("Default Pan: unsupported");
                 ImGui::Text("Default Speed: %.2f", soundSource->GetDefaultSpeed());
 
                 ImGui::Spacing();

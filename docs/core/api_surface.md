@@ -24,4 +24,4 @@ Headers below any `strategy/` directory and built-in editor `modules/` or `panel
 
 ## Current provider matrix
 
-The shipped graphics backend is OpenGL and the shipped physics backend is Bullet. Playback supports Null plus optional FMOD or irrKlang builds. Windows microphone capture uses WASAPI; other platforms use the explicit unsupported capture service until a provider is installed. Vulkan, DirectX, PhysX, and OpenAL remain enum values for serialized/source compatibility but are not offered as selectable build providers.
+The shipped graphics backend is OpenGL 4.6 and the shipped physics backend is Bullet. The built-in renderer is not available on macOS because Apple's OpenGL implementation stops at 4.1; startup now fails explicitly instead of attempting to compile incompatible GLSL 4.6 shaders. Playback supports Null plus optional FMOD or irrKlang builds. Windows microphone capture uses WASAPI; other platforms use the explicit unsupported capture service until a provider is installed. Vulkan, DirectX, PhysX, and OpenAL remain enum values for serialized/source compatibility but are not offered as selectable build providers.

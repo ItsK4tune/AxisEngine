@@ -25,6 +25,9 @@ public:
     bool GetAction(const std::string& actionName) const;
     bool GetActionDown(const std::string& actionName) const;
     bool GetActionUp(const std::string& actionName) const;
+    float GetAxis(const std::string& actionName) const;
+    void SetGamepadDeadZone(float deadZone) { m_GamepadDeadZone = (std::clamp)(deadZone, 0.0f, 0.99f); }
+    float GetGamepadDeadZone() const { return m_GamepadDeadZone; }
 
     std::vector<DeviceInfo> GetAllDevices() const override;
     DeviceInfo GetCurrentDevice() const override;
@@ -42,6 +45,9 @@ public:
 
 private:
     bool IsBindingTypeActive(InputType type) const;
+    bool IsGamepadButtonPressed(int code) const;
+    float ReadGamepadAxis(int code) const;
+    static bool TryParseGamepadDeviceIndex(const std::string& deviceId, int& index);
 
     const KeyboardManager& m_Keyboard;
     const MouseManager& m_Mouse;
@@ -49,4 +55,5 @@ private:
     std::unordered_map<std::string, InputActionBinding> m_ActionMap;
     std::unordered_map<std::string, bool> m_PreviousState;
     std::string m_ActiveDeviceId = "merged_input";
+    float m_GamepadDeadZone = 0.15f;
 };

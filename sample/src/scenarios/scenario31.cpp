@@ -9,8 +9,6 @@ void SampleState::LoadScene31()
     m_S31Volume3D = glm::clamp(m_S31Volume3D, 0.0f, kScenario31MaxVolume);
     m_S31Play2D = false;
     m_S31Play3D = true;
-    m_S31Audio2D = nullptr;
-    m_S31Audio3D = nullptr;
 
     EntityBuilder(scene, res, "scenario")
         .WithName("AudioPlatform")
@@ -26,7 +24,7 @@ void SampleState::LoadScene31()
 
     EntityBuilder(scene, res, "scenario")
         .WithName("AudioSource3D")
-        .WithTransform(glm::vec3(0.0f, 3.0f, 60.0f), glm::vec3(0.0f), glm::vec3(2.0f))
+        .WithTransform(glm::vec3(0.0f, 3.0f, 68.0f), glm::vec3(0.0f), glm::vec3(2.0f))
         .WithPBRMesh("sphereModel", "deferred_lit", 1.0f, 0.5f, 0.0f)
         .WithAudioSource(SamplePath("sample/resource/audio/sample.wav"), m_S31Play3D, true, true, m_S31Volume3D,
                          m_S31Pitch, 1.0f, m_S31MinDistance, m_S31MaxDistance)
