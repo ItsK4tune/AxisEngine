@@ -9,8 +9,40 @@ option(ENABLE_EDITOR "Enable Editor System (ImGui)" OFF)
 option(BUILD_SAMPLES "Build sample application when editor is enabled" ON)
 option(ENABLE_TESTS "Build AxisEngine automated tests" OFF)
 option(ENABLE_LTO "Enable interprocedural optimization for optimized builds" ON)
-option(ENABLE_PCH "Use a private precompiled header to reduce engine compile time" ON)
-option(ENABLE_UNITY_BUILD "Use CMake unity translation units for engine compile time" OFF)
+option(ENABLE_PCH "Use private precompiled headers to reduce project compile time" ON)
+option(ENABLE_UNITY_BUILD "Batch sources into unity translation units to reduce compile time" ON)
+option(ENABLE_PARALLEL_COMPILE "Compile source files concurrently when supported" ON)
+set(AXIS_UNITY_BATCH_SIZE 8 CACHE STRING "Maximum source files per unity translation unit")
+
+set(AXIS_PCH_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/cmake/pch/axis_pch.hpp")
+
+function(axis_enable_pch target)
+    if(ENABLE_PCH)
+        target_precompile_headers(${target} PRIVATE "${AXIS_PCH_HEADER}")
+    endif()
+endfunction()
+
+function(axis_optimize_build target)
+    axis_enable_pch(${target})
+
+    if(MSVC AND ENABLE_PARALLEL_COMPILE)
+        # /MP parallelizes compilation within a Visual Studio target. /FS makes
+        # concurrent writes to the compiler PDB safe.
+        target_compile_options(${target} PRIVATE /MP /FS /bigobj)
+    endif()
+
+    if(WIN32)
+        # Prevent Windows SDK macros from leaking between files in a unity batch.
+        target_compile_definitions(${target} PRIVATE NOMINMAX)
+    endif()
+
+    if(ENABLE_UNITY_BUILD)
+        set_target_properties(${target} PROPERTIES
+            UNITY_BUILD ON
+            UNITY_BUILD_BATCH_SIZE ${AXIS_UNITY_BATCH_SIZE}
+        )
+    endif()
+endfunction()
 
 if(ENABLE_LTO)
     include(CheckIPOSupported)
@@ -130,6 +162,21 @@ add_library(axis_engine STATIC ${AXIS_ENGINE_SOURCES})
 add_library(Axis::Engine ALIAS axis_engine)
 set_target_properties(axis_engine PROPERTIES EXPORT_NAME Engine)
 
+# These implementation files define macros or file-local symbols that must stay
+# in isolated translation units. The remaining engine sources can safely use
+# unity batches.
+set_source_files_properties(
+    "${CMAKE_SOURCE_DIR}/src/resource/logic/stb_image_impl.cpp"
+    "${CMAKE_SOURCE_DIR}/src/ecs/logic/ui_interact_system.cpp"
+    "${CMAKE_SOURCE_DIR}/src/platform/strategy/windows/wasapi_audio_capture_service.cpp"
+    "${CMAKE_SOURCE_DIR}/src/audio/strategy/null/null_audio_engine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/audio/strategy/irrklang/irrklang_audio_engine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/audio/strategy/fmod/fmod_audio_engine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/panels/file_hierarchy_panel.cpp"
+    "${CMAKE_SOURCE_DIR}/sample/src/sample_state.cpp"
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+)
+
 target_compile_features(axis_engine PUBLIC cxx_std_20)
 
 target_compile_definitions(axis_engine PUBLIC
@@ -146,25 +193,11 @@ target_compile_definitions(axis_engine PUBLIC
 )
 
 if(MSVC)
-    target_compile_options(axis_engine PRIVATE /FS)
     target_compile_definitions(axis_engine PRIVATE _ENABLE_EXTENDED_ALIGNED_STORAGE)
     add_link_options($<$<CONFIG:Release>:/OPT:REF> $<$<CONFIG:Release>:/OPT:ICF>)
 endif()
 
-if(ENABLE_PCH)
-    target_precompile_headers(axis_engine PRIVATE
-        <algorithm>
-        <array>
-        <cstdint>
-        <memory>
-        <string>
-        <unordered_map>
-        <vector>
-        <glm/glm.hpp>
-        <entt/entt.hpp>
-    )
-endif()
-set_target_properties(axis_engine PROPERTIES UNITY_BUILD ${ENABLE_UNITY_BUILD})
+axis_optimize_build(axis_engine)
 
 target_include_directories(axis_engine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -277,10 +310,6 @@ if(ENABLE_EDITOR)
     add_library(Axis::Editor ALIAS axis_editor)
     set_target_properties(axis_editor PROPERTIES EXPORT_NAME Editor)
 
-    if(MSVC)
-        target_compile_options(axis_editor PRIVATE /FS)
-    endif()
-    
     target_include_directories(axis_editor PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -291,6 +320,7 @@ if(ENABLE_EDITOR)
         ImGui::ImGui
     )
     target_compile_definitions(axis_editor PUBLIC ENABLE_EDITOR)
+    axis_optimize_build(axis_editor)
 endif()
 
 # Installation & Export Setup
@@ -397,9 +427,6 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     endif()
 
     add_executable(axis_samples ${SAMPLE_SOURCES})
-    if(MSVC)
-        target_compile_options(axis_samples PRIVATE /FS)
-    endif()
 
     target_include_directories(axis_samples PRIVATE
         sample/src
@@ -409,6 +436,7 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
         axis_editor
         axis_engine
     )
+    axis_optimize_build(axis_samples)
 
     if(WIN32)
         target_link_libraries(axis_samples PRIVATE

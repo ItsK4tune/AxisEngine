@@ -53,6 +53,12 @@ target_compile_definitions(axis_test PRIVATE
 )
 
 target_link_libraries(axis_test PRIVATE axis_engine)
+axis_optimize_build(axis_test)
+
+# The lightweight test registration macros derive symbols from __LINE__, which
+# can collide when multiple test files are merged into one unity translation
+# unit. Tests still benefit from PCH and MSVC /MP parallel compilation.
+set_target_properties(axis_test PROPERTIES UNITY_BUILD OFF)
 
 if(TARGET axis_editor)
     target_link_libraries(axis_test PRIVATE axis_editor)

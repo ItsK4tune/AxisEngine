@@ -1,4 +1,6 @@
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include <editor/panels/resource_browser_panel.h>
 
 #ifdef ENABLE_EDITOR
