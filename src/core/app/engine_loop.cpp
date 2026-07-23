@@ -172,6 +172,7 @@ void EngineLoop::ProcessFrame()
 
     if (ioHandler)
     {
+        ioHandler->GetKeyboard().EndFrame();
         ioHandler->GetMouse().EndFrame();
     }
 

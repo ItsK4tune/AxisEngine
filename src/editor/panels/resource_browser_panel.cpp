@@ -42,12 +42,16 @@ static glm::vec3 RotatePoint(const glm::vec3& p, float rotX, float rotY)
 void ResourceBrowserPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
+    DrawContents(scene);
+    ImGui::End();
+}
 
+void ResourceBrowserPanel::DrawContents(Scene& scene)
+{
     auto* rm = ServiceLocator::Instance().Resolve<ResourceManager>();
     if (!rm)
     {
         ImGui::Text("ResourceManager is not available.");
-        ImGui::End();
         return;
     }
 
@@ -807,6 +811,5 @@ void ResourceBrowserPanel::OnImGui(Scene& scene)
     }
     ImGui::EndChild();
 
-    ImGui::End();
 }
 #endif

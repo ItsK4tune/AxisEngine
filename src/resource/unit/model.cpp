@@ -507,6 +507,19 @@ void Model::DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& i
     for (unsigned int i = 0; i < meshes.size(); i++) meshes[i].DrawInstanced(shader, instances, bindTextures);
 }
 
+void Model::DrawMesh(size_t index, Shader& shader, bool bindTextures)
+{
+    if (index < meshes.size())
+        meshes[index].Draw(shader, bindTextures);
+}
+
+void Model::DrawMeshInstanced(size_t index, Shader& shader, const std::vector<MeshInstanceData>& instances,
+                              bool bindTextures)
+{
+    if (index < meshes.size())
+        meshes[index].DrawInstanced(shader, instances, bindTextures);
+}
+
 std::unordered_map<std::string, BoneInfo>& Model::GetBoneInfoMap()
 {
     return m_BoneInfoMap;

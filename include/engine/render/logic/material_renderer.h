@@ -29,6 +29,8 @@ struct MaterialUniformLocations
     int u_AOMap = -1;
     int u_EmissiveMap = -1;
     int u_SpecularMap = -1;
+    int u_Lightmap = -1;
+    int u_LightmapIntensity = -1;
 
     int u_IrradianceMap = -1;
     int u_PrefilterMap = -1;

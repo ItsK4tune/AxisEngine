@@ -107,6 +107,10 @@ public:
     {
         glUniform1ui(location, value);
     }
+    void SetUniform1uiv(int location, int count, const unsigned int* value) override
+    {
+        glUniform1uiv(location, count, value);
+    }
     void SetUniform1f(int location, float value) override
     {
         glUniform1f(location, value);

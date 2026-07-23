@@ -1312,7 +1312,8 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
     LoaderUtils::ValidateKeys(
         node, {"Opacity", "Roughness",   "Metallic",    "Albedo",   "Normal",      "MetallicMap", "RoughnessMap",
                "AO",      "EmissiveMap", "SpecularMap", "Emission", "AlphaCutoff", "UVScale",     "UVOffset",
-               "AO_Map",  "AO_Path",     "BlendSrc",    "BlendDst", "Type",        "Ports"},
+               "AO_Map",  "AO_Path",     "BlendSrc",    "BlendDst", "Type",        "Ports",
+               "Lightmap", "LightmapIntensity"},
         "Material");
     auto& mat = scene.AddComponent<MaterialComponent>(entity);
     mat.desc.opacity = LoaderUtils::SafeStof(node.GetChildValue("Opacity", "1.0"));
@@ -1337,6 +1338,8 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
     mat.desc.aoPath = node.GetChildValue("AO_Map", node.GetChildValue("AO_Path", ""));
     mat.desc.emissivePath = node.GetChildValue("EmissiveMap");
     mat.desc.specularPath = node.GetChildValue("SpecularMap");
+    mat.desc.lightmapPath = node.GetChildValue("Lightmap");
+    mat.desc.lightmapIntensity = LoaderUtils::SafeStof(node.GetChildValue("LightmapIntensity", "1.0"));
 
     constexpr int maxBlendFactor = static_cast<int>(BlendFactor::OneMinusConstantAlpha);
     mat.desc.blendSrc = static_cast<BlendFactor>(std::clamp(
@@ -1365,6 +1368,7 @@ void ComponentLoader::LoadMaterial(Scene& scene, entt::entity entity, const YAML
     mat.gpu.emissiveMap = resolveTexture(mat.desc.emissivePath);
     mat.gpu.aoMap = resolveTexture(mat.desc.aoPath);
     mat.gpu.specularMap = resolveTexture(mat.desc.specularPath);
+    mat.gpu.lightmapMap = resolveTexture(mat.desc.lightmapPath);
     mat.gpu.dirty = false;
 }
 
@@ -1453,7 +1457,8 @@ void ComponentLoader::LoadNavMesh(Scene& scene, entt::entity entity, const YAMLN
 {
     LoaderUtils::ValidateKeys(node,
                               {"IsDynamic", "NeedsRebuild", "TerrainGridResolution", "WalkableNormalY",
-                               "CarveHeightPadding", "CarveAgentRadius", "Vertices", "Triangles", "Nodes"},
+                               "CarveHeightPadding", "CarveAgentRadius", "CostRules",
+                               "Vertices", "Triangles", "Nodes"},
                               "NavMesh");
     auto& nav = scene.AddOrReplaceComponent<NavMeshComponent>(entity);
     nav.isDynamic = ParseBoolValue(node.GetChildValue("IsDynamic", "false"));
@@ -1462,6 +1467,59 @@ void ComponentLoader::LoadNavMesh(Scene& scene, entt::entity entity, const YAMLN
     nav.walkableNormalY = LoaderUtils::SafeStof(node.GetChildValue("WalkableNormalY", "0.3"));
     nav.carveHeightPadding = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("CarveHeightPadding", "0.5")));
     nav.carveAgentRadius = std::max(0.0f, LoaderUtils::SafeStof(node.GetChildValue("CarveAgentRadius", "0.0")));
+    const auto parseTags = [](const std::string& value) {
+        std::vector<std::string> tags;
+        std::stringstream stream(value);
+        std::string tag;
+        while (stream >> tag) tags.push_back(std::move(tag));
+        if (tags.empty()) tags.push_back("walkable");
+        return tags;
+    };
+    nav.costRules.clear();
+    if (const auto* costRules = node.GetChild("CostRules"))
+    {
+        nav.costRules.reserve(costRules->children.size());
+        for (const auto& ruleNode : costRules->children)
+        {
+            if (ruleNode.key != "Rule")
+                continue;
+            NavigationCostRule rule;
+            rule.name = ruleNode.GetChildValue("Name", "Navigation rule");
+            rule.enabled = ParseBoolValue(ruleNode.GetChildValue("Enabled", "true"), true);
+            rule.conditionMode = static_cast<NavigationConditionGroupMode>(std::clamp(
+                LoaderUtils::SafeStoi(ruleNode.GetChildValue("ConditionMode", "0")), 0, 1));
+            rule.effect = static_cast<NavigationRuleEffect>(std::clamp(
+                LoaderUtils::SafeStoi(ruleNode.GetChildValue("Effect", "1")), 0, 2));
+            rule.value = std::max(0.0f, LoaderUtils::SafeStof(ruleNode.GetChildValue("Value", "1.0")));
+            rule.stopOnMatch = ParseBoolValue(ruleNode.GetChildValue("StopOnMatch", "false"));
+            rule.conditions.clear();
+            if (const auto* conditions = ruleNode.GetChild("Conditions"))
+            {
+                for (const auto& conditionNode : conditions->children)
+                {
+                    if (conditionNode.key != "Condition")
+                        continue;
+                    NavigationRulePredicate predicate;
+                    predicate.condition = static_cast<NavigationRuleCondition>(std::clamp(
+                        LoaderUtils::SafeStoi(conditionNode.GetChildValue("Type", "1")), 0, 7));
+                    predicate.tag = conditionNode.GetChildValue("Tag", "walkable");
+                    predicate.threshold = LoaderUtils::SafeStof(conditionNode.GetChildValue("Threshold", "0.0"));
+                    predicate.negate = ParseBoolValue(conditionNode.GetChildValue("Negate", "false"));
+                    rule.conditions.push_back(std::move(predicate));
+                }
+            }
+            else
+            {
+                NavigationRulePredicate legacy;
+                legacy.condition = static_cast<NavigationRuleCondition>(std::clamp(
+                    LoaderUtils::SafeStoi(ruleNode.GetChildValue("Condition", "1")), 0, 5));
+                legacy.tag = ruleNode.GetChildValue("Tag", "walkable");
+                legacy.threshold = LoaderUtils::SafeStof(ruleNode.GetChildValue("Threshold", "0.0"));
+                rule.conditions.push_back(std::move(legacy));
+            }
+            nav.costRules.push_back(std::move(rule));
+        }
+    }
 
     nav.vertices.clear();
     if (const auto* vertices = node.GetChild("Vertices"))
@@ -1488,6 +1546,7 @@ void ComponentLoader::LoadNavMesh(Scene& scene, entt::entity entity, const YAMLN
             triangle.center = ParseVec3Value(triangleNode.GetChildValue("Center"));
             triangle.normal = ParseVec3Value(triangleNode.GetChildValue("Normal"), glm::vec3(0.0f, 1.0f, 0.0f));
             triangle.tag = triangleNode.GetChildValue("Tag", "walkable");
+            triangle.tags = parseTags(triangleNode.GetChildValue("Tags", triangle.tag));
             nav.triangles.push_back(std::move(triangle));
         }
     }
@@ -1504,6 +1563,7 @@ void ComponentLoader::LoadNavMesh(Scene& scene, entt::entity entity, const YAMLN
             navNode.position = ParseVec3Value(nodeData.GetChildValue("Position"));
             navNode.triangleIndex = LoaderUtils::SafeStoul(nodeData.GetChildValue("TriangleIndex", "0"));
             navNode.tag = nodeData.GetChildValue("Tag", "walkable");
+            navNode.tags = parseTags(nodeData.GetChildValue("Tags", navNode.tag));
             std::stringstream neighbors(nodeData.GetChildValue("Neighbors"));
             uint32_t neighbor = 0;
             while (neighbors >> neighbor) navNode.neighbors.push_back(neighbor);

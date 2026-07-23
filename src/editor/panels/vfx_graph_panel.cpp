@@ -1,8 +1,10 @@
 #include <editor/panels/vfx_graph_panel.h>
 #ifdef ENABLE_EDITOR
+#include <core/logic/service_locator.h>
 #include <ecs/logic/effect_graph_runtime.h>
 #include <ecs/unit/media_components.h>
-#include <editor/panels/scene_hierarchy_panel.h>
+#include <editor/editor_selection.h>
+#include <editor/editor_system.h>
 #include <scene/logic/scene.h>
 #include <imgui.h>
 #include <algorithm>
@@ -69,7 +71,8 @@ void DrawHelp(const char* text)
 void VFXGraphPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
-    const entt::entity entity = SceneHierarchyPanel::s_SelectedEntity;
+    EditorSystem::BeginPanelTransactionOnContentClick(scene, "VFX edit");
+    const entt::entity entity = ServiceLocator::Instance().Require<EditorSelection>().GetPrimary();
     if (entity == entt::null || !scene.GetRegistry().valid(entity))
     {
         ImGui::TextDisabled("Select an entity with a Particle Emitter component.");
@@ -85,17 +88,32 @@ void VFXGraphPanel::OnImGui(Scene& scene)
     }
 
     auto& graph = particles->graph;
+    if (m_ContextEntity != entity)
+    {
+        m_ContextEntity = entity;
+        m_SelectedNode = 0;
+        m_SelectedLink = 0;
+        m_LinkFrom = 0;
+        m_LinkTo = 0;
+    }
+    const auto nodeExists = [&](uint32_t id) {
+        return std::any_of(graph.nodes.begin(), graph.nodes.end(),
+                           [id](const VFXGraphNode& node) { return node.id == id; });
+    };
+    if (!nodeExists(m_LinkFrom))
+        m_LinkFrom = 0;
+    if (!nodeExists(m_LinkTo))
+        m_LinkTo = 0;
     ImGui::Checkbox("Use VFX Graph", &graph.enabled);
     DrawHelp("Enabled: active graph nodes write their values to the particle emitter. Disabled: the emitter keeps its legacy inspector values.");
     ImGui::SameLine();
-    static int newNodeType = 0;
     ImGui::SetNextItemWidth(145.0f);
-    ImGui::Combo("##newVfxNode", &newNodeType,
+    ImGui::Combo("##newVfxNode", &m_NewNodeType,
                  "Spawn\0Lifetime\0Velocity\0Gravity\0Drag\0Color Over Life\0Size Over Life\0Output\0");
     ImGui::SameLine();
     if (ImGui::Button("Add Node"))
     {
-        graph.nodes.push_back(MakeNode(graph.nextId++, static_cast<VFXNodeType>(newNodeType), graph.nodes.size()));
+        graph.nodes.push_back(MakeNode(graph.nextId++, static_cast<VFXNodeType>(m_NewNodeType), graph.nodes.size()));
         m_SelectedNode = graph.nodes.back().id;
         m_SelectedLink = 0;
     }
@@ -104,8 +122,6 @@ void VFXGraphPanel::OnImGui(Scene& scene)
         graph.parameters.push_back({"parameter" + std::to_string(graph.parameters.size() + 1),
                                     AnimationParameterType::Float, 0.0f, false, false});
 
-    static uint32_t linkFrom = 0;
-    static uint32_t linkTo = 0;
     auto nodeCombo = [&](const char* label, uint32_t& value) {
         const auto selected = std::find_if(graph.nodes.begin(), graph.nodes.end(),
                                            [value](const auto& node) { return node.id == value; });
@@ -120,18 +136,18 @@ void VFXGraphPanel::OnImGui(Scene& scene)
         }
     };
     ImGui::SameLine();
-    nodeCombo("From", linkFrom);
+    nodeCombo("From", m_LinkFrom);
     ImGui::SameLine();
-    nodeCombo("To", linkTo);
+    nodeCombo("To", m_LinkTo);
     ImGui::SameLine();
-    if (ImGui::Button("Link") && linkFrom != 0 && linkTo != 0 && linkFrom != linkTo)
+    if (ImGui::Button("Link") && m_LinkFrom != 0 && m_LinkTo != 0 && m_LinkFrom != m_LinkTo)
     {
         const bool duplicate = std::any_of(graph.links.begin(), graph.links.end(), [&](const auto& link) {
-            return link.fromNode == linkFrom && link.toNode == linkTo;
+            return link.fromNode == m_LinkFrom && link.toNode == m_LinkTo;
         });
         if (!duplicate)
         {
-            graph.links.push_back({graph.nextId++, linkFrom, linkTo});
+            graph.links.push_back({graph.nextId++, m_LinkFrom, m_LinkTo});
             m_SelectedLink = graph.links.back().id;
             m_SelectedNode = 0;
         }
@@ -330,8 +346,8 @@ void VFXGraphPanel::OnImGui(Scene& scene)
                 return link.fromNode == removed || link.toNode == removed;
             });
             m_SelectedNode = 0;
-            if (linkFrom == removed) linkFrom = 0;
-            if (linkTo == removed) linkTo = 0;
+            if (m_LinkFrom == removed) m_LinkFrom = 0;
+            if (m_LinkTo == removed) m_LinkTo = 0;
         }
     }
     ImGui::Separator();

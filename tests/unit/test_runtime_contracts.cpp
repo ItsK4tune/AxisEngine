@@ -24,6 +24,7 @@
 #include <ecs/logic/particle_system.h>
 #include <ecs/logic/post_process_system.h>
 #include <ecs/unit/media_components.h>
+#include <editor/editor_shortcut.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/monitor_manager.h>
@@ -32,7 +33,9 @@
 #include <render/logic/spatial_culling_policy.h>
 #include <render/logic/particle_emitter.h>
 #include <resource/unit/model.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene.h>
+#include <scene/logic/scene_serializer.h>
 #include <script/logic/script_registry.h>
 #include <algorithm>
 #include <filesystem>
@@ -40,6 +43,7 @@
 #include <fstream>
 #include <future>
 #include <sstream>
+#include <set>
 #include <stdexcept>
 #include <limits>
 #include <type_traits>
@@ -149,7 +153,7 @@ public:
     }
     bool GetKey(Key key) const override
     {
-        return key == Key::Space && spacePressed;
+        return pressedKeys.contains(key) || (key == Key::Space && spacePressed);
     }
     bool GetMouseButton(Mouse button) const override
     {
@@ -193,6 +197,7 @@ public:
     }
 
     bool spacePressed = true;
+    std::set<Key> pressedKeys;
     bool leftPressed = true;
     bool gamepadAPressed = false;
     float gamepadLeftX = 0.0f;
@@ -395,6 +400,42 @@ public:
     int observedParticleBudget = 0;
 };
 }  // namespace
+
+AXIS_TEST_CASE("Editor shortcuts require exact modifiers and latch the base-key press")
+{
+    FakeWindow window;
+    window.spacePressed = false;
+    KeyboardManager keyboard(&window);
+    bool pressed = false;
+
+    window.pressedKeys = {Key::F1, Key::LeftShift};
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::F1, EditorModifier::None, pressed));
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::F1, EditorModifier::Shift, pressed));
+
+    window.pressedKeys.clear();
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::F1, EditorModifier::None, pressed));
+
+    window.pressedKeys = {Key::F1};
+    AXIS_CHECK(IsEditorShortcutPressed(keyboard, Key::F1, EditorModifier::None, pressed));
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::F1, EditorModifier::None, pressed));
+}
+
+AXIS_TEST_CASE("Blocked editor shortcuts do not fire after text focus changes while held")
+{
+    FakeWindow window;
+    window.spacePressed = false;
+    window.pressedKeys = {Key::Delete};
+    KeyboardManager keyboard(&window);
+    bool pressed = false;
+
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::Delete, EditorModifier::None, pressed, true));
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::Delete, EditorModifier::None, pressed, false));
+
+    window.pressedKeys.clear();
+    AXIS_CHECK(!IsEditorShortcutPressed(keyboard, Key::Delete, EditorModifier::None, pressed));
+    window.pressedKeys = {Key::Delete};
+    AXIS_CHECK(IsEditorShortcutPressed(keyboard, Key::Delete, EditorModifier::None, pressed));
+}
 
 AXIS_TEST_CASE("Config validation reports and sanitizes unsafe runtime values")
 {
@@ -1323,6 +1364,24 @@ AXIS_TEST_CASE("System catalog contains built-ins and linked optional modules")
 #endif
 }
 
+AXIS_TEST_CASE("Consumed editor keys remain visible to raw tools and hidden from gameplay")
+{
+    FakeWindow window;
+    window.pressedKeys.insert(Key::W);
+    KeyboardManager keyboard(&window);
+    AXIS_CHECK(keyboard.GetRawKey(Key::W));
+    AXIS_CHECK(keyboard.GetKey(Key::W));
+    keyboard.ConsumeKey(Key::W);
+    AXIS_CHECK(keyboard.GetRawKey(Key::W));
+    AXIS_CHECK(!keyboard.GetKey(Key::W));
+    AXIS_CHECK(keyboard.IsKeyConsumed(Key::W));
+    keyboard.ReleaseConsumedKey(Key::W);
+    AXIS_CHECK(!keyboard.GetKey(Key::W));
+    keyboard.EndFrame();
+    AXIS_CHECK(!keyboard.IsKeyConsumed(Key::W));
+    AXIS_CHECK(keyboard.GetKey(Key::W));
+}
+
 AXIS_TEST_CASE("Editor cursor mode restores the exact previous game mode")
 {
     FakeWindow window;
@@ -1520,10 +1579,67 @@ AXIS_TEST_CASE("Shader ABI constants and post-process mask stay synchronized")
     AXIS_CHECK(ShaderABI::PulseSSBOBinding == 26);
     AXIS_CHECK(ShaderABI::LightTileGridSSBOBinding == 27);
     AXIS_CHECK(ShaderABI::LightTileIndicesSSBOBinding == 28);
+    AXIS_CHECK(ShaderABI::EditorSelectionSSBOBinding == 29);
     AXIS_CHECK(ShaderABI::MaxAudioPulses == 64);
     AXIS_CHECK(sizeof(AudioPulse) == 32);
     AXIS_CHECK(HasPostProcessInput(PostProcessInput::Standard, PostProcessInput::AudioPulses));
     AXIS_CHECK(static_cast<uint32_t>(PostProcessInput::Standard) == 63u);
+}
+
+AXIS_TEST_CASE("Editor scene snapshots preserve transient entities without changing normal scene saves")
+{
+    axis_test_support::ResetServices();
+    ResourceManager resources;
+    resources.InitializeHeadless();
+    Scene source;
+    const entt::entity entity = source.GetRegistry().create();
+    auto& info = source.GetRegistry().emplace<InfoComponent>(entity);
+    info.name = "TransientSphere";
+    info.sceneName = "scenario";
+    info.isTransient = true;
+    source.GetRegistry().emplace<PositionComponent>(entity);
+    source.GetRegistry().emplace<RotationComponent>(entity);
+    source.GetRegistry().emplace<ScaleComponent>(entity);
+    source.GetRegistry().emplace<HierarchyComponent>(entity);
+    source.GetRegistry().emplace<WorldTransformComponent>(entity);
+
+    SceneSerializer serializer(resources, nullptr, nullptr);
+    const std::string normalSave = serializer.SerializeToString(source);
+    const std::string editorSnapshot = serializer.SerializeToString(source, "", true);
+    AXIS_CHECK(normalSave.find("TransientSphere") == std::string::npos);
+    AXIS_CHECK(editorSnapshot.find("TransientSphere") != std::string::npos);
+    AXIS_CHECK(editorSnapshot.find("Transient: true") != std::string::npos);
+
+    Scene restored;
+    SceneLoadResult result;
+    AXIS_CHECK(serializer.DeserializeFromString(editorSnapshot, "editor_snapshot", restored, result));
+    AXIS_CHECK(result.entities.size() == 1);
+    AXIS_CHECK(restored.GetComponent<InfoComponent>(result.entities.front()).isTransient);
+    resources.Shutdown();
+    axis_test_support::ResetServices();
+}
+
+AXIS_TEST_CASE("Prefab serialization strips instance namespaces from entity trees")
+{
+    axis_test_support::ResetServices();
+    ResourceManager resources;
+    resources.InitializeHeadless();
+    Scene scene;
+    const entt::entity anchor = scene.CreateEmptyEntity("House Instance");
+    const entt::entity root = scene.CreateEmptyEntity("House Instance.Root");
+    const entt::entity child = scene.CreateEmptyEntity("House Instance.Root.Window");
+    scene.SetParent(root, anchor, false);
+    scene.SetParent(child, root, false);
+
+    SceneSerializer serializer(resources, nullptr, nullptr);
+    const std::string prefab =
+        serializer.SerializeEntitiesToString(scene, {root}, "House Instance.");
+    AXIS_CHECK(prefab.starts_with("Entities:\n"));
+    AXIS_CHECK(prefab.find("  Root:") != std::string::npos);
+    AXIS_CHECK(prefab.find("House Instance.") == std::string::npos);
+    AXIS_CHECK(prefab.find("Window:") != std::string::npos);
+    resources.Shutdown();
+    axis_test_support::ResetServices();
 }
 
 AXIS_TEST_CASE("Post-process registry owns effects by module and orders them deterministically")

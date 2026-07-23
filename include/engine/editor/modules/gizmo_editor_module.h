@@ -1,18 +1,14 @@
 #pragma once
 
 #include <editor/i_editor_module.h>
-#include <platform/interface/input_codes.h>
 #include <resource/unit/font.h>
 #include <resource/unit/shader.h>
 #include <resource/unit/ui_model.h>
 #include <entt/entity/entity.hpp>
 #include <glm/glm.hpp>
-#include <functional>
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
-class Application;
 
 #ifdef ENABLE_EDITOR
 
@@ -39,8 +35,6 @@ private:
     void UpdateLightLabels(Scene& scene);
     void ClearLightLabels(Scene& scene);
     void ClearSceneLabels();
-
-    void ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action);
 
     std::unordered_map<entt::entity, entt::entity> m_EntityLabelMap;
     std::unordered_map<entt::entity, entt::entity> m_LightLabelMap;

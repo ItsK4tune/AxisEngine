@@ -86,6 +86,7 @@ public:
     void SetEntityIdEnabled(bool enabled) { m_EntityIdEnabled = enabled; }
     bool IsEntityIdEnabled() const { return m_EntityIdEnabled; }
     bool ReadEntityId(int x, int y, uint32_t& entityId) const;
+    bool ReadEntityIds(int x, int y, int width, int height, std::vector<uint32_t>& entityIds) const;
 
 private:
     IGraphicsContext* m_Context = nullptr;

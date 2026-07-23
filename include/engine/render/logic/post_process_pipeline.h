@@ -49,7 +49,8 @@ public:
                    PostProcessInput inputs = PostProcessInput::Color);
 
     bool HasUIEffects() const;
-    void RenderUIEffects();
+    void RenderUIEffects(bool present = true);
+    void Present();
     void ResetTemporalHistory();
 
     uint32_t GetDepthTexture() const

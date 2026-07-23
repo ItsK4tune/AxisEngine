@@ -21,6 +21,7 @@ inline constexpr uint32_t SpotLightSSBOBinding = 25;
 inline constexpr uint32_t PulseSSBOBinding = 26;
 inline constexpr uint32_t LightTileGridSSBOBinding = 27;
 inline constexpr uint32_t LightTileIndicesSSBOBinding = 28;
+inline constexpr uint32_t EditorSelectionSSBOBinding = 29;
 
 inline constexpr int MaterialAlbedoTexture = 0;
 inline constexpr int MaterialNormalTexture = 1;
@@ -32,6 +33,7 @@ inline constexpr int IrradianceTexture = 6;
 inline constexpr int PrefilterTexture = 7;
 inline constexpr int BrdfLUTTexture = 8;
 inline constexpr int MaterialSpecularTexture = 9;
+inline constexpr int MaterialLightmapTexture = 30;
 
 inline constexpr int PostProcessColorTexture = 0;
 inline constexpr int PostProcessDepthTexture = 1;

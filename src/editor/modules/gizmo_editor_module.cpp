@@ -74,8 +74,10 @@ bool GizmoEditorModule::IsEntityNamesEnabled() const
 }
 bool GizmoEditorModule::IsTransformGizmosEnabled() const
 {
-    auto cm = ServiceLocator::Instance().Resolve<ConfigManager>();
-    return cm ? cm->GetConfigSnapshot()->debug.gizmos : false;
+    // Interactive TransformGizmo owns selected transform rendering. Keeping
+    // the former all-entity axis pass enabled scales linearly with scene size
+    // and duplicates the edit handles.
+    return false;
 }
 bool GizmoEditorModule::IsLightGizmosEnabled() const
 {
@@ -677,22 +679,6 @@ void GizmoEditorModule::UpdateLightLabels(Scene& scene)
     }
 
     m_LightLabelMap = nextMap;
-}
-
-void GizmoEditorModule::ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action)
-{
-    if (keyboard.GetKey(key))
-    {
-        if (!pressedState)
-        {
-            action();
-            pressedState = true;
-        }
-    }
-    else
-    {
-        pressedState = false;
-    }
 }
 
 #endif

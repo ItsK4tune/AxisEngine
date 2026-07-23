@@ -4,7 +4,7 @@
 #include <network/interface/i_network_service.h>
 #include <ecs/unit/core_components.h>
 #include <ecs/unit/network_components.h>
-#include <editor/panels/scene_hierarchy_panel.h>
+#include <editor/editor_selection.h>
 #include <scene/logic/scene.h>
 #include <imgui.h>
 #include <algorithm>
@@ -169,12 +169,12 @@ void NetworkPanel::OnImGui(Scene& scene)
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
 
-                    bool isSelected = (SceneHierarchyPanel::s_SelectedEntity == entity);
+                    bool isSelected = ServiceLocator::Instance().Require<EditorSelection>().Contains(entity);
                     char label[32];
                     std::snprintf(label, sizeof(label), "%u", netComp.networkId);
                     if (ImGui::Selectable(label, isSelected, ImGuiSelectableFlags_SpanAllColumns))
                     {
-                        SceneHierarchyPanel::SetSelectedEntity(entity);
+                        ServiceLocator::Instance().Require<EditorSelection>().Select(scene, entity);
                     }
 
                     ImGui::TableSetColumnIndex(1);

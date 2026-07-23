@@ -1,8 +1,10 @@
 #include <editor/panels/animation_graph_panel.h>
 #ifdef ENABLE_EDITOR
+#include <core/logic/service_locator.h>
 #include <ecs/logic/effect_graph_runtime.h>
 #include <ecs/unit/media_components.h>
-#include <editor/panels/scene_hierarchy_panel.h>
+#include <editor/editor_selection.h>
+#include <editor/editor_system.h>
 #include <scene/logic/scene.h>
 #include <imgui.h>
 #include <algorithm>
@@ -36,7 +38,8 @@ void DrawHelp(const char* text)
 void AnimationGraphPanel::OnImGui(Scene& scene)
 {
     ImGui::Begin(GetTitle().c_str(), &m_Open);
-    const entt::entity entity = SceneHierarchyPanel::s_SelectedEntity;
+    EditorSystem::BeginPanelTransactionOnContentClick(scene, "Animation edit");
+    const entt::entity entity = ServiceLocator::Instance().Require<EditorSelection>().GetPrimary();
     if (entity == entt::null || !scene.GetRegistry().valid(entity))
     {
         ImGui::TextDisabled("Select an entity with an Animator component.");

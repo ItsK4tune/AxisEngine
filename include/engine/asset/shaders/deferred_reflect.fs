@@ -20,6 +20,8 @@ layout (binding = 2) uniform sampler2D u_MetallicMap;
 layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
+layout (binding = 30) uniform sampler2D u_Lightmap;
+uniform float u_LightmapIntensity;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -48,7 +50,8 @@ void main()
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = u_FresnelBias; // Pack FresnelBias here (roughness already in gPBRParams.g)
     gEntityID = EntityID;
-    gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb;
+    gEmissive = u_Emission + texture(u_EmissiveMap, TexCoords).rgb +
+                texture(u_Lightmap, TexCoords).rgb * u_LightmapIntensity;
     
     // Alpha is UNORM8: high nibble stores ProbeIndex+1, low nibble stores FresnelPower.
     float packedReflection = (clamp(float(u_ProbeIndex + 1), 0.0, 15.0) * 16.0 +

@@ -1,4 +1,7 @@
 #include "sample_state.h"
+#ifdef ENABLE_EDITOR
+#include "editor/sample_editor_extension.h"
+#endif
 #include <core/logic/filesystem.h>
 #include <glad/glad.h>
 #include <render/unit/render_queue.h>
@@ -512,10 +515,9 @@ void SampleState::OnEnter()
     EnableSystem("NetworkSystem", true);
     EnableSystem("StreamingSystem", true);
 
-    SetCursorMode(CursorMode::Editor);
-
 #ifdef ENABLE_EDITOR
     EnableSystem("EditorSystem", false);
+    RegisterSampleEditorExtension();
 
     auto* sysMgr = Resolve<SystemManager>();
     if (sysMgr)
@@ -579,6 +581,11 @@ void SampleState::OnUpdate(float dt)
         }
     }
 #endif
+
+    // Disabling the full EditorSystem restores the previous game cursor mode.
+    // The standalone sample dashboard and DefaultCameraController still need
+    // editor-owned pointer input, so claim it after the system is disabled.
+    SetCursorMode(CursorMode::Editor);
 
     // Process deferred scenario switch (set by DrawGUI in OnRender previous frame)
     if (m_PendingScenario >= 0)
@@ -1791,6 +1798,10 @@ void SampleState::OnExit()
     StopScenario31Audio();
     StopScenario33Capture();
 
+#ifdef ENABLE_EDITOR
+    UnregisterSampleEditorExtension();
+#endif
+
     // Clean up scene entities
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
@@ -2124,6 +2135,12 @@ void SampleState::DrawGUI()
     if (ImGui::Checkbox("Enable Editor System Layout", &m_EditorSystemEnabled))
     {
         EnableSystem("EditorSystem", m_EditorSystemEnabled);
+        if (!m_EditorSystemEnabled)
+        {
+            SetCursorMode(CursorMode::Editor);
+            if (m_EditorImGuiLayer)
+                m_EditorImGuiLayer->SetPointerInputEnabled(true);
+        }
     }
 
     ImGui::Spacing();

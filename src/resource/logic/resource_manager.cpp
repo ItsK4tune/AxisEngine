@@ -285,6 +285,82 @@ std::vector<ResourceManager::ResourceDefinition> ResourceManager::GetResourceDef
     return m_ResourceDefinitions;
 }
 
+bool ResourceManager::ReimportResource(const std::string& name)
+{
+    ResourceDefinition definition;
+    {
+        std::lock_guard lock(m_ResourceMutex);
+        const auto found = std::find_if(m_ResourceDefinitions.begin(), m_ResourceDefinitions.end(),
+                                        [&](const auto& item) { return item.name == name; });
+        if (found == m_ResourceDefinitions.end())
+            return false;
+        definition = *found;
+    }
+    const auto property = [&](const char* key) -> std::string {
+        const auto found = definition.properties.find(key);
+        return found == definition.properties.end() ? std::string{} : found->second;
+    };
+
+    if (definition.type == "Shader")
+    {
+        UnloadShader(name);
+        LoadShader(name, property("Vertex"), property("Fragment"), property("Geometry"));
+    }
+    else if (definition.type == "ComputeShader")
+    {
+        UnloadComputeShader(name);
+        return LoadComputeShader(name, property("Path"));
+    }
+    else if (definition.type == "Texture")
+    {
+        UnloadTexture(name);
+        LoadTexture(name, property("Path"), false);
+    }
+    else if (definition.type == "Model")
+    {
+        UnloadModel(name);
+        LoadModel(name, property("Path"), property("Static") == "1" || property("Static") == "true");
+    }
+    else if (definition.type == "Animation")
+    {
+        UnloadAnimation(name);
+        LoadAnimation(name, property("Path"), property("Model"));
+    }
+    else if (definition.type == "Font")
+    {
+        UnloadFont(name);
+        const std::string size = property("Size");
+        LoadFont(name, property("Path"),
+                 size.empty() ? 16u : static_cast<unsigned int>(LoaderUtils::SafeStoul(size, 16)));
+    }
+    else if (definition.type == "Sound" || definition.type == "Audio")
+    {
+        UnloadSound(name);
+        LoadSound(name, property("Path"));
+    }
+    else if (definition.type == "Skybox")
+    {
+        UnloadSkybox(name);
+        LoadSkybox(name, {property("Right"), property("Left"), property("Top"),
+                          property("Bottom"), property("Front"), property("Back")});
+    }
+    else if (definition.type == "Fragment")
+    {
+        UnloadFragment(name);
+        LoadFragment(name, property("Path"));
+    }
+    else if (definition.type == "Video")
+    {
+        UnloadVideo(name);
+        return LoadVideo(name, property("Path"));
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
 void ResourceManager::LoadShader(const std::string& name, const std::string& vsPath, const std::string& fsPath,
                                  const std::string& gsPath)
 {
@@ -451,6 +527,7 @@ void ResourceManager::LoadFragment(const std::string& name, const std::string& p
 {
     LOGGER_INFO("ResourceManager") << "Loading fragment: " << name << " from " << path;
     m_FragmentManager->Load(path);
+    AddResourceDefinition("Fragment", name, {{"Path", path}});
 }
 
 bool ResourceManager::LoadVideo(const std::string& name, const std::string& path)
@@ -499,7 +576,19 @@ void ResourceManager::UnloadAnimation(const std::string& name)
 void ResourceManager::UnloadFragment(const std::string& name)
 {
     if (m_FragmentManager)
-        m_FragmentManager->Unload(name);
+    {
+        std::string key = name;
+        for (const auto& definition : GetResourceDefinitions())
+        {
+            if (definition.type == "Fragment" && definition.name == name)
+            {
+                if (const auto path = definition.properties.find("Path"); path != definition.properties.end())
+                    key = path->second;
+                break;
+            }
+        }
+        m_FragmentManager->Unload(key);
+    }
 }
 void ResourceManager::UnloadVideo(const std::string& name)
 {
@@ -543,7 +632,19 @@ std::shared_ptr<Skybox> ResourceManager::GetSkybox(const std::string& name)
 }
 std::shared_ptr<FragmentAsset> ResourceManager::GetFragment(const std::string& name)
 {
-    return m_FragmentManager ? m_FragmentManager->Load(name) : nullptr;
+    if (!m_FragmentManager)
+        return nullptr;
+    if (auto fragment = m_FragmentManager->Get(name))
+        return fragment;
+    for (const auto& definition : GetResourceDefinitions())
+    {
+        if (definition.type == "Fragment" && definition.name == name)
+        {
+            if (const auto path = definition.properties.find("Path"); path != definition.properties.end())
+                return m_FragmentManager->Load(path->second);
+        }
+    }
+    return m_FragmentManager->Load(name);
 }
 std::shared_ptr<VideoDecoder> ResourceManager::GetVideo(const std::string& name)
 {

@@ -234,6 +234,8 @@ bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::s
                 }
                 const std::string activeValue = entNode.GetChildValue("Active", "true");
                 info.isActive = activeValue == "true" || activeValue == "1";
+                const std::string transientValue = entNode.GetChildValue("Transient", "false");
+                info.isTransient = transientValue == "true" || transientValue == "1";
                 info.renderOrder = LoaderUtils::SafeStoi(entNode.GetChildValue("RenderOrder", "0"));
                 result.entities.push_back(currentEntity);
 
@@ -257,6 +259,7 @@ bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::s
                                 << "Unknown component type '" << child.value << "' on entity '" << entityName << "'";
                     }
                     else if (child.key != "Tag" && child.key != "Layer" && child.key != "Active" &&
+                             child.key != "Transient" &&
                              child.key != "RenderOrder" && child.key != "Parent" && child.key != "Scene" &&
                              child.key != "SceneName")
                     {
@@ -488,6 +491,8 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
             ur.textures.insert(SceneSerializer::NormalizePath(mat->desc.emissivePath));
         if (!mat->desc.specularPath.empty())
             ur.textures.insert(SceneSerializer::NormalizePath(mat->desc.specularPath));
+        if (!mat->desc.lightmapPath.empty())
+            ur.textures.insert(SceneSerializer::NormalizePath(mat->desc.lightmapPath));
     }
     if (auto* anim = reg.try_get<AnimationComponent>(entity))
     {
@@ -575,13 +580,16 @@ static void CollectResources(entt::registry& reg, entt::entity entity, UsedResou
 }
 
 static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity entity, int indent,
-                            const std::string& sceneName)
+                            const std::string& sceneName, bool includeTransient,
+                            const std::string& stripNamePrefix = "", bool flattenHierarchy = false)
 {
     auto* info = reg.try_get<InfoComponent>(entity);
     std::string name = info ? info->name : ("Entity_" + std::to_string((uint32_t)entity));
+    if (!stripNamePrefix.empty() && name.starts_with(stripNamePrefix))
+        name.erase(0, stripNamePrefix.size());
     std::string targetScene = SceneSerializer::NormalizeSceneName(sceneName);
 
-    if (info && info->isTransient)
+    if (info && info->isTransient && !includeTransient)
         return;
 
     if (info && !targetScene.empty() && SceneSerializer::NormalizeSceneName(info->sceneName) != targetScene)
@@ -595,6 +603,8 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         SerialWriteKV(f, ci, "Tag", info->tag);
     if (info && !info->isActive)
         SerialWriteKV(f, ci, "Active", "false");
+    if (info && info->isTransient)
+        SerialWriteKV(f, ci, "Transient", "true");
     if (info && info->layer != 0)
         SerialWriteKV(f, ci, "Layer", std::to_string(info->layer));
     if (info && info->renderOrder != 0)
@@ -609,7 +619,15 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         {
             if (auto* pInfo = reg.try_get<InfoComponent>(h->parent))
             {
-                if (!targetScene.empty() && SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
+                if (flattenHierarchy)
+                {
+                    std::string parentName = pInfo->name;
+                    if (!stripNamePrefix.empty() && parentName.starts_with(stripNamePrefix))
+                        parentName.erase(0, stripNamePrefix.size());
+                    SerialWriteKV(f, ci, "Parent", parentName);
+                }
+                else if (!targetScene.empty() &&
+                         SceneSerializer::NormalizeSceneName(pInfo->sceneName) != targetScene)
                 {
                     SerialWriteKV(f, ci, "Parent", pInfo->name);
                 }
@@ -701,6 +719,11 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
             SerialWriteKV(f, ti, "EmissiveMap", SceneSerializer::NormalizePath(mat->desc.emissivePath));
         if (!mat->desc.specularPath.empty())
             SerialWriteKV(f, ti, "SpecularMap", SceneSerializer::NormalizePath(mat->desc.specularPath));
+        if (!mat->desc.lightmapPath.empty())
+        {
+            SerialWriteKV(f, ti, "Lightmap", SceneSerializer::NormalizePath(mat->desc.lightmapPath));
+            SerialWriteKV(f, ti, "LightmapIntensity", FloatStr(mat->desc.lightmapIntensity));
+        }
     }
 
     // Animator
@@ -1237,6 +1260,33 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
         SerialWriteKV(f, ti, "WalkableNormalY", FloatStr(nav->walkableNormalY));
         SerialWriteKV(f, ti, "CarveHeightPadding", FloatStr(nav->carveHeightPadding));
         SerialWriteKV(f, ti, "CarveAgentRadius", FloatStr(nav->carveAgentRadius));
+        if (!nav->costRules.empty())
+        {
+            for (int i = 0; i < ti; ++i) f << "  ";
+            f << "CostRules:\n";
+            for (const NavigationCostRule& rule : nav->costRules)
+            {
+                for (int i = 0; i < ti + 1; ++i) f << "  ";
+                f << "Rule:\n";
+                SerialWriteKV(f, ti + 2, "Name", rule.name);
+                SerialWriteKV(f, ti + 2, "Enabled", rule.enabled ? "true" : "false");
+                SerialWriteKV(f, ti + 2, "ConditionMode", std::to_string(static_cast<int>(rule.conditionMode)));
+                SerialWriteKV(f, ti + 2, "Effect", std::to_string(static_cast<int>(rule.effect)));
+                SerialWriteKV(f, ti + 2, "Value", FloatStr(rule.value));
+                SerialWriteKV(f, ti + 2, "StopOnMatch", rule.stopOnMatch ? "true" : "false");
+                for (int i = 0; i < ti + 2; ++i) f << "  ";
+                f << "Conditions:\n";
+                for (const NavigationRulePredicate& predicate : rule.conditions)
+                {
+                    for (int i = 0; i < ti + 3; ++i) f << "  ";
+                    f << "Condition:\n";
+                    SerialWriteKV(f, ti + 4, "Type", std::to_string(static_cast<int>(predicate.condition)));
+                    SerialWriteKV(f, ti + 4, "Tag", predicate.tag);
+                    SerialWriteKV(f, ti + 4, "Threshold", FloatStr(predicate.threshold));
+                    SerialWriteKV(f, ti + 4, "Negate", predicate.negate ? "true" : "false");
+                }
+            }
+        }
         if (!nav->vertices.empty())
         {
             for (int i = 0; i < ti; ++i) f << "  ";
@@ -1257,6 +1307,9 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
                 SerialWriteKV(f, ti + 2, "Center", Vec3Str(triangle.center));
                 SerialWriteKV(f, ti + 2, "Normal", Vec3Str(triangle.normal));
                 SerialWriteKV(f, ti + 2, "Tag", triangle.tag);
+                std::ostringstream tags;
+                for (const std::string& tag : triangle.tags) tags << tag << ' ';
+                SerialWriteKV(f, ti + 2, "Tags", tags.str());
             }
         }
         if (!nav->nodes.empty())
@@ -1270,6 +1323,9 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
                 SerialWriteKV(f, ti + 2, "Position", Vec3Str(node.position));
                 SerialWriteKV(f, ti + 2, "TriangleIndex", std::to_string(node.triangleIndex));
                 SerialWriteKV(f, ti + 2, "Tag", node.tag);
+                std::ostringstream tags;
+                for (const std::string& tag : node.tags) tags << tag << ' ';
+                SerialWriteKV(f, ti + 2, "Tags", tags.str());
                 std::ostringstream neighbors;
                 for (size_t i = 0; i < node.neighbors.size(); ++i)
                 {
@@ -1367,7 +1423,8 @@ static void SerializeEntity(std::ostream& f, entt::registry& reg, entt::entity e
             }
             if (reg.all_of<FragmentComponent>(entity))
                 continue;
-            SerializeEntity(f, reg, child, indent + 1, sceneName);
+            SerializeEntity(f, reg, child, indent + (flattenHierarchy ? 0 : 1), sceneName, includeTransient,
+                            stripNamePrefix, flattenHierarchy);
         }
     }
 }
@@ -1395,18 +1452,40 @@ bool SceneSerializer::Serialize(const std::string& filepath, const Scene& constS
     std::ofstream f(filepath);
     if (!f.is_open())
         return false;
-    return SerializeToStream(f, constScene, sceneName);
+    return SerializeToStream(f, constScene, sceneName, false);
 }
 
-std::string SceneSerializer::SerializeToString(const Scene& scene, const std::string& sceneName)
+std::string SceneSerializer::SerializeToString(const Scene& scene, const std::string& sceneName,
+                                               bool includeTransient)
 {
     std::ostringstream stream;
-    if (!SerializeToStream(stream, scene, sceneName))
+    if (!SerializeToStream(stream, scene, sceneName, includeTransient))
         return {};
     return stream.str();
 }
 
-bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene, const std::string& sceneName)
+std::string SceneSerializer::SerializeEntitiesToString(const Scene& constScene,
+                                                       const std::vector<entt::entity>& roots,
+                                                       const std::string& stripNamePrefix,
+                                                       bool includeTransient)
+{
+    std::ostringstream stream;
+    stream << "Entities:\n";
+    auto& registry = const_cast<Scene&>(constScene).GetRegistry();
+    std::string sceneName;
+    if (!roots.empty())
+        if (const auto* info = registry.try_get<InfoComponent>(roots.front()))
+            sceneName = info->sceneName;
+    for (const entt::entity root : roots)
+    {
+        if (registry.valid(root))
+            SerializeEntity(stream, registry, root, 1, sceneName, includeTransient, stripNamePrefix, true);
+    }
+    return stream.str();
+}
+
+bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene, const std::string& sceneName,
+                                        bool includeTransient)
 {
     ResourceManager& res = m_Res;
     Scene& scene = const_cast<Scene&>(constScene);
@@ -1421,7 +1500,7 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
-        if (info.isTransient)
+        if (info.isTransient && !includeTransient)
             continue;
         if (!normName.empty() && SceneSerializer::NormalizeSceneName(info.sceneName) != normName)
             continue;
@@ -1554,6 +1633,7 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
             std::string val = def.properties.at(propertyKey);
             if (propertyKey == "Path" || propertyKey == "Vertex" || propertyKey == "Fragment" ||
                 propertyKey == "Geometry" || propertyKey == "Albedo" || propertyKey == "Normal" ||
+                propertyKey == "Lightmap" ||
                 propertyKey == "MetallicMap" || propertyKey == "RoughnessMap" || propertyKey == "Right" ||
                 propertyKey == "Left" || propertyKey == "Top" || propertyKey == "Bottom" ||
                 propertyKey == "Front" || propertyKey == "Back")
@@ -1568,7 +1648,7 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
     for (auto entity : view)
     {
         auto& info = view.get<InfoComponent>(entity);
-        if (info.isTransient)
+        if (info.isTransient && !includeTransient)
             continue;
         if (!normName.empty() && SceneSerializer::NormalizeSceneName(info.sceneName) != normName)
             continue;
@@ -1589,7 +1669,7 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
         {
             if (!HasSerializableComponents(scene.GetRegistry(), entity))
                 continue;
-            SerializeEntity(f, scene.GetRegistry(), entity, 2, normName);
+            SerializeEntity(f, scene.GetRegistry(), entity, 2, normName, includeTransient);
         }
     }
 

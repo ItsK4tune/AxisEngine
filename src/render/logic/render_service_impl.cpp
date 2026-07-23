@@ -75,6 +75,8 @@ uint64_t HashMaterialForBatch(MaterialComponent* material)
     h = CombineHash(h, hashFloat(d.uvOffset.x));
     h = CombineHash(h, hashFloat(d.uvOffset.y));
     h = CombineHash(h, hashString(d.albedoPath));
+    h = CombineHash(h, hashString(d.lightmapPath));
+    h = CombineHash(h, std::hash<float>{}(d.lightmapIntensity));
     h = CombineHash(h, hashString(d.normalPath));
     h = CombineHash(h, hashString(d.metallicPath));
     h = CombineHash(h, hashString(d.roughnessPath));
@@ -366,6 +368,11 @@ void RenderServiceImpl::UploadCurrentViewState()
 
 void RenderServiceImpl::BeginFrame(const RenderViewParams& params)
 {
+    if (m_RenderViewContextDepth == 0 && m_FrameDebugCapture)
+    {
+        m_FrameDebugLast = std::move(m_FrameDebugCurrent);
+        m_FrameDebugCurrent.clear();
+    }
     m_CameraState.position = params.cameraPos;
     m_CameraState.viewMatrix = params.view;
     m_CameraState.projectionMatrix = params.projection;
@@ -1415,7 +1422,38 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
             lastRenderOrder = item.renderOrder;
         }
 
-        if (batchCount > 1)
+        const bool captureDraws = m_FrameDebugCapture && m_RenderViewContextDepth == 0 && !overrideShader;
+        if (captureDraws && m_FrameDebugDrawLimit != 0 &&
+            m_FrameDebugCurrent.size() >= m_FrameDebugDrawLimit)
+            break;
+
+        size_t renderedMeshCount = model->meshes.size();
+        if (captureDraws)
+        {
+            renderedMeshCount = 0;
+            const char* passName = pass == RenderQueuePass::DeferredGeometry ? "Deferred Geometry"
+                                   : pass == RenderQueuePass::ForwardOpaque ? "Forward Opaque"
+                                   : pass == RenderQueuePass::Transparent   ? "Transparent"
+                                                                          : "Depth Overlay";
+            for (size_t meshIndex = 0; meshIndex < model->meshes.size(); ++meshIndex)
+            {
+                if (m_FrameDebugDrawLimit != 0 && m_FrameDebugCurrent.size() >= m_FrameDebugDrawLimit)
+                    break;
+                const auto& mesh = model->meshes[meshIndex];
+                m_FrameDebugCurrent.push_back(
+                    {m_FrameDebugCurrent.size(), item.entityId, shader->getID(), 0,
+                     static_cast<uint32_t>(mesh.indices.empty() ? mesh.m_VertexCount : mesh.indices.size()),
+                     static_cast<int>(item.layer), passName, model->GetName()});
+                if (batchCount > 1)
+                    model->DrawMeshInstanced(meshIndex, *shader, instanceData, !matBound);
+                else
+                    model->DrawMesh(meshIndex, *shader, !matBound);
+                ++renderedMeshCount;
+            }
+            if (batchCount > 1)
+                itemIndex += batchCount - 1;
+        }
+        else if (batchCount > 1)
         {
             if (ignoreDepthForDraw)
             {
@@ -1441,12 +1479,13 @@ void RenderServiceImpl::ExecuteQueue(const std::vector<RenderItem>& queue, Rende
         }
 
         uint64_t trianglesPerInstance = 0;
-        for (const auto& mesh : model->meshes)
+        for (size_t meshIndex = 0; meshIndex < renderedMeshCount; ++meshIndex)
         {
+            const auto& mesh = model->meshes[meshIndex];
             trianglesPerInstance += mesh.indices.empty() ? static_cast<uint64_t>(mesh.m_VertexCount / 3)
                                                          : static_cast<uint64_t>(mesh.indices.size() / 3);
         }
-        RuntimeProfiler::Instance().AddDrawCalls(model->meshes.size());
+        RuntimeProfiler::Instance().AddDrawCalls(renderedMeshCount);
         RuntimeProfiler::Instance().AddTriangles(trianglesPerInstance * batchCount);
 
         if (ignoreDepthForDraw)
@@ -1513,6 +1552,9 @@ void RenderServiceImpl::FlushCommands()
 
     for (const auto& cmd : commands)
     {
+        if (m_FrameDebugCapture && m_RenderViewContextDepth == 0 && m_FrameDebugDrawLimit != 0 &&
+            m_FrameDebugCurrent.size() >= m_FrameDebugDrawLimit)
+            break;
         if (cmd.shaderId != lastShader)
         {
             if (cmd.shader)
@@ -1555,6 +1597,12 @@ void RenderServiceImpl::FlushCommands()
         else
         {
             dc.DrawArrays(Primitive::Triangles, 0, cmd.count);
+        }
+        if (m_FrameDebugCapture && m_RenderViewContextDepth == 0)
+        {
+            m_FrameDebugCurrent.push_back(
+                {m_FrameDebugCurrent.size(), 0, cmd.shaderId, cmd.vao, cmd.count, cmd.layer,
+                 "Command Buffer", cmd.shader ? cmd.shader->GetName() : std::string{}});
         }
         RuntimeProfiler::Instance().AddDrawCalls();
         RuntimeProfiler::Instance().AddTriangles(static_cast<uint64_t>(cmd.count / 3u));

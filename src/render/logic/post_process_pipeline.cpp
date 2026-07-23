@@ -346,47 +346,27 @@ void PostProcessPipeline::EndCapture()
         }
     }
 
-    if (hasLateEffects || HasUIEffects())
-    {
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
-    }
-    else
-    {
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
-        rsm.SetViewport(0, 0, m_Width, m_Height);
-    }
+    // Always keep a final off-screen color target. The runtime can still
+    // present it to the platform framebuffer, while capture tools can consume
+    // the same completed image without rerendering.
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_PingPong.PreviousFBO().Get());
+    rsm.SetViewport(0, 0, m_Width, m_Height);
 
     dc.Clear(BufferBit::Color);
 
     if (!m_HDRFinalShader)
     {
         LOGGER_ERROR("PostProcess") << "Required shader 'hdr_final' is missing; using a direct color blit";
-        const uint32_t fallbackTarget =
-            (hasLateEffects || HasUIEffects()) ? m_PingPong.PreviousFBO().Get() : 0;
+        const uint32_t fallbackTarget = m_PingPong.PreviousFBO().Get();
         rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
         rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, fallbackTarget);
         rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
                             TextureFilter::Nearest);
 
-        if (hasLateEffects || HasUIEffects())
-        {
-            m_PingPong.Swap();
-            RenderEffectsRange(100, 9999, false);
-            if (!HasUIEffects())
-            {
-                rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
-                rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
-                rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
-                                    TextureFilter::Nearest);
-            }
-        }
+        m_PingPong.Swap();
+        RenderEffectsRange(100, 9999, false);
         bm.BindVertexArray(0);
         rsm.Enable(ServerCapability::DepthTest);
-        if (!HasUIEffects())
-        {
-            rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
-            CommitPulseUpload();
-        }
         return;
     }
 
@@ -414,30 +394,12 @@ void PostProcessPipeline::EndCapture()
     bm.BindVertexArray(m_QuadVAO.id);
     dc.DrawArrays(Primitive::Triangles, 0, 6);
 
-    if (hasLateEffects || HasUIEffects())
-    {
-        m_PingPong.Swap();
-        // 5. Post-HDR Effects (Priority >= 100, Pre-UI only)
-        RenderEffectsRange(100, 9999, false);
-
-        if (!HasUIEffects())
-        {
-            // Final blit to screen (if no UI effects to follow)
-            rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
-            rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
-            rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
-                                TextureFilter::Nearest);
-        }
-    }
+    m_PingPong.Swap();
+    // 5. Post-HDR Effects (Priority >= 100, Pre-UI only)
+    RenderEffectsRange(100, 9999, false);
 
     bm.BindVertexArray(0);
     rsm.Enable(ServerCapability::DepthTest);
-
-    if (!HasUIEffects())
-    {
-        rtm.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
-        CommitPulseUpload();
-    }
 }
 
 void PostProcessPipeline::PrepareFrameInputs()
@@ -843,7 +805,7 @@ bool PostProcessPipeline::HasUIEffects() const
     return m_HasUIEffects;
 }
 
-void PostProcessPipeline::RenderUIEffects()
+void PostProcessPipeline::RenderUIEffects(bool present)
 {
     if (!m_Context || !HasUIEffects())
         return;
@@ -853,10 +815,25 @@ void PostProcessPipeline::RenderUIEffects()
     // Render all effects marked as affectUI
     RenderEffectsRange(-9999, 9999, true);
 
-    // Final blit to screen
+    if (present)
+    {
+        rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
+        rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
+        rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
+                            TextureFilter::Nearest);
+    }
+    CommitPulseUpload();
+}
+
+void PostProcessPipeline::Present()
+{
+    if (!m_Context)
+        return;
+    auto& rtm = m_Context->GetRenderTargetManager();
     rtm.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_PingPong.CurrentFBO().Get());
     rtm.BindFramebuffer(FramebufferTarget::DrawFramebuffer, 0);
-    rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color, TextureFilter::Nearest);
+    rtm.BlitFramebuffer(0, 0, m_Width, m_Height, 0, 0, m_Width, m_Height, BufferBit::Color,
+                        TextureFilter::Nearest);
     CommitPulseUpload();
 }
 

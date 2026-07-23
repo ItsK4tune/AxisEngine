@@ -11,13 +11,39 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <sstream>
 #include <unordered_map>
+#include <utility>
 
 namespace
 {
 bool ContainsXZ(const glm::vec3& point, const glm::vec3& minimum, const glm::vec3& maximum)
 {
     return point.x >= minimum.x && point.x <= maximum.x && point.z >= minimum.z && point.z <= maximum.z;
+}
+
+std::vector<std::string> SplitNavigationTags(std::string value)
+{
+    for (char& character : value)
+        if (character == ',' || character == ';' || character == '|' || character == '+')
+            character = ' ';
+    std::istringstream stream(value);
+    std::vector<std::string> tags;
+    std::string tag;
+    while (stream >> tag)
+        if (std::find(tags.begin(), tags.end(), tag) == tags.end())
+            tags.push_back(std::move(tag));
+    if (tags.empty())
+        tags.push_back("walkable");
+    return tags;
+}
+
+bool ContainsNavigationTag(const std::string& value, const std::vector<std::string>& expected)
+{
+    const auto tags = SplitNavigationTags(value);
+    return std::any_of(tags.begin(), tags.end(), [&](const std::string& tag) {
+        return std::find(expected.begin(), expected.end(), tag) != expected.end();
+    });
 }
 
 bool IsCarved(const NavMeshTriangle& triangle, const std::vector<NavMeshGenerator::ObstacleBounds>& obstacles,
@@ -43,7 +69,7 @@ std::vector<NavMeshGenerator::ObstacleBounds> NavMeshGenerator::CollectObstacleB
     for (const entt::entity entity : infoView)
     {
         const auto& info = infoView.get<InfoComponent>(entity);
-        if (std::find(carveTags.begin(), carveTags.end(), info.tag) == carveTags.end())
+        if (!ContainsNavigationTag(info.tag, carveTags))
             continue;
 
         const auto& transform = infoView.get<WorldTransformComponent>(entity);
@@ -110,6 +136,7 @@ void NavMeshGenerator::Generate(Scene& scene, NavMeshComponent& navMesh, Resourc
         tri.indices[1] = raw.indices[i + 1];
         tri.indices[2] = raw.indices[i + 2];
         tri.tag = (triIdx < raw.tags.size()) ? raw.tags[triIdx] : "walkable";
+        tri.tags = SplitNavigationTags(tri.tag);
 
         const glm::vec3& v0 = navMesh.vertices[tri.indices[0]];
         const glm::vec3& v1 = navMesh.vertices[tri.indices[1]];
@@ -172,15 +199,7 @@ NavMeshGenerator::RawMeshData NavMeshGenerator::GatherWalkableGeometry(Scene& sc
     {
         auto& info = meshView.get<InfoComponent>(entity);
 
-        bool isWalkable = false;
-        for (const auto& tag : walkableTags)
-        {
-            if (info.tag == tag)
-            {
-                isWalkable = true;
-                break;
-            }
-        }
+        const bool isWalkable = ContainsNavigationTag(info.tag, walkableTags);
         if (!isWalkable)
             continue;
 
@@ -299,6 +318,7 @@ void NavMeshGenerator::BuildConnectivity(NavMeshComponent& navMesh)
         node.position = navMesh.triangles[i].center;
         node.triangleIndex = i;
         node.tag = navMesh.triangles[i].tag;
+        node.tags = navMesh.triangles[i].tags;
         navMesh.nodes.push_back(node);
     }
 

@@ -18,6 +18,17 @@ void InputManager::BindAction(const std::string& actionName, InputType type, int
     m_ActionMap[actionName].bindings.push_back({type, code});
 }
 
+bool InputManager::RemoveBinding(const std::string& actionName, size_t bindingIndex)
+{
+    const auto action = m_ActionMap.find(actionName);
+    if (action == m_ActionMap.end() || bindingIndex >= action->second.bindings.size())
+        return false;
+    action->second.bindings.erase(action->second.bindings.begin() + static_cast<std::ptrdiff_t>(bindingIndex));
+    if (action->second.bindings.empty())
+        UnbindAction(actionName);
+    return true;
+}
+
 void InputManager::UnbindAction(const std::string& actionName)
 {
     m_ActionMap.erase(actionName);

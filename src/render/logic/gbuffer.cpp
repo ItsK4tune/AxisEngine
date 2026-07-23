@@ -329,3 +329,21 @@ bool GBuffer::ReadEntityId(int x, int y, uint32_t& entityId) const
     targets.BindFramebuffer(FramebufferTarget::ReadFramebuffer, 0);
     return true;
 }
+
+bool GBuffer::ReadEntityIds(int x, int y, int width, int height, std::vector<uint32_t>& entityIds) const
+{
+    if (!m_Context || !m_EntityIdEnabled || !m_IDTexture || !m_FBO || width <= 0 || height <= 0)
+        return false;
+    const int bufferWidth = GetScaledWidth();
+    const int bufferHeight = GetScaledHeight();
+    if (x < 0 || y < 0 || x + width > bufferWidth || y + height > bufferHeight)
+        return false;
+
+    entityIds.resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+    auto& targets = m_Context->GetRenderTargetManager();
+    targets.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_FBO->Get());
+    targets.ReadBuffer(FramebufferAttachment::Color3);
+    targets.ReadPixels(x, y, width, height, TextureFormat::Red_Integer, DataType::UnsignedInt, entityIds.data());
+    targets.BindFramebuffer(FramebufferTarget::ReadFramebuffer, 0);
+    return true;
+}

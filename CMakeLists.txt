@@ -431,12 +431,16 @@ if(ENABLE_EDITOR AND BUILD_SAMPLES)
     file(GLOB SAMPLE_SCRIPTABLE_SOURCES CONFIGURE_DEPENDS
         sample/src/scriptable/*.cpp
     )
+    file(GLOB SAMPLE_EDITOR_SOURCES CONFIGURE_DEPENDS
+        sample/src/editor/*.cpp
+    )
 
     set(SAMPLE_SOURCES
         sample/src/main.cpp
         sample/src/sample_state.cpp
         ${SAMPLE_SCENARIO_SOURCES}
         ${SAMPLE_SCRIPTABLE_SOURCES}
+        ${SAMPLE_EDITOR_SOURCES}
     )
 
     if(WIN32)

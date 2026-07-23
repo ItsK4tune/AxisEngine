@@ -16,9 +16,10 @@ public:
     {
     }
     void OnImGui(Scene& scene) override;
+    void DrawContents(Scene& scene);
     std::string GetTitle() const override
     {
-        return "Resources [Ctrl+2]";
+        return "Loaded Resources";
     }
     PanelGroup GetGroup() const override
     {

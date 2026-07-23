@@ -50,6 +50,8 @@ struct MaterialDescriptor
     std::string aoPath = "";
     std::string emissivePath = "";
     std::string specularPath = "";
+    std::string lightmapPath = "";
+    float lightmapIntensity = 1.0f;
 
     BlendFactor blendSrc = BlendFactor::SrcAlpha;
     BlendFactor blendDst = BlendFactor::OneMinusSrcAlpha;
@@ -67,6 +69,7 @@ struct MaterialGPUState
     uint32_t aoMap = 0;
     uint32_t emissiveMap = 0;
     uint32_t specularMap = 0;
+    uint32_t lightmapMap = 0;
 
     uint64_t batchKey = 0;
     bool batchKeyDirty = true;

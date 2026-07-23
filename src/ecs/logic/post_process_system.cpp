@@ -175,12 +175,12 @@ void PostProcessSystem::Render(Scene& scene)
     m_Pipeline.EndCapture();
 
     if (m_RenderService)
-        m_RenderService->SetMainFBO(m_Pipeline.HasUIEffects() ? m_Pipeline.GetFinalFBO() : 0);
+        m_RenderService->SetMainFBO(m_Pipeline.GetFinalFBO());
 
     FrameRenderData data;
     // UI must be composited into the actual post-HDR current target. FBO 0 is
     // only the scene-capture target and may no longer own the current color.
-    data.mainFBO = m_Pipeline.HasUIEffects() ? m_Pipeline.GetFinalFBO() : 0;
+    data.mainFBO = m_Pipeline.GetFinalFBO();
     data.width = m_Pipeline.GetWidth();
     data.height = m_Pipeline.GetHeight();
     data.alpha = 1.0f;
@@ -189,10 +189,10 @@ void PostProcessSystem::Render(Scene& scene)
 
 void PostProcessSystem::RenderUIPass(Scene& scene, float width, float height, IRenderStateManager& renderState)
 {
-    if (!m_EffectsEnabled || !m_Pipeline.HasUIEffects())
-        return;
-
-    m_Pipeline.RenderUIEffects();
+    if (m_EffectsEnabled && m_Pipeline.HasUIEffects())
+        m_Pipeline.RenderUIEffects(m_PresentToBackbuffer);
+    else if (m_PresentToBackbuffer)
+        m_Pipeline.Present();
 
     if (m_RenderService)
     {

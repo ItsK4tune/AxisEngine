@@ -319,12 +319,6 @@ bool InputSerializer::Deserialize(const std::string& filepath, InputManager& inp
         }
     }
 
-    if (pendingBindings.empty())
-    {
-        LOGGER_ERROR("InputSerializer") << "No valid input bindings found in " << filepath;
-        return false;
-    }
-
     inputManager.FlushBindings();
     for (const auto& binding : pendingBindings)
     {

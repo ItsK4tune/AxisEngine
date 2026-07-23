@@ -35,6 +35,7 @@ public:
     {
         m_EffectsEnabled = enable;
     }
+    void SetPresentToBackbuffer(bool present) { m_PresentToBackbuffer = present; }
     int GetPriority() const override
     {
         return 95;
@@ -75,6 +76,7 @@ public:
 
 private:
     bool m_EffectsEnabled = true;
+    bool m_PresentToBackbuffer = true;
     PostProcessPipeline m_Pipeline;
     class IRenderService* m_RenderService = nullptr;
     int m_LastAntiAliasingMode = -1;

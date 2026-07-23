@@ -2,169 +2,169 @@ axis_scene:
   Resources:
     Shader:
       Name: forward_pbr_lit
-      Vertex: asset://shaders/forward_pbr_lit.vs
       Fragment: asset://shaders/forward_pbr_lit.fs
+      Vertex: asset://shaders/forward_pbr_lit.vs
     Shader:
       Name: forward_pbr_lit_shadow
-      Vertex: asset://shaders/forward_pbr_lit_shadow.vs
       Fragment: asset://shaders/forward_pbr_lit_shadow.fs
+      Vertex: asset://shaders/forward_pbr_lit_shadow.vs
     Shader:
       Name: forward_unlit
-      Vertex: asset://shaders/forward_unlit.vs
       Fragment: asset://shaders/forward_unlit.fs
+      Vertex: asset://shaders/forward_unlit.vs
     Shader:
       Name: uiShader
-      Vertex: asset://shaders/ui.vs
       Fragment: asset://shaders/ui.fs
+      Vertex: asset://shaders/ui.vs
     Shader:
       Name: textShader
-      Vertex: asset://shaders/text.vs
       Fragment: asset://shaders/text.fs
+      Vertex: asset://shaders/text.vs
     Shader:
       Name: particle
-      Vertex: asset://shaders/forward_particle.vs
       Fragment: asset://shaders/forward_particle.fs
+      Vertex: asset://shaders/forward_particle.vs
     Shader:
       Name: videomapShader
-      Vertex: asset://shaders/videomap.vs
       Fragment: asset://shaders/videomap.fs
+      Vertex: asset://shaders/videomap.vs
     Shader:
       Name: skyboxShader
-      Vertex: asset://shaders/skybox.vs
       Fragment: asset://shaders/skybox.fs
+      Vertex: asset://shaders/skybox.vs
     Shader:
       Name: deferred_lit
-      Vertex: asset://shaders/deferred_lit.vs
       Fragment: asset://shaders/deferred_lit.fs
+      Vertex: asset://shaders/deferred_lit.vs
     Shader:
       Name: deferred_lit_shadow
-      Vertex: asset://shaders/deferred_lit.vs
       Fragment: asset://shaders/deferred_lit_shadow.fs
+      Vertex: asset://shaders/deferred_lit.vs
     Shader:
       Name: deferred_unlit
-      Vertex: asset://shaders/deferred_unlit.vs
       Fragment: asset://shaders/deferred_unlit.fs
+      Vertex: asset://shaders/deferred_unlit.vs
     Shader:
       Name: deferred_decal
-      Vertex: asset://shaders/deferred_decal.vs
       Fragment: asset://shaders/deferred_decal.fs
+      Vertex: asset://shaders/deferred_decal.vs
     Shader:
       Name: forward_decal
-      Vertex: asset://shaders/forward_decal.vs
       Fragment: asset://shaders/forward_decal.fs
+      Vertex: asset://shaders/forward_decal.vs
     Shader:
       Name: deferred_light
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/deferred_light.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: shadow_depth
-      Vertex: asset://shaders/shadow_depth.vs
       Fragment: asset://shaders/shadow_depth.fs
+      Vertex: asset://shaders/shadow_depth.vs
     Shader:
       Name: shadow_point
-      Vertex: asset://shaders/shadow_point.vs
       Fragment: asset://shaders/shadow_point.fs
       Geometry: asset://shaders/shadow_point.gs
+      Vertex: asset://shaders/shadow_point.vs
     Shader:
       Name: shadow_spot
-      Vertex: asset://shaders/shadow_spot.vs
       Fragment: asset://shaders/shadow_spot.fs
+      Vertex: asset://shaders/shadow_spot.vs
     Shader:
       Name: fxaa
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/fxaa.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: taa
-      Vertex: asset://shaders/taa.vs
       Fragment: asset://shaders/taa.fs
+      Vertex: asset://shaders/taa.vs
     Shader:
       Name: bloom_down
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/bloom_downsample.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: bloom_up
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/bloom_upsample.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: hdr_final
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/hdr_final.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: debug_text
-      Vertex: asset://shaders/text.vs
       Fragment: asset://shaders/text.fs
+      Vertex: asset://shaders/text.vs
     Shader:
       Name: editor_selection_outline
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/editor_selection_outline.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: occlusion
-      Vertex: asset://shaders/occlusion_query.vs
       Fragment: asset://shaders/occlusion_query.fs
+      Vertex: asset://shaders/occlusion_query.vs
     Shader:
       Name: terrain
-      Vertex: asset://shaders/forward_terrain.vs
       Fragment: asset://shaders/forward_terrain.fs
+      Vertex: asset://shaders/forward_terrain.vs
     Shader:
       Name: terrain_gbuffer
-      Vertex: asset://shaders/deferred_terrain.vs
       Fragment: asset://shaders/deferred_terrain.fs
+      Vertex: asset://shaders/deferred_terrain.vs
     Shader:
       Name: debug_line
-      Vertex: asset://shaders/debug_line.vs
       Fragment: asset://shaders/debug_line.fs
+      Vertex: asset://shaders/debug_line.vs
     Shader:
       Name: vignette
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/vignette.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: glitch
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/glitch.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: film_grain
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/film_grain.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: grayscale
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/grayscale.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: dither
-      Vertex: asset://shaders/fxaa.vs
       Fragment: asset://shaders/dither.fs
+      Vertex: asset://shaders/fxaa.vs
     Shader:
       Name: error_forward
-      Vertex: asset://shaders/forward_unlit.vs
       Fragment: asset://shaders/error_forward.fs
+      Vertex: asset://shaders/forward_unlit.vs
     Shader:
       Name: error_deferred
-      Vertex: asset://shaders/deferred_unlit.vs
       Fragment: asset://shaders/error_deferred.fs
+      Vertex: asset://shaders/deferred_unlit.vs
     Shader:
       Name: forward_reflect
-      Vertex: asset://shaders/forward_pbr_lit.vs
       Fragment: asset://shaders/forward_reflect.fs
+      Vertex: asset://shaders/forward_pbr_lit.vs
     Shader:
       Name: forward_reflect_shadow
-      Vertex: asset://shaders/forward_pbr_lit_shadow.vs
       Fragment: asset://shaders/forward_reflect_shadow.fs
+      Vertex: asset://shaders/forward_pbr_lit_shadow.vs
     Shader:
       Name: deferred_reflect
-      Vertex: asset://shaders/deferred_lit.vs
       Fragment: asset://shaders/deferred_reflect.fs
+      Vertex: asset://shaders/deferred_lit.vs
     Shader:
       Name: forward_transparent
-      Vertex: asset://shaders/forward_pbr_lit.vs
       Fragment: asset://shaders/transparent.fs
+      Vertex: asset://shaders/forward_pbr_lit.vs
     Shader:
       Name: deferred_transparent
-      Vertex: asset://shaders/deferred_lit.vs
       Fragment: asset://shaders/transparent.fs
+      Vertex: asset://shaders/deferred_lit.vs
     Shader:
       Name: forward_pbr_env
-      Vertex: asset://shaders/forward_pbr_lit.vs
       Fragment: asset://shaders/forward_pbr_env.fs
+      Vertex: asset://shaders/forward_pbr_lit.vs
     Texture:
       Name: error_texture
       Path: asset://textures/error_checkerboard.tga
@@ -202,12 +202,12 @@ axis_scene:
       Static: 1
     Skybox:
       Name: defaultSkybox
-      Right: asset://skyboxs/default_right.png
-      Left: asset://skyboxs/default_left.png
-      Front: asset://skyboxs/default_front.png
-      Top: asset://skyboxs/default_top.png
-      Bottom: asset://skyboxs/default_bottom.png
       Back: asset://skyboxs/default_back.png
+      Bottom: asset://skyboxs/default_bottom.png
+      Front: asset://skyboxs/default_front.png
+      Left: asset://skyboxs/default_left.png
+      Right: asset://skyboxs/default_right.png
+      Top: asset://skyboxs/default_top.png
   Entities:
     Skybox:
       Component: Transform
@@ -217,3 +217,4 @@ axis_scene:
       Component: SkyboxRenderer
         Skybox: defaultSkybox
         Shader: skyboxShader
+        Primary: true

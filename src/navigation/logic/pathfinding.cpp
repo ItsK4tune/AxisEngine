@@ -18,6 +18,47 @@ struct AStarNode
     }
 };
 
+namespace
+{
+bool HasNavigationTag(const NavMeshNode& node, const std::string& tag)
+{
+    if (node.tag == tag)
+        return true;
+    return std::find(node.tags.begin(), node.tags.end(), tag) != node.tags.end();
+}
+
+bool MatchesPredicate(const NavigationRulePredicate& predicate, const NavMeshNode& neighbor,
+                      const glm::vec3& currentPos, const glm::vec3& neighborPos)
+{
+    bool matches = false;
+    switch (predicate.condition)
+    {
+        case NavigationRuleCondition::Always: matches = true; break;
+        case NavigationRuleCondition::TagEquals: matches = HasNavigationTag(neighbor, predicate.tag); break;
+        case NavigationRuleCondition::HeightAbove: matches = neighborPos.y > predicate.threshold; break;
+        case NavigationRuleCondition::HeightBelow: matches = neighborPos.y < predicate.threshold; break;
+        case NavigationRuleCondition::Uphill:
+            matches = neighborPos.y - currentPos.y > predicate.threshold;
+            break;
+        case NavigationRuleCondition::Downhill:
+            matches = currentPos.y - neighborPos.y > predicate.threshold;
+            break;
+        case NavigationRuleCondition::SlopeAbove:
+        case NavigationRuleCondition::SlopeBelow:
+        {
+            const glm::vec3 delta = neighborPos - currentPos;
+            const float horizontal = glm::length(glm::vec2(delta.x, delta.z));
+            const float slopeDegrees = glm::degrees(std::atan2(std::abs(delta.y), (std::max)(0.0001f, horizontal)));
+            matches = predicate.condition == NavigationRuleCondition::SlopeAbove
+                          ? slopeDegrees > predicate.threshold
+                          : slopeDegrees < predicate.threshold;
+            break;
+        }
+    }
+    return predicate.negate ? !matches : matches;
+}
+}
+
 std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::vec3& end,
                                              const NavMeshComponent& navMesh, const PathfindingOptions& options)
 {
@@ -73,7 +114,7 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
                 bool onRoad = false;
                 for (const auto& tag : options.preferredTags)
                 {
-                    if (navMesh.nodes[neighbor].tag == tag)
+                    if (HasNavigationTag(navMesh.nodes[neighbor], tag))
                     {
                         onRoad = true;
                         break;
@@ -92,7 +133,55 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
             {
                 weight = options.customCostFunc(current, neighbor, navMesh);
             }
+            else if (options.criteria == PathfindingCriteria::Custom)
+            {
+                bool blocked = false;
+                for (const NavigationCostRule& rule : navMesh.costRules)
+                {
+                    if (!rule.enabled)
+                        continue;
 
+                    bool matches = rule.conditionMode == NavigationConditionGroupMode::All;
+                    if (rule.conditions.empty())
+                        matches = true;
+                    for (const NavigationRulePredicate& predicate : rule.conditions)
+                    {
+                        const bool predicateMatches =
+                            MatchesPredicate(predicate, navMesh.nodes[neighbor], currentPos, neighborPos);
+                        if (rule.conditionMode == NavigationConditionGroupMode::All)
+                        {
+                            matches &= predicateMatches;
+                            if (!matches)
+                                break;
+                        }
+                        else
+                        {
+                            matches |= predicateMatches;
+                            if (matches)
+                                break;
+                        }
+                    }
+                    if (!matches)
+                        continue;
+
+                    const float strength = (std::max)(0.0f, std::abs(rule.value));
+                    if (rule.effect == NavigationRuleEffect::Block)
+                    {
+                        blocked = true;
+                        break;
+                    }
+                    if (rule.effect == NavigationRuleEffect::Reward)
+                        weight /= 1.0f + strength;
+                    else
+                        weight *= 1.0f + strength;
+                    if (rule.stopOnMatch)
+                        break;
+                }
+                if (blocked)
+                    continue;
+            }
+
+            weight = (std::max)(0.01f, weight);
             float tentative_gScore = gScore[current] + (dist * weight);
 
             if (!gScore.count(neighbor) || tentative_gScore < gScore[neighbor])

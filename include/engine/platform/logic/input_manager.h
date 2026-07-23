@@ -7,6 +7,7 @@
 #include <platform/logic/mouse_manager.h>
 #include <platform/type/input_binding.h>
 #include <memory>
+#include <cstddef>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -17,6 +18,7 @@ public:
     InputManager(const KeyboardManager& keyboard, const MouseManager& mouse, const IWindow& window);
 
     void BindAction(const std::string& actionName, InputType type, int code);
+    bool RemoveBinding(const std::string& actionName, size_t bindingIndex);
     void UnbindAction(const std::string& actionName);
     void FlushBindings();
 

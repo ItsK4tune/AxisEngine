@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <algorithm>
 #include <cctype>
+#include <vector>
 
 ConsolePanel* ConsolePanel::s_Instance = nullptr;
 
@@ -22,9 +23,7 @@ void ConsolePanel::PushLog(LogType type, const std::string& tag, const std::stri
 {
     std::lock_guard<std::mutex> lock(m_Mutex);
     if (m_Logs.size() >= MAX_LOG_ENTRIES)
-    {
-        m_Logs.erase(m_Logs.begin());
-    }
+        m_Logs.pop_front();
     m_Logs.push_back({type, tag, message});
 }
 
@@ -64,16 +63,22 @@ void ConsolePanel::OnImGui(Scene& scene)
 
     ImGui::Separator();
 
+    // Snapshot under the mutex, then format and render without blocking log producers.
+    std::vector<LogEntry> logs;
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        logs.assign(m_Logs.begin(), m_Logs.end());
+    }
+
     // Log list
     ImGui::BeginChild("LogScrollRegion", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar);
     {
-        std::lock_guard<std::mutex> lock(m_Mutex);
         std::string filterStr = m_FilterBuf;
         std::string filterLower = filterStr;
         std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(),
                        [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
 
-        for (const auto& entry : m_Logs)
+        for (const auto& entry : logs)
         {
             // Type filter
             if (entry.type == LogType::Info && !m_ShowInfo)

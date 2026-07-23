@@ -25,6 +25,13 @@ void KeyboardManager::Update()
 
 bool KeyboardManager::GetKey(Key key) const
 {
+    if (IsKeyConsumed(key))
+        return false;
+    return GetRawKey(key);
+}
+
+bool KeyboardManager::GetRawKey(Key key) const
+{
     if (!m_Window)
         return false;
     return m_Window->GetKey(key);
@@ -32,6 +39,8 @@ bool KeyboardManager::GetKey(Key key) const
 
 bool KeyboardManager::GetKeyUp(Key key) const
 {
+    if (IsKeyConsumed(key))
+        return false;
     const auto current = m_CurrentState.find(key);
     const auto previous = m_PreviousState.find(key);
     return current != m_CurrentState.end() && previous != m_PreviousState.end() && !current->second && previous->second;
@@ -39,10 +48,12 @@ bool KeyboardManager::GetKeyUp(Key key) const
 
 bool KeyboardManager::IsKeyDown(Key key) const
 {
+    if (IsKeyConsumed(key))
+        return false;
     auto itCurr = m_CurrentState.find(key);
     auto itPrev = m_PreviousState.find(key);
 
-    bool currentlyPressed = (itCurr != m_CurrentState.end()) ? itCurr->second : GetKey(key);
+    bool currentlyPressed = (itCurr != m_CurrentState.end()) ? itCurr->second : GetRawKey(key);
     bool previouslyPressed = (itPrev != m_PreviousState.end()) ? itPrev->second : false;
 
     if (itCurr == m_CurrentState.end() && m_Window)
@@ -51,4 +62,28 @@ bool KeyboardManager::IsKeyDown(Key key) const
     }
 
     return currentlyPressed && !previouslyPressed;
+}
+
+void KeyboardManager::ConsumeKey(Key key)
+{
+    m_ConsumedKeys.insert(key);
+    m_ReleasedConsumedKeys.erase(key);
+}
+
+void KeyboardManager::ReleaseConsumedKey(Key key)
+{
+    if (m_ConsumedKeys.contains(key))
+        m_ReleasedConsumedKeys.insert(key);
+}
+
+bool KeyboardManager::IsKeyConsumed(Key key) const
+{
+    return m_ConsumedKeys.contains(key);
+}
+
+void KeyboardManager::EndFrame()
+{
+    for (const Key key : m_ReleasedConsumedKeys)
+        m_ConsumedKeys.erase(key);
+    m_ReleasedConsumedKeys.clear();
 }

@@ -194,6 +194,12 @@ public:
     {
         m_Flags.renderOrderEnabled = enable;
     }
+    void SetFrameDebugCapture(bool enabled) override { m_FrameDebugCapture = enabled; }
+    void SetFrameDebugDrawLimit(uint64_t drawLimit) override { m_FrameDebugDrawLimit = drawLimit; }
+    std::vector<FrameDebugDrawCall> GetFrameDebugDrawCalls() const override
+    {
+        return !m_FrameDebugCurrent.empty() ? m_FrameDebugCurrent : m_FrameDebugLast;
+    }
     void SetFilterLayerMask(uint32_t mask) override
     {
         m_Flags.filterLayerMask = mask;
@@ -257,6 +263,10 @@ private:
     RenderIBLState m_IBLState;
 
     bool m_QueuesBuilt = false;
+    bool m_FrameDebugCapture = false;
+    uint64_t m_FrameDebugDrawLimit = 0;
+    std::vector<FrameDebugDrawCall> m_FrameDebugCurrent;
+    std::vector<FrameDebugDrawCall> m_FrameDebugLast;
     float m_LastAlpha = -1.0f;
     int m_LastWidth = -1;
     int m_LastHeight = -1;

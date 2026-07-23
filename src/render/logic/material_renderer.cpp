@@ -51,6 +51,8 @@ const MaterialUniformLocations& MaterialRenderer::GetLocations(const Shader* sha
     locs.u_AOMap = shader->GetUniformLocation("u_AOMap");
     locs.u_EmissiveMap = shader->GetUniformLocation("u_EmissiveMap");
     locs.u_SpecularMap = shader->GetUniformLocation("u_SpecularMap");
+    locs.u_Lightmap = shader->GetUniformLocation("u_Lightmap");
+    locs.u_LightmapIntensity = shader->GetUniformLocation("u_LightmapIntensity");
 
     locs.u_IrradianceMap = shader->GetUniformLocation("u_IrradianceMap");
     locs.u_PrefilterMap = shader->GetUniformLocation("u_PrefilterMap");
@@ -88,15 +90,20 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
             mat.gpu.aoMap = getTexID(mat.desc.aoPath);
             mat.gpu.emissiveMap = getTexID(mat.desc.emissivePath);
             mat.gpu.specularMap = getTexID(mat.desc.specularPath);
+            mat.gpu.lightmapMap = getTexID(mat.desc.lightmapPath);
             mat.gpu.dirty = false;
         }
 
         boundSomething = !mat.desc.albedoPath.empty() || !mat.desc.normalPath.empty() ||
                          !mat.desc.metallicPath.empty() || !mat.desc.roughnessPath.empty() ||
                          !mat.desc.aoPath.empty() || !mat.desc.emissivePath.empty() || !mat.desc.specularPath.empty() ||
+                         !mat.desc.lightmapPath.empty() ||
                          mat.gpu.albedoMap != 0 || mat.gpu.normalMap != 0 || mat.gpu.metallicMap != 0 ||
                          mat.gpu.roughnessMap != 0 || mat.gpu.aoMap != 0 || mat.gpu.emissiveMap != 0 ||
-                         mat.gpu.specularMap != 0;
+                         mat.gpu.specularMap != 0 || mat.gpu.lightmapMap != 0;
+        if (locs.u_LightmapIntensity != -1)
+            shader->setFloat(locs.u_LightmapIntensity,
+                             mat.gpu.lightmapMap != 0 ? mat.desc.lightmapIntensity : 0.0f);
 
         if (locs.u_Roughness != -1)
             shader->setFloat(locs.u_Roughness, mat.desc.pbr.roughness);
@@ -163,7 +170,8 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
         shader->setCustomPorts(mat.desc.ports);
 
         auto setTex = [&](int texUnit, unsigned int texID, int loc) {
-            unsigned int targetTex = texID != 0 ? texID : (texUnit == 5 ? m_BlackTextureID : m_WhiteTextureID);
+            unsigned int targetTex =
+                texID != 0 ? texID : ((texUnit == 5 || texUnit == 30) ? m_BlackTextureID : m_WhiteTextureID);
             if (m_LastBoundTextures[texUnit] != targetTex)
             {
                 tm.ActiveTexture(static_cast<TextureUnit>(texUnit));
@@ -184,6 +192,7 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
         setTex(4, mat.gpu.aoMap, locs.u_AOMap);
         setTex(5, mat.gpu.emissiveMap, locs.u_EmissiveMap);
         setTex(9, mat.gpu.specularMap, locs.u_SpecularMap);
+        setTex(30, mat.gpu.lightmapMap, locs.u_Lightmap);
 
         return boundSomething;
     }
@@ -204,6 +213,8 @@ bool MaterialRenderer::SetupMaterialUniforms(Shader* shader, MaterialComponent* 
             shader->setVec3(locs.u_Specular, glm::vec3(0.5f));
         if (locs.u_Emission != -1)
             shader->setVec3(locs.u_Emission, glm::vec3(0.0f));
+        if (locs.u_LightmapIntensity != -1)
+            shader->setFloat(locs.u_LightmapIntensity, 0.0f);
 
         shader->setCustomPorts(ShaderPorts());
 

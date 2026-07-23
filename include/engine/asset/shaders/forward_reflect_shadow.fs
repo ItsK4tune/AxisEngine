@@ -5,6 +5,8 @@ layout (binding = 0) uniform sampler2D u_AlbedoMap;
 layout (binding = 1) uniform sampler2D u_NormalMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
 layout (binding = 9) uniform sampler2D u_SpecularMap;
+layout (binding = 30) uniform sampler2D u_Lightmap;
+uniform float u_LightmapIntensity;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -127,7 +129,8 @@ void main()
     vec4 texColor = texture(u_AlbedoMap, finalTexCoords);
     texColor.rgb = pow(texColor.rgb, vec3(2.2));
     
-    vec3 emissive = u_Emission + texture(u_EmissiveMap, finalTexCoords).rgb;
+    vec3 emissive = u_Emission + texture(u_EmissiveMap, finalTexCoords).rgb +
+                    texture(u_Lightmap, finalTexCoords).rgb * u_LightmapIntensity;
     
     vec3 reflectionColor = vec3(0.0);
     if (u_HasProbe && u_Reflectivity > 0.0) {

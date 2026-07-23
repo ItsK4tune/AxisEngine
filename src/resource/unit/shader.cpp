@@ -221,6 +221,18 @@ void Shader::setUInt(int location, unsigned int value) const
         m_ShaderManager.SetUniform1ui(location, value);
 }
 
+void Shader::setUIntArray(const std::string& name, const unsigned int* values, int count) const
+{
+    setUIntArray(GetUniformLocation(name), values, count);
+}
+
+void Shader::setUIntArray(int location, const unsigned int* values, int count) const
+{
+    RecordUniformUpdate(location);
+    if (location != -1 && values && count > 0)
+        m_ShaderManager.SetUniform1uiv(location, count, values);
+}
+
 void Shader::setFloat(const std::string& name, float value) const
 {
     setFloat(GetUniformLocation(name), value);

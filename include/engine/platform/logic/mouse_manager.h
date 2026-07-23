@@ -35,6 +35,13 @@ public:
     {
         return IsEditorMode() && m_CurrentButtons.test(static_cast<size_t>(button));
     }
+    bool IsEditorMouseReleased(Mouse button) const
+    {
+        return IsEditorMode() &&
+               (m_ReleasedAccumulator.test(static_cast<size_t>(button)) ||
+                (!m_CurrentButtons.test(static_cast<size_t>(button)) &&
+                 m_PreviousButtons.test(static_cast<size_t>(button))));
+    }
     float GetEditorScrollY() const
     {
         return IsEditorMode() ? m_ScrollY : 0.0f;

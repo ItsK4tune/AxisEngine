@@ -3,8 +3,6 @@
 #ifdef ENABLE_EDITOR
 
 #include <core/logic/logger.h>
-#include <core/logic/service_locator.h>
-#include <platform/logic/io_handler.h>
 #include <platform/interface/i_window.h>
 #include <render/interface/i_graphics_context.h>
 #include <imgui.h>
@@ -103,20 +101,9 @@ void ImGuiLayer::BeginFrame()
         io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
-    if (m_PointerInputEnabled)
-    {
-        // CursorMode::Editor deliberately hides mouse state from game-facing
-        // queries. Feed that editor-owned state explicitly so ImGui remains
-        // interactive even when the game previously used a locked cursor.
-        if (auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>())
-        {
-            const auto& mouse = ioHandler->GetMouse();
-            io.AddMousePosEvent(mouse.GetLastX(), mouse.GetLastY());
-            io.AddMouseButtonEvent(ImGuiMouseButton_Left, mouse.IsEditorButtonPressed(Mouse::Left));
-            io.AddMouseButtonEvent(ImGuiMouseButton_Right, mouse.IsEditorButtonPressed(Mouse::Right));
-            io.AddMouseButtonEvent(ImGuiMouseButton_Middle, mouse.IsEditorButtonPressed(Mouse::Middle));
-        }
-    }
+    // GLFW backend callbacks are the single source of pointer events. Feeding
+    // MouseManager state again here creates duplicate/one-frame-skewed events,
+    // which makes dock dragging and window resizing visibly jitter.
     ImGui::NewFrame();
 }
 

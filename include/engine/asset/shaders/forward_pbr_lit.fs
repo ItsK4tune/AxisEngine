@@ -7,6 +7,8 @@ layout (binding = 2) uniform sampler2D u_MetallicMap;
 layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
+layout (binding = 30) uniform sampler2D u_Lightmap;
+uniform float u_LightmapIntensity;
 
 layout(std140, binding = 20) uniform CameraData {
     mat4 u_Projection;
@@ -122,7 +124,8 @@ void main()
     }
 
     vec3 u_Ambient = albedo * 0.03 * ao;
-    vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2));
+    vec3 emissive = u_Emission + pow(texture(u_EmissiveMap, TexCoords).rgb, vec3(2.2)) +
+                    texture(u_Lightmap, TexCoords).rgb * u_LightmapIntensity;
     FragColor = vec4(u_Ambient + Lo + emissive, u_BaseColor.a);
 }
 

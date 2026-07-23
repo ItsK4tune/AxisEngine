@@ -19,6 +19,7 @@
 #include <ecs/logic/system_factory.h>
 #include <engine/platform/logic/io_handler.h>
 #include <render/interface/i_graphics_context.h>
+#include <render/interface/i_draw_context.h>
 #include <render/interface/i_query_manager.h>
 #include <render/interface/i_render_state_manager.h>
 #include <render/interface/i_render_target_manager.h>

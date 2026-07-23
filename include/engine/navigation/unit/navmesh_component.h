@@ -12,6 +12,7 @@ struct NavMeshNode
     std::vector<uint32_t> neighbors;
     uint32_t triangleIndex;
     std::string tag = "walkable";
+    std::vector<std::string> tags = {"walkable"};
 };
 
 struct NavMeshTriangle
@@ -20,6 +21,51 @@ struct NavMeshTriangle
     glm::vec3 center;
     glm::vec3 normal;
     std::string tag = "walkable";
+    std::vector<std::string> tags = {"walkable"};
+};
+
+enum class NavigationRuleCondition : uint8_t
+{
+    Always,
+    TagEquals,
+    HeightAbove,
+    HeightBelow,
+    Uphill,
+    Downhill,
+    SlopeAbove,
+    SlopeBelow
+};
+
+enum class NavigationRuleEffect : uint8_t
+{
+    Reward,
+    Penalty,
+    Block
+};
+
+enum class NavigationConditionGroupMode : uint8_t
+{
+    All,
+    Any
+};
+
+struct NavigationRulePredicate
+{
+    NavigationRuleCondition condition = NavigationRuleCondition::TagEquals;
+    std::string tag = "walkable";
+    float threshold = 0.0f;
+    bool negate = false;
+};
+
+struct NavigationCostRule
+{
+    std::string name = "Navigation rule";
+    bool enabled = true;
+    NavigationConditionGroupMode conditionMode = NavigationConditionGroupMode::All;
+    std::vector<NavigationRulePredicate> conditions = {NavigationRulePredicate{}};
+    NavigationRuleEffect effect = NavigationRuleEffect::Penalty;
+    float value = 1.0f;
+    bool stopOnMatch = false;
 };
 
 struct NavMeshComponent
@@ -37,6 +83,7 @@ struct NavMeshComponent
     float walkableNormalY = 0.3f;
     float carveHeightPadding = 0.5f;
     float carveAgentRadius = 0.0f;
+    std::vector<NavigationCostRule> costRules;
 };
 
 struct NavigationGridCell

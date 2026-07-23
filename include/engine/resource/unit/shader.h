@@ -86,6 +86,7 @@ public:
     void setBool(const std::string& name, bool value) const;
     void setInt(const std::string& name, int value) const;
     void setUInt(const std::string& name, unsigned int value) const;
+    void setUIntArray(const std::string& name, const unsigned int* values, int count) const;
     void setFloat(const std::string& name, float value) const;
     void setVec2(const std::string& name, const glm::vec2& value) const;
     void setVec2(const std::string& name, float x, float y) const;
@@ -103,6 +104,7 @@ public:
     void setBool(int location, bool value) const;
     void setInt(int location, int value) const;
     void setUInt(int location, unsigned int value) const;
+    void setUIntArray(int location, const unsigned int* values, int count) const;
     void setFloat(int location, float value) const;
     void setVec2(int location, const glm::vec2& value) const;
     void setVec3(int location, const glm::vec3& value) const;

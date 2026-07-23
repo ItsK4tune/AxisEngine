@@ -434,7 +434,6 @@ You should see:
 - `W` `A` `S` `D` - Move player
 - `Space` - Jump
 - `Mouse` - Look around (if camera script is attached)
-- `F10` - Toggle FPS overlay
 - `Escape` - Exit (if implemented in GameState)
 
 ---
@@ -445,25 +444,26 @@ AXIS Engine has a powerful built-in debug system accessed via F-keys:
 
 | Key | Function |
 |-----|----------|
-| `F1` | Show all debug controls |
-| `F2` | Show device info (CPU, GPU, monitors, audio) |
-| `F3` | Show performance stats |
-| `F4` | Show entity statistics |
-| `F5` | Dump scene graph to console |
-| `F6` | Toggle wireframe mode |
-| `F7` | Toggle no-texture mode |
-| `F8` | Toggle physics debug rendering |
-| `F10` | Toggle FPS overlay |
+| `F1` | Toggle entity names |
+| `F2` | Toggle editor gizmos |
+| `F3` | Toggle light gizmos |
+| `F4` | Toggle skybox |
+| `F5` | Toggle shadows |
+| `F6` | Toggle post-processing |
+| `F7` | Toggle physics debug rendering |
+| `F8` | Toggle audio debug markers |
+| `F9` | Toggle particle debug markers |
+| `F10` | Toggle editor cursor ownership |
+| `Shift+F10` | Toggle free debug camera |
 | `F11` | Pause game |
-| `Shift+F11` | Toggle free debug camera |
 | `F12` | Cycle time scale (0.25x, 0.5x, 1x, 1.5x, 2x) |
 
 **Try this:**
-1. Press `F10` to show FPS overlay
-2. Press `F8` to see physics collision boxes
-3. Press `F6` to see wireframe
-4. Press `Shift+F11` to enter free camera mode
-5. Press `F5` to print all entities to console
+1. Press `F7` to see physics collision boxes
+2. Press `F4`/`F5` to compare skybox and shadow rendering
+3. Press `F10` to give the editor cursor ownership
+4. Press `Shift+F10` to enter free camera mode
+5. Press `F12` to inspect the scene at different time scales
 
 ---
 

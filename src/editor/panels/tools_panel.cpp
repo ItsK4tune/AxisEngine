@@ -38,7 +38,7 @@ void ToolsPanel::OnImGui(Scene& scene)
         ImGui::Text("Cursor: %s", modeStr);
 
         bool editorMode = mouse.IsEditorMode();
-        if (ImGui::Checkbox("Editor Cursor (F6)", &editorMode))
+        if (ImGui::Checkbox("Editor Cursor (F10)", &editorMode))
         {
             if (editorMode)
                 mouse.EnterEditorMode();
@@ -66,7 +66,7 @@ void ToolsPanel::OnImGui(Scene& scene)
             if (skyboxSys)
             {
                 bool skyboxEnabled = skyboxSys->IsEnabled();
-                if (ImGui::Checkbox("Enable Skybox (Shift+F6)", &skyboxEnabled))
+                if (ImGui::Checkbox("Enable Skybox (F4)", &skyboxEnabled))
                 {
                     EventManager::Instance().Publish(SystemEnabledEvent{"SkyboxRenderSystem", skyboxEnabled});
                 }
@@ -76,7 +76,7 @@ void ToolsPanel::OnImGui(Scene& scene)
             if (ppSys)
             {
                 bool ppEnabled = ppSys->IsEnabled();
-                if (ImGui::Checkbox("Enable Post Process (F5)", &ppEnabled))
+                if (ImGui::Checkbox("Enable Post Process (F6)", &ppEnabled))
                 {
                     EventManager::Instance().Publish(SystemEnabledEvent{"PostProcessSystem", ppEnabled});
                 }
@@ -86,7 +86,7 @@ void ToolsPanel::OnImGui(Scene& scene)
             if (audioSys)
             {
                 bool audioEnabled = audioSys->IsEnabled();
-                if (ImGui::Checkbox("Enable Audio (F4)", &audioEnabled))
+                if (ImGui::Checkbox("Enable Audio", &audioEnabled))
                 {
                     EventManager::Instance().Publish(SystemEnabledEvent{"AudioSystem", audioEnabled});
                 }
@@ -96,7 +96,7 @@ void ToolsPanel::OnImGui(Scene& scene)
             if (uiSys)
             {
                 bool uiEnabled = uiSys->IsEnabled();
-                if (ImGui::Checkbox("Enable UI Rendering (F9)", &uiEnabled))
+                if (ImGui::Checkbox("Enable UI Rendering", &uiEnabled))
                 {
                     EventManager::Instance().Publish(SystemEnabledEvent{"UIRenderSystem", uiEnabled});
                 }
@@ -126,7 +126,7 @@ void ToolsPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("Debug Vis", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        if (ImGui::Checkbox("Physics Debug (F8)", &conf.debug.physicsDebug))
+        if (ImGui::Checkbox("Physics Debug (F7)", &conf.debug.physicsDebug))
             changeMask |= ConfigChangedEvent::Debug;
         if (ImGui::Checkbox("Editor UI Enabled", &conf.debug.uiEnabled))
             changeMask |= ConfigChangedEvent::Debug;

@@ -1,4 +1,5 @@
 #include <editor/modules/render_editor_module.h>
+#include <editor/editor_shortcut.h>
 #include <core/logic/config_manager.h>
 
 #ifdef ENABLE_EDITOR
@@ -11,6 +12,7 @@
 #include <ecs/interface/i_render_service.h>
 #include <ecs/interface/i_shadow_service.h>
 #include <platform/logic/input_manager.h>
+#include <platform/interface/i_ui_input_capture.h>
 #include <render/interface/i_graphics_context.h>
 #include <render/interface/i_render_state_manager.h>
 #include <iostream>
@@ -20,46 +22,23 @@ void RenderEditorModule::ProcessInput(KeyboardManager& keyboard)
     if (!m_Enabled)
         return;
 
-    ProcessKey(keyboard, Key::F6, m_F6Pressed, [this, &keyboard]() {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift)
-        {
-            auto* sysMgr = ServiceLocator::Instance().Resolve<SystemManager>();
-            auto* skyboxSys = sysMgr ? sysMgr->GetSystem("SkyboxRenderSystem") : nullptr;
-            if (skyboxSys)
-            {
-                EventManager::Instance().Publish(SystemEnabledEvent{"SkyboxRenderSystem", !skyboxSys->IsEnabled()});
-            }
-        }
-    });
-
-    ProcessKey(keyboard, Key::F7, m_F7Pressed, [this, &keyboard]() {
-        bool shift = keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift);
-        if (shift)
-        {
-            auto& sl = ServiceLocator::Instance();
-            auto* shadowSys = sl.Resolve<IShadowService>();
-            bool shadow = shadowSys ? !shadowSys->IsShadowsEnabled() : false;
-            if (shadowSys)
-                shadowSys->SetEnableShadows(shadow);
-        }
-    });
-}
-
-void RenderEditorModule::ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState,
-                                    std::function<void()> action)
-{
-    if (keyboard.GetKey(key))
+    auto& sl = ServiceLocator::Instance();
+    const auto* capture = sl.Resolve<IUIInputCapture>();
+    const bool inputBlocked = capture && capture->WantsTextInput();
+    if (IsEditorShortcutPressed(keyboard, Key::F4, EditorModifier::None, m_F4Pressed, inputBlocked))
     {
-        if (!pressedState)
-        {
-            action();
-            pressedState = true;
-        }
+        auto* sysMgr = sl.Resolve<SystemManager>();
+        auto* skyboxSys = sysMgr ? sysMgr->GetSystem("SkyboxRenderSystem") : nullptr;
+        if (skyboxSys)
+            EventManager::Instance().Publish(SystemEnabledEvent{"SkyboxRenderSystem", !skyboxSys->IsEnabled()});
     }
-    else
+
+    if (IsEditorShortcutPressed(keyboard, Key::F5, EditorModifier::None, m_F5Pressed, inputBlocked))
     {
-        pressedState = false;
+        auto* shadowSys = sl.Resolve<IShadowService>();
+        bool shadow = shadowSys ? !shadowSys->IsShadowsEnabled() : false;
+        if (shadowSys)
+            shadowSys->SetEnableShadows(shadow);
     }
 }
 

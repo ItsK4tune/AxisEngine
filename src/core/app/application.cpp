@@ -24,6 +24,7 @@
 #include <physics/interface/i_physics_world.h>
 #include <physics/logic/collision_matrix.h>
 #include <platform/interface/i_window.h>
+#include <platform/interface/i_keyboard_input_router.h>
 #include <platform/logic/input_serializer.h>
 #include <platform/logic/input_manager.h>
 #include <platform/logic/monitor_manager.h>
@@ -444,7 +445,23 @@ bool Application::Initialize(const AppConfig& incomingConfig)
                 EventManager::Instance().Publish(MouseScrolledEvent{x, y});
             });
 
-            appWindow->SetKeyCallback([](int key, int scancode, int action, int mods) {
+            appWindow->SetKeyCallback([ioHandler](int key, int scancode, int action, int mods) {
+                const Key inputKey = static_cast<Key>(key);
+                bool consumed = ioHandler && ioHandler->GetKeyboard().IsKeyConsumed(inputKey);
+                if (action != 0 && !consumed)
+                {
+                    if (const auto* router = ServiceLocator::Instance().Resolve<IKeyboardInputRouter>();
+                        router && router->ShouldConsumeKey(inputKey))
+                    {
+                        ioHandler->GetKeyboard().ConsumeKey(inputKey);
+                        consumed = true;
+                    }
+                }
+                if (action == 0 && consumed && ioHandler)
+                    ioHandler->GetKeyboard().ReleaseConsumedKey(inputKey);
+
+                if (consumed)
+                    return;
                 if (action == 1)
                     EventManager::Instance().Publish(KeyPressedEvent{key, mods});
                 else if (action == 0)

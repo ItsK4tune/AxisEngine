@@ -1,4 +1,6 @@
 #include <editor/modules/camera_editor_module.h>
+#include <editor/editor_shortcut.h>
+#include <editor/editor_viewport.h>
 #include <ecs/unit/core_components.h>
 
 #ifdef ENABLE_EDITOR
@@ -7,8 +9,10 @@
 #include <ecs/interface/i_script_registry.h>
 #include <ecs/unit/script_component.h>
 #include <platform/logic/io_handler.h>
+#include <platform/interface/i_ui_input_capture.h>
 #include <platform/logic/monitor_manager.h>
 #include <scene/logic/scene.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace
 {
@@ -54,22 +58,11 @@ void SetDebugCameraScriptEnabled(Scene& scene, entt::entity camera, bool enabled
         script->instance->SetEnabled(enabled);
 }
 
-entt::entity FindFallbackGameCamera(Scene& scene, entt::entity debugCamera)
-{
-    auto cameras = scene.View<CameraComponent>();
-    for (auto entity : cameras)
-    {
-        if (entity != debugCamera)
-            return entity;
-    }
-    return entt::null;
-}
 }  // namespace
 
 void CameraEditorModule::Shutdown()
 {
-    if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
-        RestoreGameCamera(*scene);
+    SetEnabled(false);
 }
 
 void CameraEditorModule::ProcessInput(KeyboardManager& keyboard)
@@ -77,10 +70,24 @@ void CameraEditorModule::ProcessInput(KeyboardManager& keyboard)
     if (!m_Enabled)
         return;
 
-    ProcessKey(keyboard, Key::F11, m_F11Pressed, [this, &keyboard]() {
-        if (keyboard.GetKey(Key::LeftShift) || keyboard.GetKey(Key::RightShift))
-            ToggleDebugCamera();
-    });
+    const auto* capture = ServiceLocator::Instance().Resolve<IUIInputCapture>();
+    if (IsEditorShortcutPressed(keyboard, Key::F10, EditorModifier::Shift, m_F10Pressed,
+                                capture && capture->WantsTextInput()))
+        ToggleDebugCamera();
+}
+
+void CameraEditorModule::OnUpdate(float)
+{
+    auto* scene = ServiceLocator::Instance().Resolve<Scene>();
+    if (!scene)
+        return;
+    const entt::entity camera = EnsureDebugCamera(*scene);
+    const auto* viewport = ServiceLocator::Instance().Resolve<EditorViewportState>();
+    const bool viewportNavigation = viewport && viewport->rect.visible &&
+                                    (viewport->rect.hovered || viewport->rect.focused);
+    // The unified viewport renders the active scene camera. Its transient debug
+    // camera only receives movement while explicitly activated with Shift+F10.
+    SetDebugCameraScriptEnabled(*scene, camera, m_IsDebugCameraActive && viewportNavigation);
 }
 
 void CameraEditorModule::SetEnabled(bool enabled)
@@ -91,7 +98,16 @@ void CameraEditorModule::SetEnabled(bool enabled)
     if (!enabled)
     {
         if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
+        {
             RestoreGameCamera(*scene);
+            if (m_DebugCameraScene == scene && scene->IsValid(m_DebugCamera))
+                scene->DestroyEntity(m_DebugCamera);
+        }
+        m_DebugCamera = entt::null;
+        m_DebugCameraScene = nullptr;
+        m_LastActiveCamera = entt::null;
+        m_IsDebugCameraActive = false;
+        m_RestoreCursorMode = false;
     }
     m_Enabled = enabled;
 }
@@ -108,6 +124,7 @@ entt::entity CameraEditorModule::EnsureDebugCamera(Scene& scene)
 
     auto& registry = scene.GetRegistry();
     m_DebugCamera = scene.CreateEntity(kDebugCameraName, kDebugCameraTag);
+    registry.get<InfoComponent>(m_DebugCamera).isTransient = true;
 
     auto& position = registry.get_or_emplace<PositionComponent>(m_DebugCamera);
     auto& rotation = registry.get_or_emplace<RotationComponent>(m_DebugCamera);
@@ -142,6 +159,8 @@ entt::entity CameraEditorModule::EnsureDebugCamera(Scene& scene)
             camera.aspectRatio = sourceCamera->aspectRatio;
             camera.isOrthographic = sourceCamera->isOrthographic;
             camera.orthoSize = sourceCamera->orthoSize;
+            camera.viewMatrix = sourceCamera->viewMatrix;
+            camera.projectionMatrix = sourceCamera->projectionMatrix;
         }
     }
     else
@@ -155,9 +174,14 @@ entt::entity CameraEditorModule::EnsureDebugCamera(Scene& scene)
         camera.aspectRatio = camera.screenHeight > 0
                                  ? static_cast<float>(camera.screenWidth) / static_cast<float>(camera.screenHeight)
                                  : 16.0f / 9.0f;
+        camera.projectionMatrix =
+            glm::perspective(glm::radians(camera.fov), camera.aspectRatio, camera.nearPlane, camera.farPlane);
+        camera.viewMatrix = glm::lookAt(position.value, position.value + glm::vec3(0.0f, 0.0f, -1.0f),
+                                        glm::vec3(0.0f, 1.0f, 0.0f));
     }
 
     AttachDebugCameraScript(scene, m_DebugCamera);
+    SetDebugCameraScriptEnabled(scene, m_DebugCamera, m_IsDebugCameraActive);
     return m_DebugCamera;
 }
 
@@ -241,11 +265,8 @@ void CameraEditorModule::RestoreGameCamera(Scene& scene)
     }
 
     SetDebugCameraScriptEnabled(scene, m_DebugCamera, false);
-
-    entt::entity restoreCamera = m_LastActiveCamera;
-    if (!scene.IsValid(restoreCamera) || !scene.HasAllComponents<CameraComponent>(restoreCamera))
-        restoreCamera = FindFallbackGameCamera(scene, m_DebugCamera);
-    scene.SetActiveCamera(restoreCamera);
+    if (scene.IsValid(m_LastActiveCamera))
+        scene.SetActiveCamera(m_LastActiveCamera);
 
     if (m_RestoreCursorMode)
     {
@@ -272,23 +293,6 @@ void CameraEditorModule::ToggleDebugCamera()
         RestoreGameCamera(scene);
     else
         ActivateDebugCamera(scene);
-}
-
-void CameraEditorModule::ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState,
-                                    std::function<void()> action)
-{
-    if (keyboard.GetKey(key))
-    {
-        if (!pressedState)
-        {
-            action();
-            pressedState = true;
-        }
-    }
-    else
-    {
-        pressedState = false;
-    }
 }
 
 #endif

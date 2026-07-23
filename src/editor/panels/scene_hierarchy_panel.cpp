@@ -1,5 +1,8 @@
 #include <editor/panels/scene_hierarchy_panel.h>
+#include <editor/editor_shortcut.h>
+#include <editor/editor_selection.h>
 #include <editor/editor_system.h>
+#include <editor/entity_inspector.h>
 
 #ifdef ENABLE_EDITOR
 #include <core/logic/event_manager.h>
@@ -41,6 +44,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <sstream>
 #include <utility>
 #include <unordered_map>
@@ -84,12 +88,27 @@ std::string SerializeYAMLNode(const YAMLNode& n, int indent)
 }
 }  // namespace
 
-entt::entity SceneHierarchyPanel::s_SelectedEntity = entt::null;
-
 void SceneHierarchyPanel::SetSelectedEntity(entt::entity entity)
 {
-    s_SelectedEntity = entity;
-    EventManager::Instance().Publish(EntitySelectionChangedEvent{static_cast<uint32_t>(entity)});
+    auto& selection = ServiceLocator::Instance().Require<EditorSelection>();
+    if (entity == entt::null)
+        selection.Clear();
+    else if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
+        selection.Select(*scene, entity);
+}
+
+void SceneHierarchyPanel::ToggleSelectedEntity(entt::entity entity)
+{
+    auto& selection = ServiceLocator::Instance().Require<EditorSelection>();
+    if (auto* scene = ServiceLocator::Instance().Resolve<Scene>())
+        selection.Toggle(*scene, entity);
+}
+
+bool SceneHierarchyPanel::IsSelected(entt::entity entity) const
+{
+    if (auto* selection = ServiceLocator::Instance().Resolve<EditorSelection>())
+        return selection->Contains(entity);
+    return false;
 }
 
 void SceneHierarchyPanel::RequestFocus(entt::entity entity)
@@ -102,8 +121,8 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     ImGui::Begin(GetTitle().c_str(), &m_Open);
 
     auto& registry = scene.GetRegistry();
-    if (s_SelectedEntity != entt::null && !registry.valid(s_SelectedEntity))
-        SetSelectedEntity(entt::null);
+    auto& selection = ServiceLocator::Instance().Require<EditorSelection>();
+    selection.PruneInvalid(scene);
 
     // Group entities by sceneName
     std::unordered_map<std::string, std::vector<entt::entity>> sceneGroups;
@@ -132,6 +151,14 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     // Search filter
     ImGui::SetNextItemWidth(-1);
     ImGui::InputTextWithHint("##EntitySearch", "Search entities...", m_SearchFilter, IM_ARRAYSIZE(m_SearchFilter));
+    const char* selectionPolicies[] = {"Independent parent/child", "Collapse selected children",
+                                       "Include all descendants"};
+    int selectionPolicy = static_cast<int>(selection.GetParentChildPolicy());
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::Combo("##SelectionPolicy", &selectionPolicy, selectionPolicies, IM_ARRAYSIZE(selectionPolicies)))
+        selection.SetParentChildPolicy(scene, static_cast<ParentChildSelectionPolicy>(selectionPolicy));
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Controls how parent and child entities participate in multi-selection.");
     std::string filterLower = m_SearchFilter;
     std::transform(filterLower.begin(), filterLower.end(), filterLower.begin(),
                    [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
@@ -140,33 +167,48 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
     if (auto* io = ServiceLocator::Instance().Resolve<IOHandler>())
     {
         auto& kb = io->GetKeyboard();
-        bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
-        if (ctrl && kb.GetKey(Key::D) && !m_CtrlDPressed && s_SelectedEntity != entt::null &&
-            registry.valid(s_SelectedEntity))
+        const bool inputBlocked = ImGui::GetIO().WantTextInput;
+        if (IsEditorShortcutPressed(kb, Key::D, EditorModifier::Control, m_CtrlDPressed, inputBlocked) &&
+            selection.GetPrimary() != entt::null &&
+            registry.valid(selection.GetPrimary()))
         {
-            m_CtrlDPressed = true;
             EditorSystem::PushUndoState(scene);
-            DuplicateEntity(scene, s_SelectedEntity);
+            DuplicateEntity(scene, selection.GetPrimary());
         }
-        if (!kb.GetKey(Key::D))
-            m_CtrlDPressed = false;
 
         // Delete (Delete)
-        if (kb.GetKey(Key::Delete) && !m_DeletePressed && s_SelectedEntity != entt::null &&
-            registry.valid(s_SelectedEntity))
+        if (IsEditorShortcutPressed(kb, Key::Delete, EditorModifier::None, m_DeletePressed, inputBlocked) &&
+            !selection.Empty())
         {
-            m_DeletePressed = true;
             EditorSystem::PushUndoState(scene);
             auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
-            scene.DestroyEntityWithChildren(s_SelectedEntity, sceneMgr);
+            const std::vector<entt::entity> selectedEntities(selection.GetAll().begin(), selection.GetAll().end());
+            for (const entt::entity entity : selectedEntities)
+            {
+                if (!registry.valid(entity))
+                    continue;
+
+                bool selectedAncestor = false;
+                entt::entity ancestor = entity;
+                while (const auto* hierarchy = registry.try_get<HierarchyComponent>(ancestor))
+                {
+                    ancestor = hierarchy->parent;
+                    if (ancestor == entt::null)
+                        break;
+                    if (IsSelected(ancestor))
+                    {
+                        selectedAncestor = true;
+                        break;
+                    }
+                }
+                if (!selectedAncestor)
+                    scene.DestroyEntityWithChildren(entity, sceneMgr);
+            }
             SetSelectedEntity(entt::null);
             MarkTransformGraphDirty();
         }
-        if (!kb.GetKey(Key::Delete))
-            m_DeletePressed = false;
     }
 
-    ImGui::Columns(2, "HierarchyInspector", true);
     ImGui::BeginChild("HierarchyTree");
 
     auto& sm = ServiceLocator::Instance().Require<SceneManager>();
@@ -222,6 +264,8 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
 
         if (isOpen)
         {
+            std::vector<entt::entity> visibleEntities;
+            visibleEntities.reserve(entities.size());
             for (auto entity : entities)
             {
                 // Apply search filter
@@ -238,28 +282,35 @@ void SceneHierarchyPanel::OnImGui(Scene& scene)
                     if (enameLower.find(filterLower) == std::string::npos)
                         continue;
                 }
-                DrawEntityNode(scene, entity);
+                visibleEntities.push_back(entity);
+            }
+
+            const bool flatList = std::all_of(visibleEntities.begin(), visibleEntities.end(),
+                                              [&](entt::entity entity) {
+                                                  const auto* hierarchy =
+                                                      registry.try_get<HierarchyComponent>(entity);
+                                                  return !hierarchy || hierarchy->children.empty();
+                                              });
+            if (flatList)
+            {
+                ImGuiListClipper clipper;
+                clipper.Begin(static_cast<int>(visibleEntities.size()));
+                while (clipper.Step())
+                {
+                    for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
+                        DrawEntityNode(scene, visibleEntities[static_cast<size_t>(index)]);
+                }
+            }
+            else
+            {
+                for (const entt::entity entity : visibleEntities)
+                    DrawEntityNode(scene, entity);
             }
             ImGui::TreePop();
         }
         ImGui::PopID();
     }
     ImGui::EndChild();
-
-    ImGui::NextColumn();
-
-    ImGui::BeginChild("InspectorView");
-    if (s_SelectedEntity != entt::null && registry.valid(s_SelectedEntity))
-    {
-        DrawComponents(registry, s_SelectedEntity);
-    }
-    else
-    {
-        ImGui::Text("No Entity Selected");
-    }
-    ImGui::EndChild();
-
-    ImGui::Columns(1);
     ImGui::End();
 }
 
@@ -272,9 +323,12 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     uint32_t entityId = static_cast<uint32_t>(entity);
     std::string name = "Entity " + std::to_string(entityId);
 
+    bool isTransient = false;
     if (registry.all_of<InfoComponent>(entity))
     {
-        name = registry.get<InfoComponent>(entity).name;
+        const auto& info = registry.get<InfoComponent>(entity);
+        name = info.name;
+        isTransient = info.isTransient;
     }
 
     bool hasChildren = false;
@@ -287,7 +341,7 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     }
 
     ImGuiTreeNodeFlags flags =
-        ((s_SelectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
+        (IsSelected(entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
     flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
 
     if (!hasChildren)
@@ -302,11 +356,16 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
         hasOverride = !registry.get<FragmentComponent>(entity).overrides.empty();
     }
 
-    if (hasOverride)
+    if (isTransient)
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.68f, 0.25f, 1.0f));
+    else if (hasOverride)
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 0.6f, 1.0f, 1.0f));
-    bool opened = ImGui::TreeNodeEx((void*)(uint64_t)entityId, flags, "%s", name.c_str());
-    if (hasOverride)
+    bool opened = ImGui::TreeNodeEx((void*)(uint64_t)entityId, flags, "%s%s", name.c_str(),
+                                    isTransient ? " [Transient]" : "");
+    if (isTransient || hasOverride)
         ImGui::PopStyleColor();
+    if (isTransient && ImGui::IsItemHovered())
+        ImGui::SetTooltip("Transient entity: visible at runtime but excluded from scene serialization.");
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
     {
         SetSelectedEntity(entity);
@@ -314,7 +373,10 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     }
     if (ImGui::IsItemClicked())
     {
-        SetSelectedEntity(entity);
+        if (ImGui::GetIO().KeyCtrl)
+            ToggleSelectedEntity(entity);
+        else
+            SetSelectedEntity(entity);
     }
 
     bool entityDeleted = false;
@@ -344,7 +406,7 @@ void SceneHierarchyPanel::DrawEntityNode(Scene& scene, entt::entity entity)
     if (entityDeleted)
     {
         EditorSystem::PushUndoState(scene);
-        if (s_SelectedEntity == entity)
+        if (ServiceLocator::Instance().Require<EditorSelection>().Contains(entity))
             SetSelectedEntity(entt::null);
         auto* sceneMgr = ServiceLocator::Instance().Resolve<SceneManager>();
         scene.DestroyEntityWithChildren(entity, sceneMgr);
@@ -490,7 +552,7 @@ static bool DrawResourceDropdown(const char* label, std::shared_ptr<T>& currentR
     return false;
 }
 
-void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entity)
+void EntityInspector::Draw(entt::registry& reg, entt::entity entity)
 {
     auto& scene = ServiceLocator::Instance().Require<Scene>();
     if (auto* info = reg.try_get<InfoComponent>(entity))
@@ -502,6 +564,8 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             std::snprintf(m_InfoTagBuffer.data(), m_InfoTagBuffer.size(), "%s", info->tag.c_str());
             m_NameEditUndoCaptured = false;
             m_TagEditUndoCaptured = false;
+            m_NewPostProcessShader.clear();
+            m_SelectedAnimationPreview = 0;
         }
 
         if (ImGui::CollapsingHeader("Info", ImGuiTreeNodeFlags_DefaultOpen))
@@ -887,6 +951,16 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         changed |= ImGui::DragFloat("Roughness", &mat.desc.pbr.roughness, 0.01f, 0.0f, 1.0f);
         changed |= ImGui::DragFloat("Metallic", &mat.desc.pbr.metallic, 0.01f, 0.0f, 1.0f);
         changed |= ImGui::DragFloat("AO", &mat.desc.pbr.ao, 0.01f, 0.0f, 1.0f);
+        char lightmap[260];
+        std::strncpy(lightmap, mat.desc.lightmapPath.c_str(), sizeof(lightmap) - 1);
+        lightmap[sizeof(lightmap) - 1] = '\0';
+        if (ImGui::InputText("Lightmap", lightmap, sizeof(lightmap)))
+        {
+            mat.desc.lightmapPath = lightmap;
+            mat.gpu.dirty = true;
+            changed = true;
+        }
+        changed |= ImGui::DragFloat("Lightmap intensity", &mat.desc.lightmapIntensity, 0.01f, 0.0f, 8.0f);
 
         if (changed)
             mat.gpu.batchKeyDirty = true;
@@ -1121,7 +1195,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         ImGui::TextDisabled("Advanced modules are edited in Tools > VFX Graph.");
     });
 
-    DrawComponent<PostProcessComponent>("Post Process", reg, entity, [](auto& pp) {
+    DrawComponent<PostProcessComponent>("Post Process", reg, entity, [this](auto& pp) {
         ImGui::Checkbox("Enabled##PP", &pp.enabled);
         ImGui::Separator();
         ImGui::Text("Effects: %d", (int)pp.effects.size());
@@ -1129,15 +1203,14 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto shaderNames = rm.GetLoadedShaders();
 
-        static std::string newEffectShader = "";
-        DrawResourceDropdownStr("New Effect", newEffectShader, shaderNames);
-        if (ImGui::Button("Add Effect") && !newEffectShader.empty())
+        DrawResourceDropdownStr("New Effect", m_NewPostProcessShader, shaderNames);
+        if (ImGui::Button("Add Effect") && !m_NewPostProcessShader.empty())
         {
             PostProcessComponent::Effect newEff;
-            newEff.shaderName = newEffectShader;
+            newEff.shaderName = m_NewPostProcessShader;
             newEff.priority = 100;
             pp.effects.push_back(newEff);
-            newEffectShader = "";
+            m_NewPostProcessShader.clear();
         }
 
         for (size_t i = 0; i < pp.effects.size(); ++i)
@@ -1211,7 +1284,7 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     });
 
-    DrawComponent<AnimationComponent>("Animator", reg, entity, [](auto& anim) {
+    DrawComponent<AnimationComponent>("Animator", reg, entity, [this](auto& anim) {
         if (ImGui::Button("Add Clip"))
             anim.animations.push_back("new_animation");
 
@@ -1261,16 +1334,15 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
             ImGui::TextColored(ImVec4(0, 1, 0, 1), "Status: Running");
             ImGui::Text("Current Time: %.2f", anim.animator->GetCurrentTime());
 
-            static int selectedPreview = 0;
-            if (selectedPreview >= (int)anim.animations.size())
-                selectedPreview = 0;
+            if (m_SelectedAnimationPreview >= (int)anim.animations.size())
+                m_SelectedAnimationPreview = 0;
             if (!anim.animations.empty())
             {
                 std::vector<const char*> clips;
                 for (const auto& s : anim.animations) clips.push_back(s.c_str());
-                ImGui::Combo("Preview Clip", &selectedPreview, clips.data(), (int)clips.size());
+                ImGui::Combo("Preview Clip", &m_SelectedAnimationPreview, clips.data(), (int)clips.size());
                 if (ImGui::Button("Play Preview"))
-                    anim.animator->PlayAnimation(anim.animations[selectedPreview]);
+                    anim.animator->PlayAnimation(anim.animations[m_SelectedAnimationPreview]);
             }
         }
         else
@@ -1453,23 +1525,48 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
     });
 
-    DrawComponent<FragmentComponent>("Fragment", reg, entity, [](auto& frag) {
+    DrawComponent<FragmentComponent>("Prefab Instance", reg, entity, [](auto& frag) {
         char buffer[512];
         strncpy(buffer, frag.path.c_str(), sizeof(buffer) - 1);
         buffer[sizeof(buffer) - 1] = '\0';
-        if (ImGui::InputText("Scene Path", buffer, sizeof(buffer)))
+        if (ImGui::InputText("Prefab asset (.axs)", buffer, sizeof(buffer)))
         {
             frag.path = buffer;
             frag.instantiated = false;
         }
 
-        ImGui::Text("Status: %s", frag.instantiated ? "Instantiated" : "Pending");
-
-        ImGui::Separator();
-        ImGui::Text("Overrides:");
-
         auto& rm = ServiceLocator::Instance().Require<ResourceManager>();
         auto asset = rm.GetFragment(frag.path);
+        const bool validExtension = std::filesystem::path(frag.path).extension() == ".axs";
+        if (!frag.path.empty() && !validExtension)
+            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.25f, 1.0f), "Prefab assets should use the .axs extension.");
+        ImGui::TextColored(asset ? ImVec4(0.35f, 0.9f, 0.45f, 1.0f) : ImVec4(1.0f, 0.35f, 0.3f, 1.0f),
+                           "Asset: %s", asset ? "Loaded" : "Missing");
+        ImGui::SameLine();
+        ImGui::Text("| Instance: %s", frag.instantiated ? "Ready" : "Reload pending");
+        ImGui::Text("Override data: %s", frag.overrides.empty() ? "None (inherits asset)" : "Active");
+        if (ImGui::Button("Reload instance"))
+            frag.instantiated = false;
+        ImGui::SameLine();
+        ImGui::BeginDisabled(frag.path.empty());
+        if (ImGui::Button("Reimport asset"))
+        {
+            rm.ReimportResource(frag.path);
+            frag.instantiated = false;
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(frag.overrides.empty());
+        if (ImGui::Button("Clear all overrides"))
+        {
+            frag.overrides.clear();
+            frag.instantiated = false;
+        }
+        ImGui::EndDisabled();
+
+        ImGui::Separator();
+        ImGui::TextWrapped("Enable a component below to override it for this instance. Disabled components keep "
+                           "following the prefab asset.");
 
         if (asset)
         {
@@ -1768,10 +1865,10 @@ void SceneHierarchyPanel::DrawComponents(entt::registry& reg, entt::entity entit
         }
         else
         {
-            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Fragment Asset Not Found");
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "Prefab asset not found. Check the path or reimport it.");
         }
 
-        if (ImGui::Button("Reload & Apply Overrides"))
+        if (ImGui::Button("Apply visual overrides"))
         {
             frag.instantiated = false;
         }

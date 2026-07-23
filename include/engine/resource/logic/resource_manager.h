@@ -129,6 +129,7 @@ public:
     std::vector<ResourceDefinition> GetResourceDefinitions() const;
     void AddResourceDefinition(const std::string& type, const std::string& name,
                                const std::unordered_map<std::string, std::string>& props);
+    bool ReimportResource(const std::string& name);
 
     void RegisterLoader(std::unique_ptr<ILoaderStrategy> strategy);
     bool LoadUnified(const std::string& type, const std::string& path);

@@ -4,7 +4,7 @@
 #include <editor/i_editor_panel.h>
 #include <mutex>
 #include <string>
-#include <vector>
+#include <deque>
 
 struct Scene;
 
@@ -37,7 +37,7 @@ public:
     void PushLog(LogType type, const std::string& tag, const std::string& message);
 
 private:
-    std::vector<LogEntry> m_Logs;
+    std::deque<LogEntry> m_Logs;
     std::mutex m_Mutex;
     bool m_AutoScroll = true;
     bool m_ShowInfo = true;

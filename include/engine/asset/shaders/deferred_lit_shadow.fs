@@ -14,6 +14,8 @@ layout (binding = 2) uniform sampler2D u_MetallicMap;
 layout (binding = 3) uniform sampler2D u_RoughnessMap;
 layout (binding = 4) uniform sampler2D u_AOMap;
 layout (binding = 5) uniform sampler2D u_EmissiveMap;
+layout (binding = 30) uniform sampler2D u_Lightmap;
+uniform float u_LightmapIntensity;
 
 uniform float u_Roughness;
 uniform float u_Metallic;
@@ -40,7 +42,8 @@ void main()
     gAlbedoSpec.rgb = texColor.rgb * u_BaseColor.rgb;
     gAlbedoSpec.a = max(u_FresnelBias, 0.04);
     gEntityID = EntityID;
-    gEmissive = u_Emission + texture(u_EmissiveMap, uv).rgb;
+    gEmissive = u_Emission + texture(u_EmissiveMap, uv).rgb +
+                texture(u_Lightmap, uv).rgb * u_LightmapIntensity;
 
     float packedReflection = round(clamp(u_FresnelPower, 0.0, 15.0)) / 255.0;
     gPBRParams = vec4(metallic, roughness, u_Reflectivity, packedReflection);

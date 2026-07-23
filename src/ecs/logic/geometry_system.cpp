@@ -119,23 +119,24 @@ void GeometrySystem::Render(Scene& scene)
         return;
 
     const auto config = m_ConfigManager->GetConfigSnapshot();
-    int width = config->window.width;
-    int height = config->window.height;
+    int width = rs->GetLastWidth() > 0 ? rs->GetLastWidth() : config->window.width;
+    int height = rs->GetLastHeight() > 0 ? rs->GetLastHeight() : config->window.height;
     float currentScale = config->graphics.renderScale;
     const int currentSamples = (std::max)(1, config->graphics.msaaSamples);
     const bool hasDeferredDecals = !scene.View<DecalComponent>().empty();
-    const bool entityIdEnabled = config->optimization.gbufferEntityIdEnabled || hasDeferredDecals ||
-                                 m_EntityIdRequested;
+    bool entityIdEnabled = config->optimization.gbufferEntityIdEnabled || hasDeferredDecals ||
+                           m_EntityIdRequested;
     m_EntityIdRequested = false;
 
-    if (width != m_GBuffer.GetWidth() || height != m_GBuffer.GetHeight() ||
-        currentScale != m_GBuffer.GetRenderScale() || currentSamples != m_GBuffer.GetSampleCount() ||
-        entityIdEnabled != m_GBuffer.IsEntityIdEnabled())
+    GBuffer& gBuffer = ActiveGBuffer();
+    if (width != gBuffer.GetWidth() || height != gBuffer.GetHeight() ||
+        currentScale != gBuffer.GetRenderScale() || currentSamples != gBuffer.GetSampleCount() ||
+        entityIdEnabled != gBuffer.IsEntityIdEnabled())
     {
-        m_GBuffer.SetRenderScale(currentScale);
-        m_GBuffer.SetSampleCount(currentSamples);
-        m_GBuffer.SetEntityIdEnabled(entityIdEnabled);
-        m_GBuffer.Resize(width, height);
+        gBuffer.SetRenderScale(currentScale);
+        gBuffer.SetSampleCount(currentSamples);
+        gBuffer.SetEntityIdEnabled(entityIdEnabled);
+        gBuffer.Resize(width, height);
     }
 
     if (!m_GraphicsContext)
@@ -148,7 +149,7 @@ void GeometrySystem::Render(Scene& scene)
     auto& rtm = context.GetRenderTargetManager();
 
     BindGBufferForWriting();
-    rsm.SetViewport(0, 0, (int)(width * m_GBuffer.GetRenderScale()), (int)(height * m_GBuffer.GetRenderScale()));
+    rsm.SetViewport(0, 0, (int)(width * gBuffer.GetRenderScale()), (int)(height * gBuffer.GetRenderScale()));
     dc.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     // glClearColor is not the correct clear path for the R32UI picking attachment.
     // Temporarily omit it, clear the regular MRT/depth targets, then clear ID with
@@ -210,12 +211,12 @@ void GeometrySystem::Render(Scene& scene)
 
 void GeometrySystem::BindGBufferForWriting()
 {
-    m_GBuffer.BindForWriting();
+    ActiveGBuffer().BindForWriting();
 }
 
 void GeometrySystem::UnbindGBuffer()
 {
-    m_GBuffer.Unbind();
+    ActiveGBuffer().Unbind();
 }
 
 void GeometrySystem::BeginDecalPass()
@@ -226,9 +227,10 @@ void GeometrySystem::BeginDecalPass()
     auto& rtm = context.GetRenderTargetManager();
     auto& rsm = context.GetRenderStateManager();
 
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_GBuffer.GetFBO());
-    rsm.SetViewport(0, 0, (int)(m_GBuffer.GetWidth() * m_GBuffer.GetRenderScale()),
-                    (int)(m_GBuffer.GetHeight() * m_GBuffer.GetRenderScale()));
+    GBuffer& gBuffer = ActiveGBuffer();
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, gBuffer.GetFBO());
+    rsm.SetViewport(0, 0, (int)(gBuffer.GetWidth() * gBuffer.GetRenderScale()),
+                    (int)(gBuffer.GetHeight() * gBuffer.GetRenderScale()));
 
     // The decal shader samples resolved depth and normal. Leaving either texture
     // attached to this draw framebuffer at the same time is an OpenGL feedback
@@ -253,11 +255,12 @@ void GeometrySystem::EndDecalPass(uint32_t mainFBO)
         return;
     auto& context = *m_GraphicsContext;
     auto& rtm = context.GetRenderTargetManager();
-    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, m_GBuffer.GetFBO());
+    GBuffer& gBuffer = ActiveGBuffer();
+    rtm.BindFramebuffer(FramebufferTarget::Framebuffer, gBuffer.GetFBO());
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Color1, TextureType::Texture2D,
-                             m_GBuffer.GetNormalTexture(), 0);
+                             gBuffer.GetNormalTexture(), 0);
     rtm.FramebufferTexture2D(FramebufferTarget::Framebuffer, FramebufferAttachment::Depth, TextureType::Texture2D,
-                             m_GBuffer.GetDepthTexture(), 0);
+                             gBuffer.GetDepthTexture(), 0);
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
 
     FramebufferAttachment att = FramebufferAttachment::Color0;

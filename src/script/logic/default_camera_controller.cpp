@@ -3,6 +3,7 @@
 #include <ecs/unit/core_components.h>
 #include <platform/logic/io_handler.h>
 #include <platform/interface/i_ui_input_capture.h>
+#include <editor/editor_viewport.h>
 
 #include <script/logic/default_camera_controller.h>
 #include <script/logic/script_registry.h>
@@ -55,14 +56,16 @@ void DefaultCameraController::OnUpdate(float)
 
     // UI state
     const auto* uiCapture = Resolve<IUIInputCapture>();
-    const bool hoveringPanel = uiCapture && uiCapture->WantsPointerInput();
+    const auto* editorViewport = Resolve<EditorViewportState>();
+    const bool hoveringViewport = editorViewport && editorViewport->rect.hovered;
+    const bool hoveringPanel = uiCapture && uiCapture->WantsPointerInput() && !hoveringViewport;
     const bool typing = uiCapture && uiCapture->WantsTextInput();
 
     const bool editorCursor = mouse.IsEditorMode();
     bool isRMB = mouse.IsEditorButtonPressed(Mouse::Right);
     bool isMMB = mouse.IsEditorButtonPressed(Mouse::Middle);
-    bool isAlt = keyboard.GetKey(Key::LeftAlt) || keyboard.GetKey(Key::RightAlt);
-    bool isCtrl = keyboard.GetKey(Key::LeftControl) || keyboard.GetKey(Key::RightControl);
+    bool isAlt = keyboard.GetRawKey(Key::LeftAlt) || keyboard.GetRawKey(Key::RightAlt);
+    bool isCtrl = keyboard.GetRawKey(Key::LeftControl) || keyboard.GetRawKey(Key::RightControl);
     bool isLMB = mouse.IsEditorButtonPressed(Mouse::Left);
 
     bool looking = isRMB && !isAlt;
@@ -107,7 +110,7 @@ void DefaultCameraController::OnUpdate(float)
     }
 
     // Framing
-    bool isF = keyboard.GetKey(Key::F);
+    bool isF = keyboard.GetRawKey(Key::F);
     if (editorCursor && isF && !m_WasFPressed && !typing)
     {
         m_WasFPressed = true;
@@ -132,9 +135,9 @@ void DefaultCameraController::OnUpdate(float)
 
     // Movement multipliers
     float speedMultiplier = 1.0f;
-    if (keyboard.GetKey(Key::LeftShift))
+    if (keyboard.GetRawKey(Key::LeftShift))
         speedMultiplier = 2.5f;
-    if (keyboard.GetKey(Key::LeftControl))
+    if (keyboard.GetRawKey(Key::LeftControl))
         speedMultiplier = 0.25f;
 
     float scroll = mouse.GetEditorScrollY();
@@ -174,17 +177,17 @@ void DefaultCameraController::OnUpdate(float)
         if (!typing && !isCtrl && !isAlt)
         {
             float moveVel = m_BaseMoveSpeed * speedMultiplier;
-            if (keyboard.GetKey(Key::W) || keyboard.GetKey(Key::Up))
+            if (keyboard.GetRawKey(Key::W) || keyboard.GetRawKey(Key::Up))
                 targetVelocity += frontNormalized * moveVel;
-            if (keyboard.GetKey(Key::S) || keyboard.GetKey(Key::Down))
+            if (keyboard.GetRawKey(Key::S) || keyboard.GetRawKey(Key::Down))
                 targetVelocity -= frontNormalized * moveVel;
-            if (keyboard.GetKey(Key::A) || keyboard.GetKey(Key::Left))
+            if (keyboard.GetRawKey(Key::A) || keyboard.GetRawKey(Key::Left))
                 targetVelocity -= right * moveVel;
-            if (keyboard.GetKey(Key::D) || keyboard.GetKey(Key::Right))
+            if (keyboard.GetRawKey(Key::D) || keyboard.GetRawKey(Key::Right))
                 targetVelocity += right * moveVel;
-            if (keyboard.GetKey(Key::E) || keyboard.GetKey(Key::PageUp))
+            if (keyboard.GetRawKey(Key::E) || keyboard.GetRawKey(Key::PageUp))
                 targetVelocity += worldUp * moveVel;
-            if (keyboard.GetKey(Key::Q) || keyboard.GetKey(Key::PageDown))
+            if (keyboard.GetRawKey(Key::Q) || keyboard.GetRawKey(Key::PageDown))
                 targetVelocity -= worldUp * moveVel;
         }
     }

@@ -90,7 +90,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                     }
                 }
 
-                LoaderUtils::ValidateKeys(entNode, {"Tag", "Layer", "Parent", "Component"}, "Entity:" + entNode.key);
+                LoaderUtils::ValidateKeys(entNode, {"Tag", "Layer", "Parent", "Active", "RenderOrder",
+                                                    "Transient", "Component"},
+                                          "Entity:" + entNode.key);
                 std::string entityTag =
                     CanonicalizeEntityTag(entNode.GetChildValue("Tag", DefaultEntityTag));
 
@@ -116,6 +118,9 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                 auto& info = scene.GetComponent<InfoComponent>(currentEntity);
                 info.sceneName = fragmentName;
                 info.layer = entityLayer;
+                info.isActive = entNode.GetChildValue("Active", "true") != "false";
+                info.renderOrder = LoaderUtils::SafeStoi(entNode.GetChildValue("RenderOrder", "0"));
+                info.isTransient = entNode.GetChildValue("Transient", "false") == "true";
 
                 // Set parent to the provided parent by default
                 if (parent != entt::null)

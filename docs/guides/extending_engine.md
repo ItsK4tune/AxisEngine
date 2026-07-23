@@ -84,3 +84,6 @@ Implement `ILoaderStrategy`, return a stable type name from `GetName`, then call
 `State` and `Scriptable` inherit `EngineAccessor`. Prefer its high-level scene, input, configuration, data-node, timing, rendering, and physics methods. For an advanced service use `Get<T>()`, `Resolve<T>()`, or `GetSystem<T>()`; application code should not depend on `ServiceLocator`.
 
 See [API Surface](../core/api_surface.md), [Microphone Capture](audio_capture.md), and [Custom Post-process ABI](graphics.md#9-custom-post-process-abi).
+
+For a complete editor module/panel example, owner-scoped cleanup, shared state, selection, and
+undo integration, see [Extending the Editor](editor_extensions.md).

@@ -42,7 +42,7 @@ public:
     void Render(Scene& scene) override;
     GBuffer& GetGBuffer() override
     {
-        return m_GBuffer;
+        return ActiveGBuffer();
     }
     void BindGBufferForWriting() override;
     void UnbindGBuffer() override;
@@ -57,11 +57,11 @@ public:
 
     uint32_t GetGBufferDepth() const override
     {
-        return m_GBuffer.GetDepthTexture();
+        return ActiveGBuffer().GetDepthTexture();
     }
     uint32_t GetGBufferID() const override
     {
-        return m_GBuffer.GetIDTexture();
+        return ActiveGBuffer().GetIDTexture();
     }
     void RequestEntityIdBuffer() override
     {
@@ -71,15 +71,27 @@ public:
     {
         return m_GBuffer.ReadEntityId(x, y, entityId);
     }
+    bool ReadEntityIds(int x, int y, int width, int height, std::vector<uint32_t>& entityIds) const override
+    {
+        return m_GBuffer.ReadEntityIds(x, y, width, height, entityIds);
+    }
     uint32_t GetGBufferNormal() const override
     {
-        return m_GBuffer.GetNormalTexture();
+        return ActiveGBuffer().GetNormalTexture();
     }
     uint32_t GetGBufferWidth() const override
     {
-        return (uint32_t)m_GBuffer.GetScaledWidth();
+        return (uint32_t)ActiveGBuffer().GetScaledWidth();
     }
     uint32_t GetGBufferHeight() const override
+    {
+        return (uint32_t)ActiveGBuffer().GetScaledHeight();
+    }
+    uint32_t GetPickingBufferWidth() const override
+    {
+        return (uint32_t)m_GBuffer.GetScaledWidth();
+    }
+    uint32_t GetPickingBufferHeight() const override
     {
         return (uint32_t)m_GBuffer.GetScaledHeight();
     }
@@ -98,4 +110,7 @@ private:
     class IGraphicsContext* m_GraphicsContext = nullptr;
     class ConfigManager* m_ConfigManager = nullptr;
     EventSubscriptionList m_EventSubscriptions;
+
+    GBuffer& ActiveGBuffer() { return m_GBuffer; }
+    const GBuffer& ActiveGBuffer() const { return m_GBuffer; }
 };

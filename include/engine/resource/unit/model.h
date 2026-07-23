@@ -30,6 +30,9 @@ public:
 
     void Draw(Shader& shader, bool bindTextures = true);
     void DrawInstanced(Shader& shader, const std::vector<MeshInstanceData>& instances, bool bindTextures = true);
+    void DrawMesh(size_t index, Shader& shader, bool bindTextures = true);
+    void DrawMeshInstanced(size_t index, Shader& shader, const std::vector<MeshInstanceData>& instances,
+                           bool bindTextures = true);
 
     std::unordered_map<std::string, BoneInfo>& GetBoneInfoMap();
     int& GetBoneCount();
