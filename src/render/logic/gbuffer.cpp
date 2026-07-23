@@ -311,3 +311,21 @@ void GBuffer::CreateMultisampleTargets()
     }
     targets.BindFramebuffer(FramebufferTarget::Framebuffer, 0);
 }
+
+bool GBuffer::ReadEntityId(int x, int y, uint32_t& entityId) const
+{
+    if (!m_Context || !m_EntityIdEnabled || !m_IDTexture || !m_FBO)
+        return false;
+
+    const int width = GetScaledWidth();
+    const int height = GetScaledHeight();
+    if (x < 0 || y < 0 || x >= width || y >= height)
+        return false;
+
+    auto& targets = m_Context->GetRenderTargetManager();
+    targets.BindFramebuffer(FramebufferTarget::ReadFramebuffer, m_FBO->Get());
+    targets.ReadBuffer(FramebufferAttachment::Color3);
+    targets.ReadPixels(x, y, 1, 1, TextureFormat::Red_Integer, DataType::UnsignedInt, &entityId);
+    targets.BindFramebuffer(FramebufferTarget::ReadFramebuffer, 0);
+    return true;
+}

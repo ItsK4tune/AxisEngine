@@ -14,6 +14,10 @@ public:
     void BeginFrame();
     void EndFrame();
     void Shutdown();
+    void SetPointerInputEnabled(bool enabled)
+    {
+        m_PointerInputEnabled = enabled;
+    }
     bool IsInitialized() const
     {
         return m_Initialized;
@@ -23,6 +27,7 @@ public:
 
 private:
     bool m_Initialized = false;
+    bool m_PointerInputEnabled = false;
     IGraphicsContext* m_GraphicsContext = nullptr;
 };
 

@@ -212,7 +212,7 @@ std::vector<entt::id_type> PostProcessSystem::GetWriteComponents() const
 
 PostProcessEffectHandle PostProcessSystem::RegisterEffect(PostProcessEffectDescriptor descriptor)
 {
-    constexpr uint32_t validInputs = static_cast<uint32_t>(PostProcessInput::Standard);
+    constexpr uint32_t validInputs = static_cast<uint32_t>(PostProcessInput::All);
     if (descriptor.owner.empty() || descriptor.name.empty() || descriptor.shaderName.empty() ||
         descriptor.width < 0 || descriptor.height < 0 ||
         (static_cast<uint32_t>(descriptor.inputs) & ~validInputs) != 0)

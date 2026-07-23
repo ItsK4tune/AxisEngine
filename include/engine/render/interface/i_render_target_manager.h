@@ -33,6 +33,7 @@ public:
 
     virtual void DrawBuffer(FramebufferAttachment buf) = 0;
     virtual void ReadBuffer(FramebufferAttachment buf) = 0;
+    virtual void ReadPixels(int x, int y, int width, int height, TextureFormat format, DataType type, void* data) = 0;
     virtual void DrawBuffers(int n, const FramebufferAttachment* bufs) = 0;
     virtual void ClearColorAttachmentUInt(int drawBuffer, const unsigned int value[4]) = 0;
 

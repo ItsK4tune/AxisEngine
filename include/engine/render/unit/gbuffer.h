@@ -85,6 +85,7 @@ public:
     int GetActiveSampleCount() const { return m_SampleCount; }
     void SetEntityIdEnabled(bool enabled) { m_EntityIdEnabled = enabled; }
     bool IsEntityIdEnabled() const { return m_EntityIdEnabled; }
+    bool ReadEntityId(int x, int y, uint32_t& entityId) const;
 
 private:
     IGraphicsContext* m_Context = nullptr;

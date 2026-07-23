@@ -451,11 +451,13 @@ void PostProcessPipeline::PrepareFrameInputs()
     m_FrameInputs.depthTexture = m_DepthTexture ? m_DepthTexture->Get() : 0;
 
     bool needsDeferredData = false;
+    bool needsEntityId = false;
     bool needsCamera = false;
     bool needsAudio = false;
     for (const auto& effect : m_Effects)
     {
         needsDeferredData = needsDeferredData || HasPostProcessInput(effect.inputs, PostProcessInput::Normal);
+        needsEntityId = needsEntityId || HasPostProcessInput(effect.inputs, PostProcessInput::EntityId);
         // World position is deliberately reconstructed from the capture depth.
         // This keeps it available without restoring a full-resolution G-buffer MRT.
         needsCamera = needsCamera || HasPostProcessInput(effect.inputs, PostProcessInput::CameraMatrices) ||
@@ -470,6 +472,11 @@ void PostProcessPipeline::PrepareFrameInputs()
         {
             m_FrameInputs.normalTexture = geometry->GetGBufferNormal();
         }
+    }
+    if (needsEntityId)
+    {
+        if (auto* geometry = services.Resolve<IGeometryService>(); geometry && geometry->IsDeferredRenderingEnabled())
+            m_FrameInputs.entityIdTexture = geometry->GetGBufferID();
     }
     if (needsCamera)
     {
@@ -579,6 +586,7 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
         const bool wantsWorldPosition = HasPostProcessInput(effect.inputs, PostProcessInput::WorldPosition);
         const bool wantsCamera = HasPostProcessInput(effect.inputs, PostProcessInput::CameraMatrices);
         const bool wantsPulses = HasPostProcessInput(effect.inputs, PostProcessInput::AudioPulses);
+        const bool wantsEntityId = HasPostProcessInput(effect.inputs, PostProcessInput::EntityId);
         if (wantsColor)
         {
             effect.shader->setInt("screenTexture", ShaderABI::PostProcessColorTexture);
@@ -600,6 +608,8 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
             effect.shader->setVec4("u_AudioLevel", glm::vec4(level.rms, level.peak, level.intensity, level.noiseFloor));
             effect.shader->setInt("u_PulseCount", static_cast<int>(m_FrameInputs.pulseCount));
         }
+        if (wantsEntityId)
+            effect.shader->setInt("u_EntityIdTexture", ShaderABI::PostProcessEntityIdTexture);
         effect.shader->setBool("u_HasDepthTexture", wantsDepth && m_FrameInputs.depthTexture != 0);
         effect.shader->setBool("u_HasNormalTexture", wantsNormal && m_FrameInputs.normalTexture != 0);
         effect.shader->setBool("u_HasWorldPositionTexture",
@@ -611,6 +621,7 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
         effect.shader->setBool("u_HasCameraMatrices",
                                (wantsCamera || wantsWorldPosition) && m_FrameInputs.hasCameraMatrices);
         effect.shader->setBool("u_HasAudioPulses", wantsPulses && m_FrameInputs.pulseCount > 0);
+        effect.shader->setBool("u_HasEntityIdTexture", wantsEntityId && m_FrameInputs.entityIdTexture != 0);
         effect.shader->setBool("u_IsPartialEffect", isPartial);
         effect.shader->setVec4(
             "u_EffectRect",
@@ -627,6 +638,8 @@ void PostProcessPipeline::RenderEffectsRange(int minPriority, int maxPriority, b
         tm.BindTexture(TextureType::Texture2D, wantsNormal ? m_FrameInputs.normalTexture : 0);
         tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessWorldPositionTexture));
         tm.BindTexture(TextureType::Texture2D, wantsWorldPosition ? m_FrameInputs.worldPositionTexture : 0);
+        tm.ActiveTexture(static_cast<TextureUnit>(ShaderABI::PostProcessEntityIdTexture));
+        tm.BindTexture(TextureType::Texture2D, wantsEntityId ? m_FrameInputs.entityIdTexture : 0);
         if (wantsPulses && m_PulseUpload && m_PulseBufferSize > 0)
             bm.BindBufferRange(BufferType::ShaderStorageBuffer, ShaderABI::PulseSSBOBinding,
                                m_PulseUpload->GetBuffer(), m_PulseBufferOffset, m_PulseBufferSize);

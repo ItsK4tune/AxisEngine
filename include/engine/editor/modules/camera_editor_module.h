@@ -15,11 +15,15 @@ public:
     CameraEditorModule() = default;
     ~CameraEditorModule() override = default;
 
-    void OnUpdate(float dt) override;
+    void Shutdown() override;
     void ProcessInput(KeyboardManager& keyboard) override;
+    void SetEnabled(bool enabled) override;
 
 private:
     void ToggleDebugCamera();
+    entt::entity EnsureDebugCamera(Scene& scene);
+    void ActivateDebugCamera(Scene& scene);
+    void RestoreGameCamera(Scene& scene);
     void ProcessKey(KeyboardManager& keyboard, Key key, bool& pressedState, std::function<void()> action);
 
     bool m_F11Pressed = false;
@@ -27,6 +31,8 @@ private:
     bool m_IsDebugCameraActive = false;
     entt::entity m_LastActiveCamera = entt::null;
     entt::entity m_DebugCamera = entt::null;
+    Scene* m_DebugCameraScene = nullptr;
+    bool m_RestoreCursorMode = false;
 };
 
 #endif

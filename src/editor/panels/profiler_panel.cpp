@@ -285,10 +285,6 @@ float GetSmoothingAlpha(float dt, float smoothingWindowSeconds)
     return 1.0f - std::exp(-dt / smoothingWindowSeconds);
 }
 
-void SmoothValue(float& value, float sample, float alpha, bool hasPreviousSample)
-{
-    value = hasPreviousSample ? value + (sample - value) * alpha : sample;
-}
 }  // namespace
 
 void ProfilerPanel::OnUpdate(float dt)
@@ -344,23 +340,50 @@ void ProfilerPanel::RecalculateFrameWindowStats()
 void ProfilerPanel::SmoothRuntimeStats(float dt)
 {
     const RuntimeProfilerStats& runtimeStats = RuntimeProfiler::Instance().GetStats();
-    const float alpha = GetSmoothingAlpha(dt, SMOOTHING_WINDOW_SECONDS);
+    if (dt <= 0.0f)
+        return;
 
-    const float cpuFrameSample = runtimeStats.cpuFrameMs > 0.0f ? runtimeStats.cpuFrameMs : m_FrameTime;
-    const float gpuFrameSample = runtimeStats.hasGpuFrameTime ? runtimeStats.gpuFrameMs : cpuFrameSample;
-    const float gpuUsageSample =
-        runtimeStats.hasGpuUsage || runtimeStats.hasGpuFrameTime ? runtimeStats.gpuUsagePercent : 0.0f;
+    RuntimeWindowSample sample;
+    sample.duration = dt;
+    sample.cpuFrameMs = runtimeStats.cpuFrameMs > 0.0f ? runtimeStats.cpuFrameMs : m_FrameTime;
+    sample.gpuFrameMs = runtimeStats.hasGpuFrameTime ? runtimeStats.gpuFrameMs : sample.cpuFrameMs;
+    sample.gpuUsage = runtimeStats.hasGpuUsage || runtimeStats.hasGpuFrameTime ? runtimeStats.gpuUsagePercent : 0.0f;
+    sample.passMs = runtimeStats.passMs;
 
-    SmoothValue(m_SmoothedCpuFrameTime, cpuFrameSample, alpha, m_HasRuntimeSmoothSample);
-    SmoothValue(m_SmoothedGpuFrameTime, gpuFrameSample, alpha, m_HasRuntimeSmoothSample);
-    SmoothValue(m_SmoothedGpuUsage, gpuUsageSample, alpha, m_HasRuntimeSmoothSample);
+    m_RuntimeWindow.push_back(sample);
+    m_RuntimeWindowDuration += sample.duration;
+    m_RuntimeCpuWeightedSum += sample.cpuFrameMs * sample.duration;
+    m_RuntimeGpuWeightedSum += sample.gpuFrameMs * sample.duration;
+    m_RuntimeGpuUsageWeightedSum += sample.gpuUsage * sample.duration;
+    for (size_t i = 0; i < sample.passMs.size(); ++i)
+        m_RuntimePassWeightedSums[i] += sample.passMs[i] * sample.duration;
 
-    for (size_t i = 0; i < m_SmoothedPassMs.size(); ++i)
+    while (!m_RuntimeWindow.empty() && m_RuntimeWindowDuration > SMOOTHING_WINDOW_SECONDS)
     {
-        SmoothValue(m_SmoothedPassMs[i], runtimeStats.passMs[i], alpha, m_HasRuntimeSmoothSample);
+        RuntimeWindowSample& oldest = m_RuntimeWindow.front();
+        const float removeDuration =
+            (std::min)(oldest.duration, m_RuntimeWindowDuration - SMOOTHING_WINDOW_SECONDS);
+        m_RuntimeWindowDuration -= removeDuration;
+        oldest.duration -= removeDuration;
+        m_RuntimeCpuWeightedSum -= oldest.cpuFrameMs * removeDuration;
+        m_RuntimeGpuWeightedSum -= oldest.gpuFrameMs * removeDuration;
+        m_RuntimeGpuUsageWeightedSum -= oldest.gpuUsage * removeDuration;
+        for (size_t i = 0; i < oldest.passMs.size(); ++i)
+            m_RuntimePassWeightedSums[i] -= oldest.passMs[i] * removeDuration;
+        if (oldest.duration <= 0.000001f)
+            m_RuntimeWindow.pop_front();
     }
 
-    m_HasRuntimeSmoothSample = true;
+    if (m_RuntimeWindowDuration > 0.0f)
+    {
+        const float inverseDuration = 1.0f / m_RuntimeWindowDuration;
+        m_SmoothedCpuFrameTime = m_RuntimeCpuWeightedSum * inverseDuration;
+        m_SmoothedGpuFrameTime = m_RuntimeGpuWeightedSum * inverseDuration;
+        m_SmoothedGpuUsage = m_RuntimeGpuUsageWeightedSum * inverseDuration;
+        for (size_t i = 0; i < m_SmoothedPassMs.size(); ++i)
+            m_SmoothedPassMs[i] = m_RuntimePassWeightedSums[i] * inverseDuration;
+        m_HasRuntimeSmoothSample = true;
+    }
 }
 
 void ProfilerPanel::UpdateSystemStats(float dt)

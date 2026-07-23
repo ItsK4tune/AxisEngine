@@ -58,11 +58,12 @@ void DefaultCameraController::OnUpdate(float)
     const bool hoveringPanel = uiCapture && uiCapture->WantsPointerInput();
     const bool typing = uiCapture && uiCapture->WantsTextInput();
 
-    bool isRMB = mouse.IsRightButtonPressed();
-    bool isMMB = mouse.IsMiddleButtonPressed();
+    const bool editorCursor = mouse.IsEditorMode();
+    bool isRMB = mouse.IsEditorButtonPressed(Mouse::Right);
+    bool isMMB = mouse.IsEditorButtonPressed(Mouse::Middle);
     bool isAlt = keyboard.GetKey(Key::LeftAlt) || keyboard.GetKey(Key::RightAlt);
     bool isCtrl = keyboard.GetKey(Key::LeftControl) || keyboard.GetKey(Key::RightControl);
-    bool isLMB = mouse.IsLeftButtonPressed();
+    bool isLMB = mouse.IsEditorButtonPressed(Mouse::Left);
 
     bool looking = isRMB && !isAlt;
     bool panning = isMMB || (isRMB && isAlt);
@@ -94,28 +95,20 @@ void DefaultCameraController::OnUpdate(float)
     panning = panning && m_WasPanning;
     orbiting = orbiting && m_WasOrbiting;
 
-    // Manage cursor mode
-    if (looking || panning || orbiting)
+    // DefaultCameraController is an editor tool. It never changes the cursor
+    // away from Editor mode; releasing the gesture only resets its drag state.
+    if (!editorCursor || (!looking && !panning && !orbiting))
     {
-        if (mouse.GetCursorMode() != CursorMode::LockedHidden)
-        {
-            io->GetMouse().SetCursorMode(CursorMode::LockedHidden);
-        }
-    }
-    else
-    {
-        if (mouse.GetCursorMode() == CursorMode::LockedHidden)
-        {
-            io->GetMouse().SetCursorMode(CursorMode::Normal);
-        }
         m_WasLooking = false;
         m_WasPanning = false;
         m_WasOrbiting = false;
+        if (!editorCursor)
+            m_Velocity = glm::vec3(0.0f);
     }
 
     // Framing
     bool isF = keyboard.GetKey(Key::F);
-    if (isF && !m_WasFPressed && !typing)
+    if (editorCursor && isF && !m_WasFPressed && !typing)
     {
         m_WasFPressed = true;
         entt::entity target = m_SelectedEntity;
@@ -144,7 +137,7 @@ void DefaultCameraController::OnUpdate(float)
     if (keyboard.GetKey(Key::LeftControl))
         speedMultiplier = 0.25f;
 
-    float scroll = mouse.GetScrollY();
+    float scroll = mouse.GetEditorScrollY();
     if (looking && scroll != 0.0f)
     {
         m_BaseMoveSpeed += scroll;
@@ -164,8 +157,8 @@ void DefaultCameraController::OnUpdate(float)
     glm::vec3 right = glm::normalize(glm::cross(frontNormalized, worldUp));
     glm::vec3 up = glm::normalize(glm::cross(right, frontNormalized));
 
-    float xOffset = mouse.GetXOffset() * config.input.mouseSensitivityX;
-    float yOffset = mouse.GetYOffset() * config.input.mouseSensitivityY;
+    float xOffset = mouse.GetEditorXOffset() * config.input.mouseSensitivityX;
+    float yOffset = mouse.GetEditorYOffset() * config.input.mouseSensitivityY;
     if (config.input.mouseInvertX)
         xOffset = -xOffset;
     if (config.input.mouseInvertY)

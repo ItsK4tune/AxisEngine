@@ -17,6 +17,40 @@ public:
 
     void SetCursorMode(CursorMode mode);
     CursorMode GetCursorMode() const;
+    void EnterEditorMode();
+    void ExitEditorMode();
+    void ToggleEditorMode();
+    bool IsEditorMode() const
+    {
+        return m_Mode == CursorMode::Editor;
+    }
+    bool IsEditorMouseClicked(Mouse button) const
+    {
+        return IsEditorMode() &&
+               (m_ClickedAccumulator.test(static_cast<size_t>(button)) ||
+                (m_CurrentButtons.test(static_cast<size_t>(button)) &&
+                 !m_PreviousButtons.test(static_cast<size_t>(button))));
+    }
+    bool IsEditorButtonPressed(Mouse button) const
+    {
+        return IsEditorMode() && m_CurrentButtons.test(static_cast<size_t>(button));
+    }
+    float GetEditorScrollY() const
+    {
+        return IsEditorMode() ? m_ScrollY : 0.0f;
+    }
+    float GetEditorXOffset() const
+    {
+        return IsEditorMode() ? m_EditorXOffset : 0.0f;
+    }
+    float GetEditorYOffset() const
+    {
+        return IsEditorMode() ? m_EditorYOffset : 0.0f;
+    }
+    CursorMode GetModeBeforeEditor() const
+    {
+        return m_ModeBeforeEditor;
+    }
 
     float GetXOffset() const;
     float GetYOffset() const;
@@ -27,15 +61,19 @@ public:
 
     bool IsButtonPressed(Mouse button) const
     {
-        return m_CurrentButtons.test((size_t)button);
+        return !IsEditorMode() && m_CurrentButtons.test((size_t)button);
     }
     bool IsMouseClicked(Mouse button) const
     {
-        return m_ClickedAccumulator.test((size_t)button) || (m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button));
+        return !IsEditorMode() &&
+               (m_ClickedAccumulator.test((size_t)button) ||
+                (m_CurrentButtons.test((size_t)button) && !m_PreviousButtons.test((size_t)button)));
     }
     bool IsMouseReleased(Mouse button) const
     {
-        return m_ReleasedAccumulator.test((size_t)button) || (!m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button));
+        return !IsEditorMode() &&
+               (m_ReleasedAccumulator.test((size_t)button) ||
+                (!m_CurrentButtons.test((size_t)button) && m_PreviousButtons.test((size_t)button)));
     }
 
     bool IsLeftButtonPressed() const
@@ -113,16 +151,20 @@ public:
 
     void SetForceFree(bool force)
     {
-        m_ForceFree = force;
+        if (force)
+            EnterEditorMode();
+        else
+            ExitEditorMode();
     }
     bool IsForceFree() const
     {
-        return m_ForceFree;
+        return IsEditorMode();
     }
 
 private:
     friend class IOHandler;
     void SetWindow(IWindow* window);
+    void ApplyCursorMode(CursorMode mode);
 
     IWindow* m_Window = nullptr;
     int m_WindowWidth = 800;
@@ -136,11 +178,13 @@ private:
 
     float m_XOffset = 0;
     float m_YOffset = 0;
+    float m_EditorXOffset = 0;
+    float m_EditorYOffset = 0;
     float m_ScrollY = 0;
 
     bool m_FirstMouse = true;
-    bool m_ForceFree = false;
     CursorMode m_Mode;
+    CursorMode m_ModeBeforeEditor = CursorMode::Normal;
 
     std::bitset<16> m_CurrentButtons;
     std::bitset<16> m_PreviousButtons;

@@ -44,6 +44,7 @@
 #include <core/logic/time_service.h>
 #include <core/type/event_types.h>
 #include <ecs/logic/system_manager.h>
+#include <ecs/interface/i_geometry_service.h>
 #include <editor/panels/console_panel.h>
 #include <editor/panels/animation_graph_panel.h>
 #include <editor/panels/file_hierarchy_panel.h>
@@ -56,11 +57,29 @@
 #include <editor/panels/network_panel.h>
 #include <editor/panels/tools_panel.h>
 #include <editor/panels/vfx_graph_panel.h>
+#include <render/interface/i_post_process_registry.h>
+#include <limits>
 
 namespace
 {
 std::vector<std::string> s_UndoStack;
 std::vector<std::string> s_RedoStack;
+constexpr const char* kSelectionOutlineOwner = "axis.editor.selection";
+constexpr const char* kSelectionOutlineShader = "editor_selection_outline";
+
+entt::entity ResolveRenderedEntity(Scene& scene, uint32_t renderedId)
+{
+    if (renderedId == std::numeric_limits<uint32_t>::max())
+        return entt::null;
+
+    auto entities = scene.View<InfoComponent>();
+    for (auto entity : entities)
+    {
+        if (static_cast<uint32_t>(entt::to_entity(entity)) == renderedId)
+            return entity;
+    }
+    return entt::null;
+}
 
 std::filesystem::path MakeEditorTempPath(const char* purpose)
 {
@@ -74,6 +93,20 @@ std::filesystem::path MakeEditorTempPath(const char* purpose)
 
 EditorSystem::EditorSystem() = default;
 EditorSystem::~EditorSystem() = default;
+
+void EditorSystem::SetEnabled(bool enabled)
+{
+    if (m_Enabled == enabled)
+        return;
+
+    if (!enabled && m_SelectionOutlineHandle != 0)
+    {
+        if (auto* postProcess = ServiceLocator::Instance().Resolve<IPostProcessRegistry>())
+            postProcess->UnregisterEffect(m_SelectionOutlineHandle);
+        m_SelectionOutlineHandle = 0;
+    }
+    m_Enabled = enabled;
+}
 
 void EditorSystem::Initialize()
 {
@@ -183,6 +216,11 @@ void EditorSystem::Initialize()
 
 void EditorSystem::Shutdown()
 {
+    if (auto* postProcess = ServiceLocator::Instance().Resolve<IPostProcessRegistry>())
+        postProcess->UnregisterOwner(kSelectionOutlineOwner);
+    m_SelectionOutlineHandle = 0;
+    if (auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>())
+        ioHandler->GetMouse().ExitEditorMode();
     LogManager::Instance().SetLogCallback({});
     for (auto it = m_Panels.rbegin(); it != m_Panels.rend(); ++it) (*it)->Shutdown();
     for (auto it = m_Modules.rbegin(); it != m_Modules.rend(); ++it) (*it)->Shutdown();
@@ -207,6 +245,60 @@ void EditorSystem::OnUpdate(float dt)
         return;
 
     KeyboardManager& kb = ioHandler->GetKeyboard();
+    auto& mouse = ioHandler->GetMouse();
+    m_ImGuiLayer.SetPointerInputEnabled(mouse.IsEditorMode());
+
+    auto* scene = sl.Resolve<Scene>();
+    auto* geometry = sl.Resolve<IGeometryService>();
+    const bool hasSelection = scene && scene->IsValid(SceneHierarchyPanel::s_SelectedEntity);
+    if (geometry && (mouse.IsEditorMode() || hasSelection))
+        geometry->RequestEntityIdBuffer();
+
+    if (auto* postProcess = sl.Resolve<IPostProcessRegistry>())
+    {
+        if (hasSelection && m_SelectionOutlineHandle == 0)
+        {
+            m_SelectionOutlineHandle = postProcess->RegisterEffect(
+                {kSelectionOutlineOwner, "Selected entity outline", kSelectionOutlineShader,
+                 0, 0, 0, 0, 100, false, PostProcessInput::Color | PostProcessInput::EntityId});
+        }
+        else if (!hasSelection && m_SelectionOutlineHandle != 0)
+        {
+            postProcess->UnregisterEffect(m_SelectionOutlineHandle);
+            m_SelectionOutlineHandle = 0;
+        }
+    }
+
+    if (auto* resources = sl.Resolve<ResourceManager>())
+    {
+        if (auto outline = resources->GetShader(kSelectionOutlineShader))
+        {
+            const uint32_t selectedId = hasSelection
+                                            ? static_cast<uint32_t>(entt::to_entity(SceneHierarchyPanel::s_SelectedEntity))
+                                            : std::numeric_limits<uint32_t>::max();
+            outline->use();
+            outline->setUInt("u_SelectedEntityID", selectedId);
+        }
+    }
+
+    if (scene && geometry && mouse.IsEditorMouseClicked(Mouse::Left) && !m_ImGuiLayer.WantsPointerInput())
+    {
+        const auto& monitor = ioHandler->GetMonitorManager();
+        const int windowWidth = monitor.GetWidth();
+        const int windowHeight = monitor.GetHeight();
+        const int bufferWidth = static_cast<int>(geometry->GetGBufferWidth());
+        const int bufferHeight = static_cast<int>(geometry->GetGBufferHeight());
+        if (windowWidth > 0 && windowHeight > 0 && bufferWidth > 0 && bufferHeight > 0)
+        {
+            const int x = std::clamp(static_cast<int>(mouse.GetLastX() * bufferWidth / windowWidth),
+                                     0, bufferWidth - 1);
+            const int yFromTop = std::clamp(static_cast<int>(mouse.GetLastY() * bufferHeight / windowHeight),
+                                            0, bufferHeight - 1);
+            uint32_t renderedId = std::numeric_limits<uint32_t>::max();
+            if (geometry->ReadEntityId(x, bufferHeight - 1 - yFromTop, renderedId))
+                SceneHierarchyPanel::SetSelectedEntity(ResolveRenderedEntity(*scene, renderedId));
+        }
+    }
     // Built-in editor module shortcuts.
     for (auto& module : m_Modules)
     {
@@ -223,8 +315,8 @@ void EditorSystem::OnUpdate(float dt)
     }
 
     // Cursor & input management
-    auto mode = ioHandler->GetMouse().GetCursorMode();
-    if (mode == CursorMode::Hidden || mode == CursorMode::Locked || mode == CursorMode::LockedHidden)
+    auto mode = mouse.GetCursorMode();
+    if (mode != CursorMode::Editor)
     {
         ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
     }
@@ -233,8 +325,8 @@ void EditorSystem::OnUpdate(float dt)
         ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
     }
 
-    // Note: Camera controller already checks ImGui::WantCaptureMouse to skip input.
-    // No cursor mode manipulation needed here — it breaks mouse in overlay/sample mode.
+    // MouseManager suppresses game-facing pointer input while Editor owns the
+    // cursor; ImGui pointer input is disabled in every other cursor mode.
 
     // === Keyboard Shortcuts ===
     bool ctrl = kb.GetKey(Key::LeftControl) || kb.GetKey(Key::RightControl);
@@ -637,38 +729,13 @@ void EditorSystem::OnUpdate(float dt)
         else if (!kb.GetKey(Key::F5))
             m_F5Pressed = false;
 
-        // Toggle Force Free Cursor (F6)
+        // Toggle editor cursor ownership (F6). MouseManager preserves the
+        // exact game mode and prevents game code from stealing the cursor.
         if (kb.GetKey(Key::F6) && !shift && !m_F6Pressed)
         {
             m_F6Pressed = true;
-            auto& mouse = ioHandler->GetMouse();
-            bool nextForceFree = !mouse.IsForceFree();
-            mouse.SetForceFree(nextForceFree);
-            if (nextForceFree)
-            {
-                mouse.SetCursorMode(CursorMode::Disabled);
-            }
-            else
-            {
-                auto* core = ServiceLocator::Instance().Resolve<RuntimeCore>();
-                if (core)
-                {
-                    auto& sm = core->GetStateMachine();
-                    State* curr = sm.GetCurrentState();
-                    if (curr)
-                    {
-                        std::string rawName = typeid(*curr).name();
-                        if (rawName.find("AimGameState") != std::string::npos)
-                        {
-                            mouse.SetCursorMode(CursorMode::LockedHidden);
-                        }
-                        else
-                        {
-                            mouse.SetCursorMode(CursorMode::Normal);
-                        }
-                    }
-                }
-            }
+            mouse.ToggleEditorMode();
+            m_ImGuiLayer.SetPointerInputEnabled(mouse.IsEditorMode());
         }
         else if (!kb.GetKey(Key::F6))
             m_F6Pressed = false;

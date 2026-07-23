@@ -582,7 +582,7 @@ void ComponentLoader::LoadPostProcess(Scene& scene, entt::entity entity, const Y
             }
             if (parts.size() >= 8)
             {
-                const auto knownInputs = static_cast<unsigned long>(PostProcessInput::Standard);
+                const auto knownInputs = static_cast<unsigned long>(PostProcessInput::All);
                 const auto serializedInputs =
                     LoaderUtils::SafeStoul(parts[7], static_cast<unsigned long>(PostProcessInput::Color));
                 effect.inputs = static_cast<PostProcessInput>(serializedInputs & knownInputs);

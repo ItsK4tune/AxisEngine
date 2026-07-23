@@ -164,6 +164,10 @@ public:
     {
         glReadBuffer(GLTranslator::ToGL(buf));
     }
+    void ReadPixels(int x, int y, int width, int height, TextureFormat format, DataType type, void* data) override
+    {
+        glReadPixels(x, y, width, height, GLTranslator::ToGL(format), GLTranslator::ToGL(type), data);
+    }
 
     void DrawBuffers(int n, const FramebufferAttachment* bufs) override
     {

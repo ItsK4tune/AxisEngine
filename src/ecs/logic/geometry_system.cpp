@@ -18,6 +18,7 @@
 #include <render/interface/i_render_target_manager.h>
 #include <render/interface/i_texture_manager.h>
 #include <render/logic/material_renderer.h>
+#include <limits>
 #include <render/logic/render_core.h>
 #include <render/unit/render_queue.h>
 #include <resource/logic/resource_manager.h>
@@ -164,7 +165,7 @@ void GeometrySystem::Render(Scene& scene)
     rtm.DrawBuffers(6, geometryAttachments);
     if (entityIdEnabled)
     {
-        const unsigned int clearEntityId[4] = {0, 0, 0, 0};
+        const unsigned int clearEntityId[4] = {std::numeric_limits<unsigned int>::max(), 0, 0, 0};
         rtm.ClearColorAttachmentUInt(3, clearEntityId);
     }
 

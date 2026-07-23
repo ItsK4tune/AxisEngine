@@ -67,6 +67,10 @@ public:
     {
         m_EntityIdRequested = true;
     }
+    bool ReadEntityId(int x, int y, uint32_t& entityId) const override
+    {
+        return m_GBuffer.ReadEntityId(x, y, entityId);
+    }
     uint32_t GetGBufferNormal() const override
     {
         return m_GBuffer.GetNormalTexture();

@@ -39,10 +39,13 @@ std::mutex& SystemFactory::GetMutex()
     return mutex;
 }
 
-void SystemFactory::RegisterDefault(const std::string& name, Creator creator)
+bool SystemFactory::Register(std::string name, Creator creator)
 {
+    if (name.empty() || !creator)
+        return false;
+
     std::lock_guard lock(GetMutex());
-    GetRegistry().try_emplace(name, std::move(creator));
+    return GetRegistry().try_emplace(std::move(name), std::move(creator)).second;
 }
 
 void SystemFactory::EnsureBuiltInSystemsRegistered()
@@ -50,7 +53,7 @@ void SystemFactory::EnsureBuiltInSystemsRegistered()
     static std::once_flag once;
     std::call_once(once, [] {
 #define AXIS_REGISTER_BUILTIN(SystemType) \
-    RegisterDefault(#SystemType, [] { return std::make_unique<SystemType>(); })
+    Register(#SystemType, [] { return std::make_unique<SystemType>(); })
         AXIS_REGISTER_BUILTIN(AnimationSystem);
         AXIS_REGISTER_BUILTIN(AudioSystem);
         AXIS_REGISTER_BUILTIN(CameraSystem);

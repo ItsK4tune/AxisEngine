@@ -569,6 +569,8 @@ public:
                 return GLFW_CURSOR_DISABLED;
             case CursorMode::Locked:
                 return GLFW_CURSOR_NORMAL;
+            case CursorMode::Editor:
+                return GLFW_CURSOR_NORMAL;
             default:
                 return GLFW_CURSOR_NORMAL;
         }

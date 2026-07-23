@@ -211,6 +211,7 @@ private:
         uint32_t depthTexture = 0;
         uint32_t normalTexture = 0;
         uint32_t worldPositionTexture = 0;
+        uint32_t entityIdTexture = 0;
         glm::mat4 inverseViewProjection{1.0f};
         AudioCaptureSnapshot audio;
         size_t pulseCount = 0;

@@ -172,6 +172,7 @@ set_source_files_properties(
     "${CMAKE_SOURCE_DIR}/src/audio/strategy/null/null_audio_engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/audio/strategy/irrklang/irrklang_audio_engine.cpp"
     "${CMAKE_SOURCE_DIR}/src/audio/strategy/fmod/fmod_audio_engine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/editor/editor_bootstrap.cpp"
     "${CMAKE_SOURCE_DIR}/src/editor/panels/file_hierarchy_panel.cpp"
     "${CMAKE_SOURCE_DIR}/sample/src/sample_state.cpp"
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
@@ -320,6 +321,22 @@ if(ENABLE_EDITOR)
         ImGui::ImGui
     )
     target_compile_definitions(axis_editor PUBLIC ENABLE_EDITOR)
+
+    # Linking Axis::Editor is the opt-in switch for the editor runtime. Retain
+    # only editor_bootstrap.cpp from the static archive; that bootstrap adds
+    # EditorSystem to SystemFactory before Application creates its systems.
+    if(MSVC)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+            target_link_options(axis_editor INTERFACE "/INCLUDE:_axis_editor_bootstrap_anchor")
+        else()
+            target_link_options(axis_editor INTERFACE "/INCLUDE:axis_editor_bootstrap_anchor")
+        endif()
+    elseif(APPLE)
+        target_link_options(axis_editor INTERFACE "LINKER:-u,_axis_editor_bootstrap_anchor")
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_link_options(axis_editor INTERFACE "LINKER:--undefined=axis_editor_bootstrap_anchor")
+    endif()
+
     axis_optimize_build(axis_editor)
 endif()
 

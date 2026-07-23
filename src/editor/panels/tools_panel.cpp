@@ -30,41 +30,20 @@ void ToolsPanel::OnImGui(Scene& scene)
         auto& mouse = io->GetMouse();
         CursorMode mode = mouse.GetCursorMode();
         const char* modeStr = (mode == CursorMode::Locked)     ? "Locked (FPS)"
-                              : (mode == CursorMode::Disabled) ? "Disabled (Panel)"
+                              : (mode == CursorMode::Editor)   ? "Editor"
+                              : (mode == CursorMode::Disabled) ? "Disabled"
                               : (mode == CursorMode::Normal)   ? "Normal"
                               : (mode == CursorMode::Hidden)   ? "Hidden"
                                                                : "LockedHidden";
         ImGui::Text("Cursor: %s", modeStr);
 
-        bool forceFree = mouse.IsForceFree();
-        if (ImGui::Checkbox("Force Free Cursor (F6)", &forceFree))
+        bool editorMode = mouse.IsEditorMode();
+        if (ImGui::Checkbox("Editor Cursor (F6)", &editorMode))
         {
-            mouse.SetForceFree(forceFree);
-            if (forceFree)
-            {
-                mouse.SetCursorMode(CursorMode::Disabled);
-            }
+            if (editorMode)
+                mouse.EnterEditorMode();
             else
-            {
-                auto* core = ServiceLocator::Instance().Resolve<RuntimeCore>();
-                if (core)
-                {
-                    auto& sm = core->GetStateMachine();
-                    State* curr = sm.GetCurrentState();
-                    if (curr)
-                    {
-                        std::string rawName = typeid(*curr).name();
-                        if (rawName.find("AimGameState") != std::string::npos)
-                        {
-                            mouse.SetCursorMode(CursorMode::LockedHidden);
-                        }
-                        else
-                        {
-                            mouse.SetCursorMode(CursorMode::Normal);
-                        }
-                    }
-                }
-            }
+                mouse.ExitEditorMode();
         }
     }
     ImGui::Separator();

@@ -45,7 +45,7 @@ Platform filesystem and runtime providers use `SetPlatformFileSystemProvider` an
 
 ## Systems and scripts
 
-Register custom systems in `Application::RegisterUserSystems`. A system registered there with the same name as a built-in system wins for that application. Built-ins are created from an explicit, deterministic catalog; no whole-archive flag or static constructor is required.
+Register custom per-application systems in `Application::RegisterUserSystems`. A system registered there with the same name as a built-in or linked optional system wins for that application. Built-ins are created from an explicit, deterministic catalog.
 
 ```cpp
 void GameApplication::RegisterUserSystems(ISystemRegistry& systems) {
@@ -57,7 +57,16 @@ void GameApplication::RegisterUserScripts() {
 }
 ```
 
-Optional editor builds follow the same rule: register `EditorSystem` in `RegisterUserSystems`. Scripts are instance-local and a later registration with the same name replaces the earlier factory.
+The editor is an optional linked module. Linking only `Axis::Engine` produces a runtime application without editor code. Linking `Axis::Editor` also propagates `ENABLE_EDITOR` and retains a small bootstrap object that registers `EditorSystem` before application initialization; user code does not register it manually. The bootstrap uses a single anchor symbol rather than forcing the complete static archive into the executable. Scripts are instance-local and a later registration with the same name replaces the earlier factory.
+
+```cmake
+target_link_libraries(MyGame PRIVATE Axis::Engine)
+
+# Development/editor target only:
+target_link_libraries(MyGameEditor PRIVATE Axis::Editor)
+```
+
+Consumers that link the raw static archives instead of the exported CMake targets must preserve the bootstrap anchor themselves (`/INCLUDE:axis_editor_bootstrap_anchor` on 64-bit MSVC, or the platform-equivalent undefined-symbol option). Prefer `Axis::Editor`, which carries this requirement automatically.
 
 ## Module-owned registries
 

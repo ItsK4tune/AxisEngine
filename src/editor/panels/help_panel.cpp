@@ -68,8 +68,7 @@ void HelpPanel::OnImGui(Scene& scene)
 
     if (ImGui::CollapsingHeader("GAME CONTROL", ImGuiTreeNodeFlags_DefaultOpen))
     {
-        ImGui::Text("F6        : Force Free Cursor (Interact with Panels)");
-        ImGui::Text("F10       : Exit Game Match (AimGameState / ResultState)");
+        ImGui::Text("F6        : Toggle Editor Cursor (restore previous mode on exit)");
         ImGui::Text("F11       : Pause/Resume Game");
         ImGui::Text("Shift+F11 : Toggle Debug Camera (Free Cam)");
         ImGui::Text("F12       : Cycle Time Scale (0.25x -> 2x)");

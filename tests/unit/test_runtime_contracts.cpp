@@ -136,8 +136,9 @@ public:
     {
         return monitors;
     }
-    void SetCursorMode(CursorMode) override
+    void SetCursorMode(CursorMode mode) override
     {
+        cursorMode = mode;
     }
     void SetAspectRatio(int, int) override
     {
@@ -196,6 +197,7 @@ public:
     bool gamepadAPressed = false;
     float gamepadLeftX = 0.0f;
     int configuredMonitor = -1;
+    CursorMode cursorMode = CursorMode::Normal;
     std::vector<MonitorInfo> monitors;
 };
 
@@ -1307,13 +1309,66 @@ AXIS_TEST_CASE("Custom systems can replace a default factory system by name")
     axis_test_support::ResetServices();
 }
 
-AXIS_TEST_CASE("Built-in system catalog is deterministic without static linker discovery")
+AXIS_TEST_CASE("System catalog contains built-ins and linked optional modules")
 {
     const auto names = SystemFactory::GetRegisteredNames();
     AXIS_CHECK(std::is_sorted(names.begin(), names.end()));
     AXIS_CHECK(std::binary_search(names.begin(), names.end(), "TransformSystem"));
     AXIS_CHECK(std::binary_search(names.begin(), names.end(), "RenderSystem"));
     AXIS_CHECK(std::binary_search(names.begin(), names.end(), "PhysicsSystem"));
+#ifdef ENABLE_EDITOR
+    AXIS_CHECK(std::binary_search(names.begin(), names.end(), "EditorSystem"));
+#else
+    AXIS_CHECK(!std::binary_search(names.begin(), names.end(), "EditorSystem"));
+#endif
+}
+
+AXIS_TEST_CASE("Editor cursor mode restores the exact previous game mode")
+{
+    FakeWindow window;
+    MouseManager mouse(&window);
+
+    mouse.SetCursorMode(CursorMode::LockedHidden);
+    AXIS_CHECK(mouse.GetCursorMode() == CursorMode::LockedHidden);
+    AXIS_CHECK(window.cursorMode == CursorMode::LockedHidden);
+
+    mouse.ToggleEditorMode();
+    AXIS_CHECK(mouse.GetCursorMode() == CursorMode::Editor);
+    AXIS_CHECK(mouse.GetModeBeforeEditor() == CursorMode::LockedHidden);
+    AXIS_CHECK(window.cursorMode == CursorMode::Normal);
+
+    mouse.UpdateButton(Mouse::Left, 1, 0);
+    AXIS_CHECK(mouse.IsEditorButtonPressed(Mouse::Left));
+    AXIS_CHECK(mouse.IsEditorMouseClicked(Mouse::Left));
+    AXIS_CHECK(!mouse.IsLeftButtonPressed());
+    AXIS_CHECK(!mouse.IsLeftMouseClicked());
+
+    mouse.UpdatePosition(100.0, 100.0);
+    mouse.UpdatePosition(112.0, 94.0);
+    mouse.UpdateScroll(0.0, 2.0);
+    AXIS_CHECK(mouse.GetEditorXOffset() == 12.0f);
+    AXIS_CHECK(mouse.GetEditorYOffset() == 6.0f);
+    AXIS_CHECK(mouse.GetEditorScrollY() == 2.0f);
+    AXIS_CHECK(mouse.GetXOffset() == 0.0f);
+    AXIS_CHECK(mouse.GetYOffset() == 0.0f);
+    AXIS_CHECK(mouse.GetScrollY() == 0.0f);
+
+    // Game code cannot steal the cursor or overwrite the saved mode while the
+    // editor owns it.
+    mouse.SetCursorMode(CursorMode::Hidden);
+    AXIS_CHECK(mouse.GetCursorMode() == CursorMode::Editor);
+    AXIS_CHECK(mouse.GetModeBeforeEditor() == CursorMode::LockedHidden);
+
+    mouse.ToggleEditorMode();
+    AXIS_CHECK(mouse.GetCursorMode() == CursorMode::LockedHidden);
+    AXIS_CHECK(window.cursorMode == CursorMode::LockedHidden);
+
+    mouse.SetCursorMode(CursorMode::Hidden);
+    mouse.ToggleEditorMode();
+    AXIS_CHECK(mouse.GetModeBeforeEditor() == CursorMode::Hidden);
+    mouse.ToggleEditorMode();
+    AXIS_CHECK(mouse.GetCursorMode() == CursorMode::Hidden);
+    AXIS_CHECK(window.cursorMode == CursorMode::Hidden);
 }
 
 AXIS_TEST_CASE("SystemManager resolves systems through stable typed ids")

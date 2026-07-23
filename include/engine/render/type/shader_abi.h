@@ -37,4 +37,5 @@ inline constexpr int PostProcessColorTexture = 0;
 inline constexpr int PostProcessDepthTexture = 1;
 inline constexpr int PostProcessNormalTexture = 2;
 inline constexpr int PostProcessWorldPositionTexture = 3;
+inline constexpr int PostProcessEntityIdTexture = 4;
 }  // namespace ShaderABI

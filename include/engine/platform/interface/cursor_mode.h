@@ -6,5 +6,8 @@ enum class CursorMode
     Hidden,
     Locked,
     LockedHidden,
-    Disabled
+    Disabled,
+    // Visible, freely moving cursor owned by the editor overlay. Game-facing
+    // mouse queries are suppressed until the previous cursor mode is restored.
+    Editor
 };

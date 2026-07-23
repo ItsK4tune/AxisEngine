@@ -94,6 +94,10 @@ axis_scene:
       Vertex: asset://shaders/text.vs
       Fragment: asset://shaders/text.fs
     Shader:
+      Name: editor_selection_outline
+      Vertex: asset://shaders/fxaa.vs
+      Fragment: asset://shaders/editor_selection_outline.fs
+    Shader:
       Name: occlusion
       Vertex: asset://shaders/occlusion_query.vs
       Fragment: asset://shaders/occlusion_query.fs

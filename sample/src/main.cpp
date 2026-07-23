@@ -1,19 +1,9 @@
 #include <axis_app.h>
-#ifdef ENABLE_EDITOR
-#include <editor/editor_system.h>
-#endif
 #include "sample_state.h"
 
 class SampleApplication : public Application
 {
 public:
-#ifdef ENABLE_EDITOR
-    void RegisterUserSystems(ISystemRegistry& systems) override
-    {
-        systems.RegisterSystem(std::make_unique<EditorSystem>());
-    }
-#endif
-
     void RegisterUserScripts() override
     {
         // Script registry requires registering the script classes

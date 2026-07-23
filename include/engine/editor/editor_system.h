@@ -55,10 +55,7 @@ public:
     {
         return m_Enabled;
     }
-    void SetEnabled(bool enabled) override
-    {
-        m_Enabled = enabled;
-    }
+    void SetEnabled(bool enabled) override;
     std::string GetName() const override
     {
         return "EditorSystem";
@@ -115,6 +112,7 @@ private:
     bool m_HPressed = false;
     bool m_RPressed = false;
     float m_NudgeTimer = 0.0f;
+    uint64_t m_SelectionOutlineHandle = 0;
     std::array<bool, 10> m_NumberKeyPressed{};
     bool m_ShowAboutPopup = false;
 

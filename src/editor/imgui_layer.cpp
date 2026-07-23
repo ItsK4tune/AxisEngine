@@ -3,11 +3,15 @@
 #ifdef ENABLE_EDITOR
 
 #include <core/logic/logger.h>
+#include <core/logic/service_locator.h>
+#include <platform/logic/io_handler.h>
 #include <platform/interface/i_window.h>
 #include <render/interface/i_graphics_context.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <cstring>
 
 bool ImGuiLayer::Initialize(IWindow& window, IGraphicsContext& graphicsContext)
 {
@@ -92,8 +96,27 @@ void ImGuiLayer::BeginFrame()
 {
     if (!m_Initialized)
         return;
+    ImGuiIO& io = ImGui::GetIO();
+    if (m_PointerInputEnabled)
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    else
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
+    if (m_PointerInputEnabled)
+    {
+        // CursorMode::Editor deliberately hides mouse state from game-facing
+        // queries. Feed that editor-owned state explicitly so ImGui remains
+        // interactive even when the game previously used a locked cursor.
+        if (auto* ioHandler = ServiceLocator::Instance().Resolve<IOHandler>())
+        {
+            const auto& mouse = ioHandler->GetMouse();
+            io.AddMousePosEvent(mouse.GetLastX(), mouse.GetLastY());
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, mouse.IsEditorButtonPressed(Mouse::Left));
+            io.AddMouseButtonEvent(ImGuiMouseButton_Right, mouse.IsEditorButtonPressed(Mouse::Right));
+            io.AddMouseButtonEvent(ImGuiMouseButton_Middle, mouse.IsEditorButtonPressed(Mouse::Middle));
+        }
+    }
     ImGui::NewFrame();
 }
 
@@ -115,18 +138,25 @@ void ImGuiLayer::Shutdown()
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     m_Initialized = false;
+    m_PointerInputEnabled = false;
     m_GraphicsContext = nullptr;
     LOGGER_INFO("ImGuiLayer") << "ImGui context destroyed.";
 }
 
 bool ImGuiLayer::WantsPointerInput() const
 {
-    return m_Initialized && ImGui::GetCurrentContext() && ImGui::GetIO().WantCaptureMouse;
+    if (!m_PointerInputEnabled || !m_Initialized || !ImGui::GetCurrentContext() || !ImGui::GetIO().WantCaptureMouse)
+        return false;
+
+    // The transparent dock-space host covers the 3D scene, but it is not an
+    // interactive editor panel. Treating it as UI would block scene picking.
+    const ImGuiWindow* hovered = ImGui::GetCurrentContext()->HoveredWindow;
+    return hovered && std::strcmp(hovered->Name, "AxisEngine_DockSpace") != 0;
 }
 
 bool ImGuiLayer::WantsTextInput() const
 {
-    return m_Initialized && ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput;
+    return m_PointerInputEnabled && m_Initialized && ImGui::GetCurrentContext() && ImGui::GetIO().WantTextInput;
 }
 
 #endif

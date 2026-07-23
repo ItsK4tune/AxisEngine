@@ -7,7 +7,6 @@ MouseManager::MouseManager(IWindow* window)
       m_YOffset(0.0f),
       m_ScrollY(0.0f),
       m_FirstMouse(true),
-      m_ForceFree(false),
       m_Mode(CursorMode::Normal)
 {
     SetWindow(window);
@@ -29,6 +28,17 @@ void MouseManager::UpdatePosition(double xpos, double ypos)
         m_LastX = xpos;
         m_LastY = ypos;
         m_FirstMouse = false;
+    }
+
+    if (m_Mode == CursorMode::Editor)
+    {
+        // Preserve editor-only deltas for camera/gizmo tools without exposing
+        // them through the game-facing offset API.
+        m_EditorXOffset += static_cast<float>(xpos - m_LastX);
+        m_EditorYOffset += static_cast<float>(m_LastY - ypos);
+        m_LastX = xpos;
+        m_LastY = ypos;
+        return;
     }
 
     if (m_Mode == CursorMode::Locked)
@@ -90,6 +100,8 @@ void MouseManager::EndFrame()
 {
     m_XOffset = 0.0f;
     m_YOffset = 0.0f;
+    m_EditorXOffset = 0.0f;
+    m_EditorYOffset = 0.0f;
     m_ScrollY = 0.0f;
 
     m_PreviousButtons = m_CurrentButtons;
@@ -102,10 +114,25 @@ void MouseManager::SetCursorMode(CursorMode mode)
     if (!m_Window)
         return;
 
-    if (m_ForceFree && (mode == CursorMode::Locked || mode == CursorMode::LockedHidden))
+    if (mode == CursorMode::Editor)
     {
-        mode = CursorMode::Disabled;
+        EnterEditorMode();
+        return;
     }
+
+    // The editor owns the cursor until F6 explicitly exits it. Game states may
+    // continue requesting their normal mode, but cannot steal the cursor or
+    // overwrite the exact mode captured on entry.
+    if (m_Mode == CursorMode::Editor)
+        return;
+
+    ApplyCursorMode(mode);
+}
+
+void MouseManager::ApplyCursorMode(CursorMode mode)
+{
+    if (!m_Window)
+        return;
 
     if (mode == CursorMode::Locked && m_Mode != CursorMode::Locked)
     {
@@ -113,12 +140,15 @@ void MouseManager::SetCursorMode(CursorMode mode)
         m_LockY = m_LastY;
     }
 
-    if (mode == CursorMode::Disabled)
+    if (mode == CursorMode::Disabled || mode == CursorMode::Editor)
     {
-        // Disabled = cursor visible, normal movement, but game ignores mouse data
-        // Treat like Normal from window perspective
+        // Both modes use a visible free OS cursor. Editor additionally gates
+        // game-facing mouse queries and enables ImGui pointer interaction.
         m_Window->SetCursorMode(CursorMode::Normal);
-        m_Mode = CursorMode::Disabled;
+        m_Mode = mode;
+        m_FirstMouse = true;
+        m_EditorXOffset = 0.0f;
+        m_EditorYOffset = 0.0f;
         return;
     }
 
@@ -129,6 +159,34 @@ void MouseManager::SetCursorMode(CursorMode mode)
         m_FirstMouse = true;
 }
 
+void MouseManager::EnterEditorMode()
+{
+    if (!m_Window || m_Mode == CursorMode::Editor)
+        return;
+
+    m_ModeBeforeEditor = m_Mode;
+    ApplyCursorMode(CursorMode::Editor);
+}
+
+void MouseManager::ExitEditorMode()
+{
+    if (!m_Window || m_Mode != CursorMode::Editor)
+        return;
+
+    CursorMode restoreMode = m_ModeBeforeEditor;
+    if (restoreMode == CursorMode::Editor)
+        restoreMode = CursorMode::Normal;
+    ApplyCursorMode(restoreMode);
+}
+
+void MouseManager::ToggleEditorMode()
+{
+    if (m_Mode == CursorMode::Editor)
+        ExitEditorMode();
+    else
+        EnterEditorMode();
+}
+
 CursorMode MouseManager::GetCursorMode() const
 {
     return m_Mode;
@@ -136,17 +194,17 @@ CursorMode MouseManager::GetCursorMode() const
 
 float MouseManager::GetXOffset() const
 {
-    return m_XOffset;
+    return IsEditorMode() ? 0.0f : m_XOffset;
 }
 
 float MouseManager::GetYOffset() const
 {
-    return m_YOffset;
+    return IsEditorMode() ? 0.0f : m_YOffset;
 }
 
 float MouseManager::GetScrollY() const
 {
-    return m_ScrollY;
+    return IsEditorMode() ? 0.0f : m_ScrollY;
 }
 
 float MouseManager::GetLastX() const
@@ -175,12 +233,12 @@ float MouseManager::GetLastY() const
 
 bool MouseManager::IsWheelUp() const
 {
-    return m_ScrollY > 0.0f;
+    return GetScrollY() > 0.0f;
 }
 
 bool MouseManager::IsWheelDown() const
 {
-    return m_ScrollY < 0.0f;
+    return GetScrollY() < 0.0f;
 }
 
 void MouseManager::SetLastPosition(double x, double y)

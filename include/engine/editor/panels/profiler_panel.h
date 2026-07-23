@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,7 @@ public:
     }
 
 private:
-    static constexpr int FRAME_HISTORY_SIZE = 600;
+    static constexpr int FRAME_HISTORY_SIZE = 2048;
     static constexpr float SMOOTHING_WINDOW_SECONDS = 3.0f;
 
     struct CpuTimes
@@ -58,6 +59,21 @@ private:
     float m_SmoothedGpuFrameTime = 0.0f;
     float m_SmoothedGpuUsage = 0.0f;
     std::array<float, static_cast<size_t>(ProfiledRenderPass::Count)> m_SmoothedPassMs = {};
+
+    struct RuntimeWindowSample
+    {
+        float duration = 0.0f;
+        float cpuFrameMs = 0.0f;
+        float gpuFrameMs = 0.0f;
+        float gpuUsage = 0.0f;
+        std::array<float, static_cast<size_t>(ProfiledRenderPass::Count)> passMs = {};
+    };
+    std::deque<RuntimeWindowSample> m_RuntimeWindow;
+    float m_RuntimeWindowDuration = 0.0f;
+    float m_RuntimeCpuWeightedSum = 0.0f;
+    float m_RuntimeGpuWeightedSum = 0.0f;
+    float m_RuntimeGpuUsageWeightedSum = 0.0f;
+    std::array<float, static_cast<size_t>(ProfiledRenderPass::Count)> m_RuntimePassWeightedSums = {};
 
     float m_SystemStatsTimer = 0.0f;
     bool m_HasCpuSample = false;

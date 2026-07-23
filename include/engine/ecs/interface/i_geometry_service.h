@@ -25,5 +25,6 @@ public:
     // Request the optional entity-ID attachment for the next geometry pass.
     // Call each frame while an editor/picking consumer needs it.
     virtual void RequestEntityIdBuffer() = 0;
+    virtual bool ReadEntityId(int x, int y, uint32_t& entityId) const = 0;
     virtual unsigned int GetGBufferNormal() const = 0;
 };

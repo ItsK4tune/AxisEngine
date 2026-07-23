@@ -84,6 +84,7 @@ private:
 #ifdef ENABLE_EDITOR
     ImGuiLayer* m_EditorImGuiLayer = nullptr;
     bool m_EditorSystemEnabled = false;
+    bool m_F6CursorPressed = false;
 #endif
     int m_CurrentScenario = 0;
     int m_PendingScenario = -1;  // scenario to load next OnUpdate

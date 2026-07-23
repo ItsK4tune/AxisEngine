@@ -37,6 +37,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <deque>
 #include <glm/gtx/quaternion.hpp>
 
 #if defined(_WIN32)
@@ -113,10 +114,20 @@ struct PerfStats
 PerfStats QueryPerfStats()
 {
 #if defined(_WIN32)
-    static PerfStats smoothed;
-    static bool hasSmoothed = false;
+    struct TimedPerfSample
+    {
+        float durationSeconds = 0.0f;
+        PerfStats value;
+    };
+
+    static PerfStats latestSystemStats;
+    static PerfStats previousRaw;
+    static PerfStats weightedSum;
+    static std::deque<TimedPerfSample> window;
+    static ULONGLONG lastQueryMs = 0;
+    static float windowDuration = 0.0f;
     static ULONGLONG lastUpdateMs = 0;
-    PerfStats stats = smoothed;
+    PerfStats stats = latestSystemStats;
 
     const auto& runtime = RuntimeProfiler::Instance().GetLastCompletedStats();
     stats.cpuFrame = runtime.cpuFrameMs;
@@ -129,62 +140,93 @@ PerfStats QueryPerfStats()
                                                    static_cast<double>(runtime.vramTotalBytes) * 100.0),
                                 0.0f, 100.0f);
 
-    ULONGLONG nowMs = GetTickCount64();
-    if (lastUpdateMs != 0 && nowMs - lastUpdateMs < 500)
-    {
-        smoothed.cpuFrame = stats.cpuFrame;
-        smoothed.gpuFrame = stats.gpuFrame;
-        smoothed.gpu = stats.gpu;
-        smoothed.vram = stats.vram;
-        return smoothed;
-    }
-    lastUpdateMs = nowMs;
+    const ULONGLONG nowMs = GetTickCount64();
+    const bool updateSystemStats = lastUpdateMs == 0 || nowMs - lastUpdateMs >= 500;
+    if (updateSystemStats)
+        lastUpdateMs = nowMs;
 
     static uint64_t previousProcessTime = 0;
     static uint64_t previousWallTime = 0;
-    FILETIME creationTime{}, exitTime{}, kernelTime{}, userTime{}, wallTime{};
-    GetSystemTimeAsFileTime(&wallTime);
-    if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
+    if (updateSystemStats)
     {
-        ULARGE_INTEGER kernel{}, user{}, wall{};
-        kernel.LowPart = kernelTime.dwLowDateTime;
-        kernel.HighPart = kernelTime.dwHighDateTime;
-        user.LowPart = userTime.dwLowDateTime;
-        user.HighPart = userTime.dwHighDateTime;
-        wall.LowPart = wallTime.dwLowDateTime;
-        wall.HighPart = wallTime.dwHighDateTime;
-        const uint64_t processTime = kernel.QuadPart + user.QuadPart;
-        const uint64_t wallDelta = wall.QuadPart - previousWallTime;
-        const DWORD processorCount = (std::max<DWORD>)(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS), 1);
-        if (previousProcessTime != 0 && wallDelta > 0)
-            stats.cpu = glm::clamp(static_cast<float>(processTime - previousProcessTime) /
-                                       (static_cast<float>(wallDelta) * processorCount) * 100.0f,
-                                   0.0f, 100.0f);
-        previousProcessTime = processTime;
-        previousWallTime = wall.QuadPart;
+        FILETIME creationTime{}, exitTime{}, kernelTime{}, userTime{}, wallTime{};
+        GetSystemTimeAsFileTime(&wallTime);
+        if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
+        {
+            ULARGE_INTEGER kernel{}, user{}, wall{};
+            kernel.LowPart = kernelTime.dwLowDateTime;
+            kernel.HighPart = kernelTime.dwHighDateTime;
+            user.LowPart = userTime.dwLowDateTime;
+            user.HighPart = userTime.dwHighDateTime;
+            wall.LowPart = wallTime.dwLowDateTime;
+            wall.HighPart = wallTime.dwHighDateTime;
+            const uint64_t processTime = kernel.QuadPart + user.QuadPart;
+            const uint64_t wallDelta = wall.QuadPart - previousWallTime;
+            const DWORD processorCount = (std::max<DWORD>)(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS), 1);
+            if (previousProcessTime != 0 && wallDelta > 0)
+                latestSystemStats.cpu = glm::clamp(static_cast<float>(processTime - previousProcessTime) /
+                                                       (static_cast<float>(wallDelta) * processorCount) * 100.0f,
+                                                   0.0f, 100.0f);
+            previousProcessTime = processTime;
+            previousWallTime = wall.QuadPart;
+        }
+
+        MEMORYSTATUSEX mem{};
+        mem.dwLength = sizeof(mem);
+        if (GlobalMemoryStatusEx(&mem))
+            latestSystemStats.ram = static_cast<float>(mem.dwMemoryLoad);
     }
 
-    MEMORYSTATUSEX mem{};
-    mem.dwLength = sizeof(mem);
-    if (GlobalMemoryStatusEx(&mem))
-        stats.ram = static_cast<float>(mem.dwMemoryLoad);
+    stats.cpu = latestSystemStats.cpu;
+    stats.ram = latestSystemStats.ram;
+    latestSystemStats.vram = stats.vram;
 
-    if (!hasSmoothed)
+    if (lastQueryMs == 0)
     {
-        smoothed = stats;
-        hasSmoothed = true;
-    }
-    else
-    {
-        constexpr float alpha = 0.22f;
-        smoothed.cpu = glm::mix(smoothed.cpu, stats.cpu, alpha);
-        smoothed.gpu = glm::mix(smoothed.gpu, stats.gpu, alpha);
-        smoothed.ram = glm::mix(smoothed.ram, stats.ram, alpha);
-        smoothed.vram = glm::mix(smoothed.vram, stats.vram, alpha);
-        smoothed.cpuFrame = stats.cpuFrame;
-        smoothed.gpuFrame = stats.gpuFrame;
+        lastQueryMs = nowMs;
+        previousRaw = stats;
+        return stats;
     }
 
+    const float duration = static_cast<float>(nowMs - lastQueryMs) * 0.001f;
+    lastQueryMs = nowMs;
+    if (duration > 0.0f)
+    {
+        window.push_back({duration, previousRaw});
+        windowDuration += duration;
+        auto accumulate = [&](const PerfStats& value, float weight) {
+            weightedSum.cpu += value.cpu * weight;
+            weightedSum.gpu += value.gpu * weight;
+            weightedSum.cpuFrame += value.cpuFrame * weight;
+            weightedSum.gpuFrame += value.gpuFrame * weight;
+            weightedSum.ram += value.ram * weight;
+            weightedSum.vram += value.vram * weight;
+        };
+        accumulate(previousRaw, duration);
+
+        while (!window.empty() && windowDuration > 3.0f)
+        {
+            auto& oldest = window.front();
+            const float removeDuration = (std::min)(oldest.durationSeconds, windowDuration - 3.0f);
+            accumulate(oldest.value, -removeDuration);
+            oldest.durationSeconds -= removeDuration;
+            windowDuration -= removeDuration;
+            if (oldest.durationSeconds <= 0.000001f)
+                window.pop_front();
+        }
+    }
+    previousRaw = stats;
+
+    if (windowDuration <= 0.0f)
+        return stats;
+    const float inverseDuration = 1.0f / windowDuration;
+    PerfStats smoothed;
+    smoothed.cpu = weightedSum.cpu * inverseDuration;
+    smoothed.gpu = weightedSum.gpu * inverseDuration;
+    smoothed.cpuFrame = weightedSum.cpuFrame * inverseDuration;
+    smoothed.gpuFrame = weightedSum.gpuFrame * inverseDuration;
+    smoothed.ram = weightedSum.ram * inverseDuration;
+    smoothed.vram = weightedSum.vram * inverseDuration;
     return smoothed;
 #else
     return {};
@@ -470,7 +512,7 @@ void SampleState::OnEnter()
     EnableSystem("NetworkSystem", true);
     EnableSystem("StreamingSystem", true);
 
-    SetCursorMode(CursorMode::Normal);
+    SetCursorMode(CursorMode::Editor);
 
 #ifdef ENABLE_EDITOR
     EnableSystem("EditorSystem", false);
@@ -482,6 +524,7 @@ void SampleState::OnEnter()
         if (editorSys)
         {
             m_EditorImGuiLayer = &editorSys->GetImGuiLayer();
+            m_EditorImGuiLayer->SetPointerInputEnabled(true);
         }
     }
 #endif
@@ -513,6 +556,30 @@ void SampleState::ResetDefaultPlayerBindings()
 
 void SampleState::OnUpdate(float dt)
 {
+#ifdef ENABLE_EDITOR
+    // The standalone sample dashboard owns the editor cursor while the full
+    // EditorSystem is disabled. Keep F6 available for gameplay scenarios that
+    // need their original locked/hidden cursor mode.
+    if (!m_EditorSystemEnabled)
+    {
+        if (auto* io = Resolve<IOHandler>())
+        {
+            auto& keyboard = io->GetKeyboard();
+            if (keyboard.GetKey(Key::F6) && !m_F6CursorPressed)
+            {
+                m_F6CursorPressed = true;
+                io->GetMouse().ToggleEditorMode();
+                if (m_EditorImGuiLayer)
+                    m_EditorImGuiLayer->SetPointerInputEnabled(io->GetMouse().IsEditorMode());
+            }
+            else if (!keyboard.GetKey(Key::F6))
+            {
+                m_F6CursorPressed = false;
+            }
+        }
+    }
+#endif
+
     // Process deferred scenario switch (set by DrawGUI in OnRender previous frame)
     if (m_PendingScenario >= 0)
     {
@@ -2030,8 +2097,8 @@ void SampleState::DrawGUI()
     ImGui::Text("FPS: %.1f", m_CurrentFps);
     ImGui::Text("Frame Time: %.2f ms", 1000.0f / (m_CurrentFps > 0.0f ? m_CurrentFps : 60.0f));
     ImGui::Text("Active Entities: %d", (int)GetScene().View<InfoComponent>().size());
-    ImGui::Text("Process CPU: %.1f%%  GPU frame occupancy: %.0f%%", perf.cpu, perf.gpu);
-    ImGui::Text("CPU/GPU frame: %.2f / %.2f ms", perf.cpuFrame, perf.gpuFrame);
+    ImGui::Text("Process CPU / GPU frame occupancy (3s): %.1f%% / %.0f%%", perf.cpu, perf.gpu);
+    ImGui::Text("CPU/GPU frame time (3s): %.2f / %.2f ms", perf.cpuFrame, perf.gpuFrame);
     ImGui::Text("RAM: %.0f%%  VRAM: %.0f%%", perf.ram, perf.vram);
 
     // Physics rigid bodies count

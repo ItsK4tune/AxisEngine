@@ -13,7 +13,9 @@ enum class PostProcessInput : uint32_t
     WorldPosition = 1u << 3,
     CameraMatrices = 1u << 4,
     AudioPulses = 1u << 5,
-    Standard = 0x3Fu
+    EntityId = 1u << 6,
+    Standard = 0x3Fu,
+    All = 0x7Fu
 };
 
 inline PostProcessInput operator|(PostProcessInput left, PostProcessInput right)
