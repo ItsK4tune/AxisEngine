@@ -16,8 +16,6 @@ class ImGuiLayer;
 
 #include "scriptable/all_scriptables.h"
 
-// ─── SampleState Declaration ───
-
 class SampleState : public State
 {
 public:

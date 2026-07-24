@@ -411,6 +411,7 @@ AXIS_TEST_CASE("Sample Scenario 29 loads localization and creates localized UI")
     auto* localization = fixture.systems.GetSystem<LocalizationSystem>();
     AXIS_CHECK(localization != nullptr);
     AXIS_CHECK(localization->GetLanguage() == "en");
+    AXIS_CHECK(localization->Get("app.title") != "[MISSING: app.title]");
     AXIS_CHECK(FindByName(fixture.scene, "L10nPreviewPanel") != entt::null);
     AXIS_CHECK(FindByName(fixture.scene, "L10nCurrentLanguageText") != entt::null);
 }

@@ -714,7 +714,6 @@ void SettingsPanel::OnImGui(Scene& scene)
             changed = true;
     }
 
-    // Debug Configurations moved to Tools Panel
 
     if (changed || ImGui::IsItemDeactivatedAfterEdit())
     {

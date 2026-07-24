@@ -295,8 +295,6 @@ bool SceneSerializer::DeserializeNodes(std::vector<YAMLNode> roots, const std::s
     return !outResult.entities.empty();
 }
 
-// ========== Phase 4: Scene Serialization ==========
-
 #include <ecs/unit/decal_component.h>
 #include <ecs/unit/light_components.h>
 #include <ecs/unit/media_components.h>
@@ -1610,7 +1608,7 @@ bool SceneSerializer::SerializeToStream(std::ostream& f, const Scene& constScene
         if (def.properties.count("Path"))
         {
             std::string p = SceneSerializer::NormalizePath(def.properties.at("Path"));
-            // For fonts, we need both path and size to uniquely identify
+            // Font identity includes both its source path and rasterization size.
             if (def.type == "Font" && def.properties.count("Size"))
                 p += ":" + def.properties.at("Size");
 

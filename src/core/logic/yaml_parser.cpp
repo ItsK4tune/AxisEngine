@@ -1,4 +1,5 @@
 #include <core/logic/yaml_parser.h>
+#include <core/logic/logger.h>
 #include <fstream>
 #include <sstream>
 
@@ -101,16 +102,16 @@ std::vector<YAMLNode> YAMLParser::Parse(const std::string& filepath)
     std::ifstream file(filepath);
     if (!file.is_open())
         return {};
-    return ParseStream(file);
+    return ParseStream(file, filepath);
 }
 
 std::vector<YAMLNode> YAMLParser::ParseString(const std::string& content)
 {
     std::stringstream ss(content);
-    return ParseStream(ss);
+    return ParseStream(ss, "<string>");
 }
 
-std::vector<YAMLNode> YAMLParser::ParseStream(std::istream& stream)
+std::vector<YAMLNode> YAMLParser::ParseStream(std::istream& stream, const std::string& sourceName)
 {
     std::vector<YAMLNode> roots;
     struct IndentLevel
@@ -121,29 +122,28 @@ std::vector<YAMLNode> YAMLParser::ParseStream(std::istream& stream)
     std::vector<IndentLevel> stack;
 
     std::string line;
+    size_t lineNumber = 0;
     while (std::getline(stream, line))
     {
+        ++lineNumber;
         if (line.empty())
             continue;
 
+        size_t sourceOffset = 0;
         int indent = 0;
-        int len = (int)line.length();
-        while (indent < len && (line[indent] == ' ' || line[indent] == '\t'))
+        while (sourceOffset < line.length() && (line[sourceOffset] == ' ' || line[sourceOffset] == '\t'))
         {
-            if (line[indent] == '\t')
+            if (line[sourceOffset] == '\t')
             {
-                indent += 2;
+                LOGGER_ERROR("YAMLParser") << sourceName << ":" << lineNumber << ":" << (sourceOffset + 1)
+                                           << ": tab indentation is not supported; use spaces";
+                return {};
             }
-            else
-            {
-                indent++;
-            }
+            ++sourceOffset;
+            ++indent;
         }
 
-        if (indent > len)
-            indent = len;
-
-        std::string content = line.substr(indent);
+        std::string content = line.substr(sourceOffset);
         if (content.empty() || content[0] == '#')
             continue;
 

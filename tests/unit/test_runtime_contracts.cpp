@@ -1212,6 +1212,13 @@ AXIS_TEST_CASE("AudioService retains bounded world-space gameplay pulses")
 
     audio.EmitPulse(glm::vec3(std::numeric_limits<float>::quiet_NaN()), 1.0f, 1.0f);
     AXIS_CHECK(audio.GetPulses().size() == AudioPulseLimits::MaxPulses);
+
+    audio.ClearPulses();
+    audio.EmitTaggedPulse(glm::vec3(4.0f), 0.6f, 1.2f, 3.5f,
+                          AudioPulseSource::Prey, 1.25f);
+    AXIS_CHECK(audio.GetPulses().size() == 1);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().peak, 3.5f, 0.0001f);
+    AXIS_CHECK_NEAR(audio.GetPulses().front().padding, 1.0125f, 0.0001f);
 }
 
 AXIS_TEST_CASE("AudioCaptureProcessor applies mic input volume and independent response timing")

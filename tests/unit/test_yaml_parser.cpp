@@ -42,8 +42,8 @@ AXIS_TEST_CASE("YAMLParser ignores blank lines and full-line comments")
         "axis_scene:\n"
         "  # Entity block comment\n"
         "  Entities:\n"
-        "\t  Player:\n"
-        "\t    Component: Camera\n";
+        "    Player:\n"
+        "      Component: Camera\n";
 
     auto roots = YAMLParser::ParseString(content);
 
@@ -53,6 +53,20 @@ AXIS_TEST_CASE("YAMLParser ignores blank lines and full-line comments")
     AXIS_CHECK(entities->children.size() == 1);
     AXIS_CHECK(entities->children[0].key == "Player");
     AXIS_CHECK(entities->children[0].GetChildValue("Component") == "Camera");
+}
+
+AXIS_TEST_CASE("YAMLParser rejects tab indentation without partially parsed output")
+{
+    AXIS_EXPECT_ERROR_LOGS(1);
+    const std::string content =
+        "axis_scene:\n"
+        "  Entities:\n"
+        "\tPlayer:\n"
+        "    Component: Camera\n";
+
+    const auto roots = YAMLParser::ParseString(content);
+
+    AXIS_CHECK(roots.empty());
 }
 
 AXIS_TEST_CASE("YAMLNode merge overrides matching component and appends new component")

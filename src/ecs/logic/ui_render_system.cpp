@@ -284,7 +284,6 @@ void UIRenderSystem::RenderUIPass(Scene& scene, float screenWidth, float screenH
         if (auto* animation = scene.TryGetComponent<UIAnimationComponent>(entity))
             rect = ApplyVisualScale(rect, transform, animation->visualScale);
 
-        // Apply Position natively in CalculateRect, but rotation happens here
         glm::vec2 finalPos = rect.pos;
         glm::vec2 finalSize = rect.size;
 

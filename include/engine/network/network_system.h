@@ -7,6 +7,8 @@
 
 struct _ENetHost;
 struct _ENetPeer;
+class INetworkSecurityProvider;
+enum class NetworkPacketKind : uint8_t;
 
 class NetworkSystem : public IUpdateSystem, public INetworkService, public IOptimizationConfigurable
 {
@@ -105,6 +107,10 @@ private:
     void FlushOutgoing();
     void ReplicateScene(Scene& scene, float dt);
     bool HandleReplicationPacket(const uint8_t* data, size_t size);
+    bool PrepareSecurity(const NetworkConfig& config, bool server);
+    bool SendProtocolPacket(NetworkPeerId peer, NetworkPacketKind kind, const void* data, size_t size,
+                            bool reliable, uint8_t channel);
+    bool SendWirePacket(_ENetPeer* peer, const void* data, size_t size, bool reliable, uint8_t channel);
 
     _ENetHost* host = nullptr;
     _ENetPeer* serverPeer = nullptr;
@@ -123,6 +129,11 @@ private:
     float replicationAccumulator = 0.0f;
     Scene* currentScene = nullptr;
     std::unordered_map<NetworkPeerId, std::unordered_map<uint32_t, uint64_t>> lastReplicationSignatures;
+    std::unordered_map<NetworkPeerId, std::unordered_map<uint8_t, uint32_t>> receivedSequences;
+    INetworkSecurityProvider* securityProvider = nullptr;
+    NetworkSecurityMode securityMode = NetworkSecurityMode::RequireSecure;
+    size_t maxPacketBytes = 1024 * 1024;
+    uint32_t nextSequence = 1;
 
     ConnectCallback onConnect;
     DisconnectCallback onDisconnect;

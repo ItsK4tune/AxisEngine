@@ -1,282 +1,57 @@
 <p align="center">
-  <br>
-  <img src="include/engine/asset/project/logo.png" alt="Axis Engine Logo"/>
-  <br>
+  <img src="include/engine/asset/project/logo.png" alt="AxisEngine logo" width="220">
 </p>
 
-<h1 align="center">AXIS ENGINE</h1>
+# AxisEngine
 
-<p align="center">
-  <strong>Hybrid Modular C++ ECS Game Engine</strong>
-  <br>
-  Developed by <a href="https://github.com/ItsK4tune">Duong "Caftun" Nguyen</a>
-</p>
+## English
 
-<p align="center">
-  <a href="#-quick-start">🚀 Quick Start</a> •
-  <a href="#-features">✨ Features</a> •
-  <a href="#-documentation">📚 Documentation</a> •
-  <a href="#-architecture">🏗️ Architecture</a>
-</p>
+AxisEngine is a C++20, ECS-based game and multimedia engine. The current
+release ships OpenGL rendering, Bullet physics, Null audio by default, optional
+FMOD/irrKlang playback, scene serialization, scripting, navigation,
+networking, video, an optional ImGui editor, a scene compiler, and 33 sample
+scenarios.
 
-<div align="center">
+Start here:
 
-![C++](https://img.shields.io/badge/C++-20-blue.svg?style=flat-square&logo=c%2B%2B)
-![OpenGL](https://img.shields.io/badge/Graphics-OpenGL-green.svg?style=flat-square)
-![EnTT](https://img.shields.io/badge/EnTT-3.x-red.svg?style=flat-square)
-![Bullet](https://img.shields.io/badge/Physics-Bullet-orange.svg?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square) 
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey.svg?style=flat-square&logo=windows)
+- [Full English README](docs/README.eng.md)
+- [English documentation index](docs/eng/INDEX.md)
+- [English manual](docs/eng/MANUAL.md)
+- [English source audit](docs/eng/audit/source_audit_2026-07-23.md)
+- [English remediation report](docs/eng/audit/remediation_2026-07-23.md)
 
-</div>
+Quick editor/sample build on Windows:
 
----
-
-## 🎯 Overview
-
-**AXIS Engine** is a high-performance **hybrid modular** multimedia framework built with C++20. It leverages an interface-driven architecture to abstract hardware backends, providing a unified, data-oriented runtime via ECS (`entt`).
-
-Designed for scalability and technical precision, AXIS keeps rendering, physics, and audio behind interface boundaries while the current build ships OpenGL, Bullet, Null audio, and optional FMOD/irrKlang providers.
-
-Public headers are split by intent: use `axis_sdk.h` for games/tools, `axis_plugin.h` for replaceable module contracts, and `axis_advanced.h` only for concrete-system integration. Backend `strategy/` headers are not part of the installed SDK. See the [API surface contract](docs/core/api_surface.md).
-
----
-
----
-
-## ✨ Features
-
-### 🏗️ **Hybrid Architecture**
-- **Modular Backends**: Interface-driven providers for Graphics, Physics, and Audio. This build includes OpenGL, Bullet, Null audio, and optional FMOD/irrKlang.
-- **Data-Oriented Runtime**: High-performance entity management using [EnTT](https://github.com/skypjack/entt) with contiguous memory layout.
-- **Multithreaded Job System**: Thread-pool task distribution for asset decoding and snapshot-safe parallel system work.
-
-### 🎨 **Graphics & Rendering**
-- **Hybrid Pipeline**: Support for both Forward and Deferred rendering paths.
-- **PBR Pipeline**: Physically Based Rendering with HDR, Bloom, and ACES Tonemapping.
-- **Advanced Decals**: Order-independent stabilized decals with tag-based filtering.
-- **Performance**: Occlusion culling, frustum culling, and instanced batching.
-
-### ⚙️ **Physics & Dynamics**
-- **Modular Simulation**: Integrated physics interface backed by Bullet in the current build.
-- **Precision Modes**: Fast (30Hz), Balanced (60Hz), and Accurate (120Hz) simulation presets.
-- **CCD**: Continuous Collision Detection for high-speed entities.
-- **Visuals**: Real-time physics debug rendering and mesh-accurate colliders.
-
-### 📐 **Navigation & AI**
-- **Modular Pathfinding**: Per-agent provider selection for NavMesh and grid-based A*.
-- **Advanced Criteria**: Pathfinding based on `Shortest`, `Smoothest`, or `StayOnRoad` logic.
-- **Steering**: Local separation, obstacle avoidance, and path following.
-
-### 🖥️ **UI & multimedia**
-- **Responsive UI**: Resolution-independent anchoring and FlexBox-style layout system.
-- **Video Decoding**: Asynchronous MP4 playback via FFmpeg with texture mapping.
-- **Spatial Audio**: Position-based attenuation and 3D soundscapes.
-
-### 🛠️ **Developer Workflow**
-- **Hot-Reload**: Runtime reload for registered shader stages and textures during development.
-- **Scene Format (.axs)**: Human-readable YAML hierarchy for entities and configuration.
-- **Debug Suite**: F-key diagnostics for profiling, device monitoring, render toggles, and editor overlays.
-
----
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- **Compiler**: MSVC 2019+ (Visual Studio 2019 or newer)
-- **CMake**: 3.20 or higher
-- **Windows**: Windows 10/11 (64-bit)
-- **Dependencies**: Install third-party libraries outside the repository. On Windows, vcpkg manifest mode is recommended:
-
-  ```powershell
-  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
-  ```
-
-  FMOD and irrKlang are not vendored. Select them with `-DAXIS_AUDIO_BACKEND=FMOD -DFMOD_ROOT_DIR=<sdk>` or `-DAXIS_AUDIO_BACKEND=IrrKlang -DIRRKLANG_ROOT_DIR=<sdk>`.
-
-### Build & Run
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ItsK4tune/GameEngine.git
-   cd GameEngine
-   ```
-
-2. **Build the engine**
-   ```bash
-   build_engine.bat
-   ```
-   This script will:
-   - Configure CMake
-   - Resolve installed dependencies
-   - Compile the engine and game project
-   - Output build products under `build/`
-
-3. **Run the engine**
-   ```bash
-   bin\Release\GameEngine.exe
-   ```
-
-The engine will load `scenes/game.scene` by default and start with a demo scene featuring physics objects, lighting, and a controllable camera.
-
----
-
-## 🚀 Framework Workflow
-
-AXIS is designed for a data-driven development cycle:
-
-1.  **Build the Scene**: Define your world in an `.axs` (YAML) file. Specify entities, components, and initial properties.
-2.  **Manage Resources**: Register models, shaders, and textures in the `Resources:` block to ensure zero runtime-hitching.
-3.  **Code the Logic**:
-    - **States**: Inherit from `State` to manage global loops (Menu, Play, Pause).
-    - **Scripts**: Inherit from `Scriptable` for entity-specific behaviors (Input, AI, Triggers).
-4.  **Configure**: Use the per-scene `Config:` block to set backend-agnostic parameters or specific module toggles (e.g., `PHYSICS_MODE: ACCURATE`).
-
----
-
-## 💻 C++ Initialization Example
-
-For a standalone application, initialize the `Application` pillar and push your first `State`:
-
-```cpp
-#include <axis_app.h>
-#include <game/states/GameState.h>
-
-int main() {
-    auto app = std::make_shared<Application>();
-
-    AppConfig config;
-    config.title = "Axis Engine - Game";
-    config.window.width = 1280;
-    config.window.height = 720;
-    config.logLevel = LogLevel::Debug;
-
-    if (app->Initialize(config)) {
-        app->PushState<GameState>(); // Your game entry point
-        app->Run();
-    }
-    
-    return 0;
-}
+```powershell
+cmake --preset windows-msvc-editor
+cmake --build build --config Release --parallel
+.\build\bin\Release\axis_samples.exe
 ```
 
----
+## Tiếng Việt
 
-## 🎯 Example: Creating a Simple Scene
+AxisEngine là game engine và multimedia framework C++20 sử dụng ECS. Bản hiện
+tại cung cấp OpenGL, Bullet, Null audio mặc định, FMOD/irrKlang tùy chọn, scene
+serialization, scripting, navigation, networking, video, editor ImGui, scene
+compiler và 33 scenario mẫu.
 
-Define a basic interactive world in `scenes/my_scene.axs`:
+Bắt đầu tại đây:
 
-```yaml
-axis_scene:
-  Entities:
-    Player:
-      Component: Transform
-        Position: 0.0 2.0 0.0
-      Component: Renderer
-        Model: "models/player.obj"
-      Component: RigidBody
-        Type: CAPSULE
-        Mass: 75.0
-      Component: Script
-        Class: PlayerController
+- [README tiếng Việt đầy đủ](docs/README.vn.md)
+- [Mục lục tài liệu tiếng Việt](docs/vi/INDEX.md)
+- [Manual tiếng Việt](docs/vi/MANUAL.md)
+- [Báo cáo audit tiếng Việt](docs/vi/audit/source_audit_2026-07-23.md)
+- [Báo cáo khắc phục tiếng Việt](docs/vi/audit/remediation_2026-07-23.md)
 
-    MainLight:
-      Component: LightDir
-        Intensity: 1.5
-        CastShadow: 1
+Build nhanh editor/sample trên Windows:
+
+```powershell
+cmake --preset windows-msvc-editor
+cmake --build build --config Release --parallel
+.\build\bin\Release\axis_samples.exe
 ```
 
-Load it from your game state:
-```cpp
-void MyState::OnEnter() {
-    LoadScene("scenes/my_scene.axs");
-}
-```
-
----
-
-## 📚 Technical Documentation
-
-For deep technical details, please refer to the following specialized guides:
-
-### 🛠️ **Core & Setup**
-- **[Getting Started](docs/core/getting_started.md)**: Environment configuration and build tutorial.
-- **[Architecture Deep-Dive](docs/core/architecture.md)**: Details on the Abstraction Layer and Pillar-Bridge-Provider pattern.
-- **[Core Systems](docs/systems/core_systems.md)**: Scenes, Windowing, and Engine Lifecycle.
-
-### 🧱 **Modular Module Guides**
-- **[Graphics & Post-Processing](docs/guides/graphics.md)**: PBR, Decals, Culling, and Rendering Paths.
-- **[Physics & Simulation](docs/guides/physics.md)**: Bullet configuration and Character Controllers.
-- **[Navigation & AI](docs/guides/navigation.md)**: Pathfinding, Steering, and NavMesh baking.
-- **[User Interface (UI)](docs/guides/ui.md)**: Anchoring, FlexLayout, and Dynamic Text.
-
-### ⚙️ **Workflow & Reference**
-- **[Components Reference](docs/guides/components_reference.md)**: **(Essential)** List of all YAML keys and properties.
-- **[Configuration Guide](docs/guides/configuration.md)**: Exhaustive list of all Global and Per-Scene settings.
-- **[Scene Format (.axs)](docs/guides/scene_format.md)**: Detailed syntax for the serialization system.
-- **[Scripting API](docs/scripting/scriptable_api.md)**: C++ API patterns for gameplay.
-
----
-
-## 🏗️ Architecture
-
-AXIS Engine maintains a decoupled, high-performance runtime through its modular abstraction layer:
-
-```mermaid
-graph TD
-    Logic[Logic Layer<br/>Scripts/UI/AI] --> Interface[Abstraction Layer<br/>Interfaces]
-    Interface --> Backend[Module Layer<br/>Backends]
-    
-    subgraph "Hardware Providers"
-        Backend -- OpenGL --> GPU
-        Backend -- Bullet --> Physics
-        Backend -- "Null / FMOD / irrKlang" --> Audio
-    end
-```
-
-See the **[Modular Architecture](docs/core/architecture.md)** guide for more details.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-### Development Setup
-1. Follow the build instructions above
-2. Make your changes
-3. Test thoroughly
-4. Submit a pull request with a clear description
-
----
-
-## 📄 License
-
-No project license file is currently included. Add an explicit license before redistributing the engine.
-
----
-
-## 🙏 Acknowledgments
-
-**Dependencies:**
-- [EnTT](https://github.com/skypjack/entt) - Entity-Component-System framework
-- [Bullet Physics](https://github.com/bulletphysics/bullet3) - Physics simulation
-- [GLFW](https://www.glfw.org/) - Window and input
-- [Glad](https://glad.dav1d.de/) - OpenGL loader
-- [GLM](https://github.com/g-truc/glm) - Mathematics library
-- [Assimp](https://www.assimp.org/) - Model loading
-- [stb_image](https://github.com/nothings/stb) - Image loading
-- [FreeType](https://www.freetype.org/) - Font rendering
-- [FMOD](https://www.fmod.com/) - Optional audio engine
-- [irrKlang](https://www.ambiera.com/irrklang/) - Audio engine
-- [FFmpeg](https://ffmpeg.org/) - Video decoding
-
----
-
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/ItsK4tune">Duong "Caftun" Nguyen</a>
-  <br><br>
-  <a href="#axis-engine">⬆ Back to Top</a>
-</p>
+> AxisEngine treats scenes and assets as trusted project input. Secure network
+> mode requires an application-supplied security provider.
+> AxisEngine xem scene và asset là dữ liệu tin cậy; secure network mode cần
+> security provider do ứng dụng cung cấp.

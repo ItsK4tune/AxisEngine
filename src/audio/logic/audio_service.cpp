@@ -90,6 +90,30 @@ void AudioService::EmitPulse(const glm::vec3& origin, float intensity, float dur
     }
 }
 
+void AudioService::EmitTaggedPulse(const glm::vec3& origin, float intensity, float duration, float frequency,
+                                   AudioPulseSource source, float emitRadius)
+{
+    if (!std::isfinite(origin.x) || !std::isfinite(origin.y) || !std::isfinite(origin.z) ||
+        !std::isfinite(intensity) || !std::isfinite(duration) || duration <= 0.0f ||
+        !std::isfinite(frequency) || !std::isfinite(emitRadius))
+        return;
+
+    AudioPulse pulse;
+    pulse.origin = origin;
+    pulse.intensity = std::clamp(intensity, 0.0f, 1.0f);
+    pulse.peak = std::max(frequency, 0.05f);
+    pulse.duration = duration;
+    const float packedRadius = std::clamp(emitRadius, 0.0f, 9.9f) * 0.01f;
+    pulse.padding = static_cast<float>(source) + packedRadius;
+    m_Pulses.push_back(pulse);
+
+    if (m_Pulses.size() > AudioPulseLimits::MaxPulses)
+    {
+        m_Pulses.erase(m_Pulses.begin(),
+                       m_Pulses.begin() + static_cast<std::ptrdiff_t>(m_Pulses.size() - AudioPulseLimits::MaxPulses));
+    }
+}
+
 void AudioService::UpdatePulses(float deltaTime)
 {
     const float dt = std::isfinite(deltaTime) ? std::max(deltaTime, 0.0f) : 0.0f;

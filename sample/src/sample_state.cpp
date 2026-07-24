@@ -592,7 +592,7 @@ void SampleState::OnUpdate(float dt)
     {
         LoadScenario(m_PendingScenario);
         m_PendingScenario = -1;
-        return;  // skip rest of update this frame — systems will run with fresh entities
+        return;
     }
 
     // Benchmark counters
@@ -1540,7 +1540,7 @@ void SampleState::OnRender()
 
         if (sphere && portal && portalCam)
         {
-            // ─── 1. Outline Rendering ───
+            // Outline pass
             // Clear stencil buffer for outline
             ClearStencilBuffer();
 
@@ -1577,7 +1577,7 @@ void SampleState::OnRender()
             SetRenderStateEnabled(ServerCapability::StencilTest, false);
             SetStencilMask(0xFF);
 
-            // ─── 2. Portal Rendering ───
+            // Portal pass
             // Clear stencil buffer for portal
             ClearStencilBuffer();
 
@@ -1802,15 +1802,12 @@ void SampleState::OnExit()
     UnregisterSampleEditorExtension();
 #endif
 
-    // Clean up scene entities
     auto* sceneMgr = Resolve<SceneManager>();
     if (sceneMgr)
     {
         sceneMgr->UnloadSceneByName(kScenario25DynamicSceneName);
         sceneMgr->UnloadSceneByName(kScenario25BaseSceneName);
     }
-
-    // No need to shutdown the shared ImGuiLayer
 }
 
 void SampleState::LoadScenario(int index)
@@ -2609,7 +2606,6 @@ void SampleState::DrawGUI()
         ImGui::Text("Status: %s", m_S28Status.c_str());
         ImGui::Spacing();
 
-        // --- Step 1: Persist / Load ---
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "Step 1 - Persist bindings:");
         if (ImGui::Button("Load binding.axs", ImVec2(175, 24)))
         {
@@ -2635,7 +2631,6 @@ void SampleState::DrawGUI()
         }
 
         ImGui::Separator();
-        // --- Step 2: Preset ---
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "Step 2 - Try a preset:");
         if (ImGui::Button("Apply Arrow-Key Preset", ImVec2(360, 24)))
         {
@@ -2654,7 +2649,6 @@ void SampleState::DrawGUI()
         }
 
         ImGui::Separator();
-        // --- Step 3: Custom binding ---
         ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.0f, 1.0f), "Step 3 - Add custom binding:");
         static char actionBuf[64] = "PlayerCustom";
         ImGui::InputText("Action Name", actionBuf, sizeof(actionBuf));
@@ -2803,11 +2797,12 @@ void SampleState::DrawGUI()
                     NetworkConfig config;
                     config.port = static_cast<uint16_t>(m_S30Port);
                     config.maxClients = 32;
+                    config.securityMode = NetworkSecurityMode::TrustedNetwork;
                     m_S30Messages.clear();
 
                     if (m_S30IsServer)
                     {
-                        config.host.clear();
+                        config.host = m_S30Host;
                         netSystem->SetOnConnect([this](NetworkPeerId) {
                             m_S30Status = "Server: client connected.";
                             m_S30Messages.push_back("Client connected.");

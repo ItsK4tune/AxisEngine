@@ -3,6 +3,13 @@
 #include <cstddef>
 #include <glm/glm.hpp>
 
+enum class AudioPulseSource : unsigned char
+{
+    Neutral = 0,
+    Prey = 1,
+    Enemy = 2
+};
+
 namespace AudioPulseLimits
 {
 inline constexpr size_t MaxPulses = 64;
@@ -12,6 +19,8 @@ inline constexpr size_t MaxPulses = 64;
 // The two 16-byte rows map to:
 //   vec3 origin; float intensity;
 //   float peak; float age; float duration; float padding;
+// Gameplay pulses use peak as emit frequency. Padding packs the integer
+// AudioPulseSource and emitRadius / 100 in its fractional part.
 struct alignas(16) AudioPulse
 {
     glm::vec3 origin{0.0f};

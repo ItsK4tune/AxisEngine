@@ -326,10 +326,8 @@ Mesh processMesh(aiMesh* mesh, const aiScene* scene, std::vector<Texture>& textu
                               ? glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y)
                               : glm::vec2(0);
         }
-        // Temporarily wrap for bone extraction
         std::vector<SkinnedVertex> wrap(skinnedData, skinnedData + mesh->mNumVertices);
         ExtractBoneWeightForVertices(wrap, mesh, boneInfoMap, boneCount);
-        // Copy back
         std::copy(wrap.begin(), wrap.end(), skinnedData);
     }
     else

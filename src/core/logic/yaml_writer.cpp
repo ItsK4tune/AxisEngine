@@ -2,29 +2,21 @@
 #include <fstream>
 #include <sstream>
 
-// ===========================================================================
-// YAMLWriter
-// ===========================================================================
-
 void YAMLWriter::WriteNode(std::ostream& stream, const YAMLNode& node, int indent)
 {
-    // Emit leading spaces
     for (int i = 0; i < indent; ++i)
         stream << ' ';
 
     if (node.key == "-")
     {
-        // List item: "- value\n"
         stream << "- " << node.value << '\n';
     }
     else if (node.value.empty())
     {
-        // Key-only (section header or node that holds children only)
         stream << node.key << ":\n";
     }
     else
     {
-        // "key: value\n"
         stream << node.key << ": " << node.value << '\n';
     }
 
@@ -67,10 +59,6 @@ void YAMLWriter::WriteSection(std::ostream& stream,
     Write(stream, roots, IndentWidth);
 }
 
-// ===========================================================================
-// BinaryYAMLWriter — helpers
-// ===========================================================================
-
 void BinaryYAMLWriter::WriteU32(std::ostream& stream, uint32_t v)
 {
     stream.write(reinterpret_cast<const char*>(&v), sizeof(v));
@@ -106,10 +94,6 @@ bool BinaryYAMLWriter::ReadStr(std::istream& stream, std::string& s)
         stream.read(s.data(), len);
     return stream.good();
 }
-
-// ===========================================================================
-// BinaryYAMLWriter — node I/O
-// ===========================================================================
 
 void BinaryYAMLWriter::WriteNode(std::ostream& stream, const YAMLNode& node)
 {
@@ -147,10 +131,6 @@ bool BinaryYAMLWriter::ReadNode(std::istream& stream, YAMLNode& node)
     }
     return true;
 }
-
-// ===========================================================================
-// BinaryYAMLWriter — public API
-// ===========================================================================
 
 void BinaryYAMLWriter::Write(std::ostream& stream,
                              const std::vector<YAMLNode>& roots)

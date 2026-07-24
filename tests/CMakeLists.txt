@@ -3,8 +3,10 @@ add_executable(axis_test
     api/test_public_headers.cpp
     unit/test_collision_matrix.cpp
     unit/test_entity_manager.cpp
-      unit/test_event_manager.cpp
+    unit/test_event_manager.cpp
       unit/test_dds_texture_loader.cpp
+    unit/test_editor_file_service.cpp
+    unit/test_network_protocol.cpp
     unit/test_pathfinding.cpp
     unit/test_runtime_contracts.cpp
     unit/test_scene_validator.cpp

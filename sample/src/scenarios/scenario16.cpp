@@ -5,7 +5,7 @@ void SampleState::LoadScene16()
     auto& scene = GetScene();
     auto& res = Get<ResourceManager>();
 
-    // ─── Part 1: Scenario 28 UI Showcase ───
+    // Scenario 28 UI showcase
     // Increased height to 580 to prevent footer overlaps, and increased flex spacing to 24
     auto root = EntityBuilder(scene, res, "scenario")
                     .WithName("UIRootPanel")
@@ -75,7 +75,7 @@ void SampleState::LoadScene16()
             .WithUITextureResource("ui_icon_28", "asset://project/icon.png", glm::vec4(1.0f), "ui_icon_badge_28")
             .Build();
 
-    // ─── Part 2: Scenario 29 Responsive UI (Merged into 28) ───
+    // Scenario 29 responsive UI
     m_S16RootPanel = EntityBuilder(scene, res, "scenario")
                          .WithName("ResponsiveRootPanel")
                          .WithUIStretch(glm::vec2(0.60f, 0.08f), glm::vec2(0.98f, 0.92f))
@@ -153,7 +153,7 @@ void SampleState::LoadScene16()
         .WithUITextAlignment(TextAlignment::Center, true, 200.0f)
         .Build();
 
-    // ─── Part 3: UI Animation / Movement Showcase ───
+    // UI animation and movement showcase
     auto showcasePanel = EntityBuilder(scene, res, "scenario")
                              .WithName("S16_ShowcasePanel")
                              .WithUIAnchored(glm::vec2(1.0f, 0.0f), glm::vec2(-1472.0f, m_S16ShowcaseX),

@@ -1,5 +1,6 @@
 #include <physics/strategy/bullet/bullet_physics_world.h>
 #include <core/logic/logger.h>
+#include <ecs/unit/physics_components.h>
 #include <physics/interface/i_collision_shape.h>
 #include <physics/strategy/bullet/bullet_character_controller.h>
 #include <physics/strategy/bullet/bullet_constraint.h>

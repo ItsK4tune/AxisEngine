@@ -85,7 +85,6 @@ void PostProcessSystem::Shutdown()
 
 void PostProcessSystem::RenderCapturePass(Scene& scene, int width, int height)
 {
-    // Lazy resolve RenderService if needed
     if (!m_RenderService)
     {
         m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();
@@ -107,7 +106,7 @@ void PostProcessSystem::RenderCapturePass(Scene& scene, int width, int height)
     data.mainFBO = captureFBO;
     data.width = width;
     data.height = height;
-    data.alpha = 1.0f;  // Post process usually full alpha
+    data.alpha = 1.0f;
     EventManager::Instance().Publish<FrameRenderDataEvent>({data});
 }
 
@@ -115,7 +114,6 @@ void PostProcessSystem::Render(Scene& scene)
 {
     m_Pipeline.ClearEffects();
 
-    // Lazy resolve RenderService if needed
     if (!m_RenderService)
     {
         m_RenderService = ServiceLocator::Instance().Resolve<IRenderService>();

@@ -14,7 +14,6 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
     std::map<std::string, entt::entity> instantiatedEntities;
     std::map<entt::entity, std::vector<std::string>> deferredChildren;
 
-    // We use a temporary scene name or the fragment path
     std::string fragmentName = asset.path;
 
     for (auto& root : asset.rootNodes)
@@ -60,7 +59,6 @@ std::map<std::string, entt::entity> FragmentLoader::Instantiate(const FragmentAs
                         LOGGER_WARN("FragmentLoader") << "Skipping audio resource load: No AudioService available";
                     }
                 }
-                // Add more resource types if needed
             }
         }
         else if (root.key == "Entities")

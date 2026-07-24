@@ -21,7 +21,7 @@ struct Scene
     entt::registry& GetRegistry() { return registry; }
     const entt::registry& GetRegistry() const { return registry; }
 
-    size_t GetEntityCount() const { return registry.storage<entt::entity>()->size(); }
+    size_t GetEntityCount() const { return registry.storage<entt::entity>()->free_list(); }
 
     template <typename... T>
     auto View()

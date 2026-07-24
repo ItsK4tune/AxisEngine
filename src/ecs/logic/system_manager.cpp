@@ -195,7 +195,6 @@ void SystemManager::RegisterSystem(std::unique_ptr<IBaseSystem> system)
                                     system->GetName());
     m_Systems.push_back(std::move(system));
 
-    // Auto-cache by concrete type
     m_TypeCache[std::type_index(typeid(*sysPtr))] = sysPtr;
     m_IdCache[sysPtr->GetId().value] = sysPtr;
 
@@ -246,7 +245,6 @@ void SystemManager::CreateSystems()
     m_DefaultSystemsCreated = true;
     LOGGER_INFO("SystemManager") << "Creating systems (via Factory)...";
 
-    // Use Factory to create all registered systems (OCP compliance)
     auto systems = SystemFactory::CreateAll();
     for (auto& sys : systems)
     {
@@ -254,7 +252,6 @@ void SystemManager::CreateSystems()
             RegisterSystem(std::move(sys));
     }
 
-    // Register all systems by name to ServiceLocator
     auto& sl = ServiceLocator::Instance();
     for (auto& sys : m_Systems)
     {
@@ -281,7 +278,6 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
     m_PostProcessSystems.clear();
     m_InitializedSystems.clear();
 
-    // Subscribe to events
     m_EventSubscriptions.Add(
         EventManager::Instance().Subscribe<SystemEnabledEvent>([this](const SystemEnabledEvent& e) {
             if (auto* sys = this->GetSystem(e.systemName))
@@ -291,10 +287,6 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
             }
         }));
 
-    // Sort systems by priority before initialization if needed,
-    // but usually RegisterSystem and category flags are enough.
-
-    // Build capability bitmask from available services
     auto& sl = ServiceLocator::Instance();
     m_AvailableCapabilities = 0;
     if (sl.Has<IGraphicsContext>())
@@ -302,7 +294,6 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
     if (sl.Has<IOHandler>())
         m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Input);
 
-    // Audio check: only available if IAudioEngine service is registered
     if (sl.Has<IAudioEngine>())
     {
         m_AvailableCapabilities |= static_cast<uint32_t>(SystemRequirement::Audio);
@@ -359,7 +350,7 @@ void SystemManager::Initialize(ResourceManager& res, int width, int height)
 
     auto sortRender = [](std::vector<IRenderSystem*>& systems) {
         if (systems.empty())
-            return;  // Fix for sorting empty lists
+            return;
         std::sort(systems.begin(), systems.end(),
                   [](IRenderSystem* a, IRenderSystem* b) { return a->GetPriority() < b->GetPriority(); });
     };

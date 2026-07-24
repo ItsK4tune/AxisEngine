@@ -1,6 +1,8 @@
 #pragma once
 #ifdef ENABLE_EDITOR
 #include <editor/i_editor_panel.h>
+#include <utility>
+#include <vector>
 #include <string>
 
 struct Scene;
@@ -12,9 +14,7 @@ class ISound;
 class ResourceBrowserPanel : public IEditorPanel
 {
 public:
-    void Initialize() override
-    {
-    }
+    void Initialize() override;
     void OnImGui(Scene& scene) override;
     void DrawContents(Scene& scene);
     std::string GetTitle() const override
@@ -27,6 +27,8 @@ public:
     }
 
 private:
+    void RefreshSourceFiles();
+
     int m_ActiveTab = 0;
     std::string m_SelectedName;
     std::string m_SelectedType;
@@ -37,5 +39,7 @@ private:
     std::shared_ptr<ISound> m_ActiveSound;
     std::string m_CachedShaderCode;
     std::string m_CachedShaderPath;
+    std::vector<std::pair<std::string, std::string>> m_Scripts;
+    std::vector<std::pair<std::string, std::string>> m_States;
 };
 #endif

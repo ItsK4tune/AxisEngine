@@ -19,17 +19,47 @@
 #include <cstdint>
 #include <fstream>
 #include <filesystem>
+#include <limits>
 #include <map>
 #include <memory>
 #include <cmath>
+#include <new>
+#include <optional>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace
 {
-constexpr uint32_t MAX_BINARY_STRING_BYTES = 256 * 1024 * 1024;
 constexpr std::streamsize LEGACY_AXIS_MATERIAL_DESCRIPTOR_V2_BYTES = 344;
+constexpr uint32_t MAX_BINARY_PAYLOAD_BYTES = 64u * 1024u * 1024u;
+thread_local uint32_t g_MaxBinaryStringBytes = 1024u * 1024u;
+
+template <typename F>
+class ScopeExit
+{
+public:
+    explicit ScopeExit(F&& callback) : m_Callback(std::forward<F>(callback)) {}
+    ~ScopeExit()
+    {
+        if (m_Active)
+            m_Callback();
+    }
+    ScopeExit(const ScopeExit&) = delete;
+    ScopeExit& operator=(const ScopeExit&) = delete;
+    void Release() noexcept { m_Active = false; }
+
+private:
+    F m_Callback;
+    bool m_Active = true;
+};
+
+template <typename F>
+ScopeExit<F> MakeScopeExit(F&& callback)
+{
+    return ScopeExit<F>(std::forward<F>(callback));
+}
 
 template <typename T>
 void WriteValue(std::ostream& os, const T& value)
@@ -63,7 +93,7 @@ void ReadBool(std::istream& is, bool& value)
 
 void WriteString(std::ostream& os, const std::string& value)
 {
-    if (value.size() > MAX_BINARY_STRING_BYTES)
+    if (value.size() > MAX_BINARY_PAYLOAD_BYTES)
     {
         os.setstate(std::ios::failbit);
         return;
@@ -74,17 +104,40 @@ void WriteString(std::ostream& os, const std::string& value)
         os.write(value.data(), length);
 }
 
-std::string ReadString(std::istream& is)
+std::string ReadString(std::istream& is, uint32_t maxBytes = 0)
 {
     uint32_t length = 0;
     ReadValue(is, length);
-    if (length > MAX_BINARY_STRING_BYTES)
+    const uint32_t limit = maxBytes == 0 ? g_MaxBinaryStringBytes : maxBytes;
+    if (!is.good() || length > limit)
     {
         is.setstate(std::ios::failbit);
         return {};
     }
 
-    std::string value(length, '\0');
+    const std::streampos current = is.tellg();
+    if (current != std::streampos(-1))
+    {
+        is.seekg(0, std::ios::end);
+        const std::streampos end = is.tellg();
+        is.seekg(current);
+        if (end == std::streampos(-1) || end < current || static_cast<uintmax_t>(end - current) < length)
+        {
+            is.setstate(std::ios::failbit);
+            return {};
+        }
+    }
+
+    std::string value;
+    try
+    {
+        value.resize(length);
+    }
+    catch (const std::bad_alloc&)
+    {
+        is.setstate(std::ios::failbit);
+        return {};
+    }
     if (length > 0)
         is.read(value.data(), length);
     return value;
@@ -531,9 +584,28 @@ bool BinarySceneSerializer::Deserialize(const std::string& filepath, Scene& scen
 
 bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, SceneLoadResult& outResult)
 {
+    return Deserialize(path, scene, outResult, BinarySceneLoadLimits{});
+}
+
+bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, SceneLoadResult& outResult,
+                                        const BinarySceneLoadLimits& limits)
+{
+    std::error_code fileError;
+    const uintmax_t fileBytes = std::filesystem::file_size(path, fileError);
+    if (fileError || fileBytes < sizeof(uint32_t) * 2 || fileBytes > limits.maxFileBytes)
+    {
+        LOGGER_ERROR("BinarySceneSerializer") << "Binary scene size is invalid or exceeds the configured limit: "
+                                              << path;
+        return false;
+    }
+
     std::ifstream is(path, std::ios::binary);
     if (!is.is_open())
         return false;
+
+    const uint32_t previousStringLimit = g_MaxBinaryStringBytes;
+    g_MaxBinaryStringBytes = limits.maxStringBytes;
+    auto restoreStringLimit = MakeScopeExit([&] { g_MaxBinaryStringBytes = previousStringLimit; });
 
     uint32_t magic = 0;
     uint32_t version = 0;
@@ -551,7 +623,7 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
 
     if (version == VERSION)
     {
-        const std::string payload = ReadString(is);
+        const std::string payload = ReadString(is, limits.maxPayloadBytes);
         if (!is.good() || payload.empty())
             return false;
 
@@ -567,25 +639,35 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
         SceneSerializer sceneSerializer(*resources, ServiceLocator::Instance().Resolve<IPhysicsWorld>(),
                                         ServiceLocator::Instance().Resolve<AudioService>());
         const std::string sourceName = std::filesystem::path(path).stem().string();
-        const bool loaded = sceneSerializer.DeserializeFromString(payload, sourceName, scene, outResult);
+        SceneLoadResult result;
+        const bool loaded = sceneSerializer.DeserializeFromString(payload, sourceName, scene, result);
         if (loaded)
+        {
+            outResult = std::move(result);
             LOGGER_INFO("BinarySceneSerializer") << "Deserialized v5 scene: " << path;
+        }
         return loaded;
     }
 
     uint32_t entityCount = 0;
     ReadValue(is, entityCount);
+    if (!is.good() || entityCount > limits.maxEntities)
+    {
+        LOGGER_ERROR("BinarySceneSerializer") << "Legacy scene entity count exceeds the configured limit: "
+                                              << entityCount;
+        return false;
+    }
 
+    std::optional<AppConfig> pendingConfig;
+    ConfigManager* configMgr = nullptr;
     if (version < 4)
     {
-        auto* configMgr = ServiceLocator::Instance().Resolve<ConfigManager>();
+        configMgr = ServiceLocator::Instance().Resolve<ConfigManager>();
         if (version >= 2)
         {
             AppConfig config = configMgr ? configMgr->GetConfig() : AppConfig{};
-            if (TryReadLegacyEmbeddedConfig(is, version, config) && configMgr)
-            {
-                configMgr->UpdateConfig(config);
-            }
+            if (TryReadLegacyEmbeddedConfig(is, version, config))
+                pendingConfig = std::move(config);
         }
     }
 
@@ -595,8 +677,39 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
     auto* resources = ServiceLocator::Instance().Resolve<ResourceManager>();
     std::vector<entt::entity> entities;
     std::vector<int32_t> parents;
-    entities.reserve(entityCount);
-    parents.reserve(entityCount);
+    try
+    {
+        entities.reserve(entityCount);
+        parents.reserve(entityCount);
+    }
+    catch (const std::bad_alloc&)
+    {
+        LOGGER_ERROR("BinarySceneSerializer") << "Unable to allocate legacy scene entity tables";
+        return false;
+    }
+
+    const entt::entity previousActiveCamera = scene.m_ActiveCamera;
+    const entt::entity previousActiveSkybox = scene.m_ActiveSkybox;
+    const bool previousOctreeDirty = scene.m_OctreeDirty;
+    const bool previousFullRebuild = scene.m_OctreeFullRebuildRequired;
+    const size_t previousDirtyEventCount = scene.m_OctreeDirtyEventCount;
+    const auto previousDirtyOctreeEntities = scene.m_DirtyOctreeEntities;
+    const auto previousDirtyTransforms = scene.m_DirtyTransforms;
+    auto rollback = MakeScopeExit([&] {
+        for (auto iterator = entities.rbegin(); iterator != entities.rend(); ++iterator)
+        {
+            if (scene.IsValid(*iterator))
+                scene.GetRegistry().destroy(*iterator);
+        }
+        scene.m_ActiveCamera = previousActiveCamera;
+        scene.m_ActiveSkybox = previousActiveSkybox;
+        scene.m_OctreeDirty = previousOctreeDirty;
+        scene.m_OctreeFullRebuildRequired = previousFullRebuild;
+        scene.m_OctreeDirtyEventCount = previousDirtyEventCount;
+        scene.m_DirtyOctreeEntities = previousDirtyOctreeEntities;
+        scene.m_DirtyTransforms = previousDirtyTransforms;
+    });
+    SceneLoadResult result;
 
     for (uint32_t i = 0; i < entityCount; ++i)
     {
@@ -671,9 +784,9 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             mesh.castShadow = castShadow;
 
             if (!modelName.empty())
-                outResult.loadedModels.push_back(modelName);
+                result.loadedModels.push_back(modelName);
             if (!shaderName.empty())
-                outResult.loadedShaders.push_back(shaderName);
+                result.loadedShaders.push_back(shaderName);
         }
 
         bool hasMat = false;
@@ -685,19 +798,19 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             {
                 ReadMaterialDescriptor(is, material.desc);
                 if (!material.desc.albedoPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.albedoPath);
+                    result.loadedTextures.push_back(material.desc.albedoPath);
                 if (!material.desc.normalPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.normalPath);
+                    result.loadedTextures.push_back(material.desc.normalPath);
                 if (!material.desc.metallicPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.metallicPath);
+                    result.loadedTextures.push_back(material.desc.metallicPath);
                 if (!material.desc.roughnessPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.roughnessPath);
+                    result.loadedTextures.push_back(material.desc.roughnessPath);
                 if (!material.desc.aoPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.aoPath);
+                    result.loadedTextures.push_back(material.desc.aoPath);
                 if (!material.desc.emissivePath.empty())
-                    outResult.loadedTextures.push_back(material.desc.emissivePath);
+                    result.loadedTextures.push_back(material.desc.emissivePath);
                 if (!material.desc.specularPath.empty())
-                    outResult.loadedTextures.push_back(material.desc.specularPath);
+                    result.loadedTextures.push_back(material.desc.specularPath);
             }
             else
             {
@@ -770,9 +883,9 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
                 scene.SetActiveSkybox(entity);
 
             if (!skyboxName.empty())
-                outResult.loadedSkyboxes.push_back(skyboxName);
+                result.loadedSkyboxes.push_back(skyboxName);
             if (!shaderName.empty())
-                outResult.loadedShaders.push_back(shaderName);
+                result.loadedShaders.push_back(shaderName);
         }
 
         scene.AddComponent<HierarchyComponent>(entity);
@@ -788,12 +901,16 @@ bool BinarySceneSerializer::Deserialize(const std::string& path, Scene& scene, S
             scene.SetParent(entities[i], entities[parents[i]]);
     }
 
-    outResult.entities = entities;
+    result.entities = entities;
 
-    if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, outResult,
+    if (!SceneHandlers::SceneLoadFinalizer::Finalize(scene, result,
                                                      ServiceLocator::Instance().Resolve<IPhysicsWorld>()))
         return false;
 
+    if (pendingConfig && configMgr)
+        configMgr->UpdateConfig(*pendingConfig);
+    outResult = std::move(result);
+    rollback.Release();
     LOGGER_INFO("BinarySceneSerializer") << "Deserialized scene: " << path;
     return true;
 }

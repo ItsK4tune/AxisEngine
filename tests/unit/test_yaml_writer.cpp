@@ -41,14 +41,9 @@ AXIS_TEST_CASE("YAMLWriter outputs valid indented text format")
     auto parsedOriginal = YAMLParser::ParseString(original);
     AXIS_CHECK(!parsedOriginal.empty());
 
-    // Serialize using YAMLWriter
     std::string written = YAMLWriter::WriteString(parsedOriginal);
-
-    // Re-parse the written string
     auto parsedWritten = YAMLParser::ParseString(written);
     AXIS_CHECK(!parsedWritten.empty());
-
-    // Verify trees are identical
     AXIS_CHECK(TreesAreEqual(parsedOriginal, parsedWritten));
 }
 
@@ -70,7 +65,6 @@ AXIS_TEST_CASE("YAMLWriter processes list syntax and key-value details properly"
 
     std::string written = YAMLWriter::WriteString(roots);
     
-    // Parse it back
     auto parsed = YAMLParser::ParseString(written);
     AXIS_CHECK(TreesAreEqual(roots, parsed));
 }
@@ -88,11 +82,8 @@ AXIS_TEST_CASE("BinaryYAMLWriter encodes and decodes YAMLNode trees seamlessly")
     auto originalTree = YAMLParser::ParseString(configYaml);
     AXIS_CHECK(!originalTree.empty());
 
-    // Encode to stream
     std::stringstream binaryStream(std::ios::in | std::ios::out | std::ios::binary);
     BinaryYAMLWriter::Write(binaryStream, originalTree);
-
-    // Decode from stream
     binaryStream.seekg(0);
     auto decodedTree = BinaryYAMLWriter::Read(binaryStream);
 

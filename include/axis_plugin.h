@@ -15,6 +15,7 @@
 #include <editor/i_editor_extension_registry.h>
 #include <physics/interface/i_physics_world.h>
 #include <network/interface/i_network_service.h>
+#include <network/interface/i_network_security_provider.h>
 #include <navigation/interface/i_navigation_service.h>
 #include <platform/interface/i_window.h>
 #include <platform/interface/i_ui_input_capture.h>

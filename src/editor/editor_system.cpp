@@ -267,7 +267,6 @@ void EditorSystem::Initialize()
     m_ModuleOwners.push_back("axis.editor");
     m_Extensions.push_back({"axis.editor", "Camera", EditorExtensionKind::Module});
 
-    // Wait, let's setup ImGui
     auto* ioHandler = sl.Resolve<IOHandler>();
     if (ioHandler)
     {
@@ -279,7 +278,6 @@ void EditorSystem::Initialize()
         }
     }
 
-    // Register Panels
     m_Panels.push_back(std::make_unique<SceneHierarchyPanel>());
     m_Panels.push_back(std::make_unique<ProjectAssetsPanel>());
     m_Panels.push_back(std::make_unique<ToolsPanel>());
@@ -315,7 +313,6 @@ void EditorSystem::Initialize()
 
     LOGGER_INFO("EditorSystem") << "Initialized completely.";
 
-    // Wire log callback to console panel
     LogManager::Instance().SetLogCallback([](LogType type, const std::string& tag, const std::string& msg) {
         if (ConsolePanel::s_Instance)
         {
@@ -562,13 +559,11 @@ void EditorSystem::OnUpdate(float dt)
     // MouseManager suppresses game-facing pointer input while Editor owns the
     // cursor; ImGui pointer input is disabled in every other cursor mode.
 
-    // === Keyboard Shortcuts ===
     bool ctrl = kb.GetRawKey(Key::LeftControl) || kb.GetRawKey(Key::RightControl);
     bool shift = kb.GetRawKey(Key::LeftShift) || kb.GetRawKey(Key::RightShift);
     const EditorModifier modifiers = GetEditorModifiers(kb);
     const bool inputBlocked = m_ImGuiLayer.WantsTextInput();
 
-    // Ctrl+S — Save all scenes
     if (IsEditorShortcutPressed(kb, Key::S, EditorModifier::Control, m_CtrlSPressed, inputBlocked))
     {
         auto& sm = sl.Require<SceneManager>();
@@ -609,7 +604,6 @@ void EditorSystem::OnUpdate(float dt)
         }
     }
 
-    // Ctrl+Z — Undo
     if (IsEditorShortcutPressed(kb, Key::Z, modifiers, m_ZPressed, inputBlocked))
     {
         auto& globalScene = sl.Require<Scene>();
@@ -619,10 +613,6 @@ void EditorSystem::OnUpdate(float dt)
             PerformUndo(globalScene);
     }
 
-    // Ctrl+D — Duplicate selected entity
-    // (handled in SceneHierarchyPanel via shared selection)
-
-    // --- Nudge Tool ---
     m_NudgeTimer -= dt;
     bool alt = kb.GetRawKey(Key::LeftAlt) || kb.GetRawKey(Key::RightAlt);
     const bool nudgeKeyDown = kb.GetRawKey(Key::Left) || kb.GetRawKey(Key::Right) || kb.GetRawKey(Key::Up) ||

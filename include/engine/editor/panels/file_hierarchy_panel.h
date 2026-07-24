@@ -44,7 +44,6 @@ private:
     bool m_OpenDelete = false;
     std::string m_OperationStatus;
 
-    // History for Back navigation
     std::vector<std::filesystem::path> m_History;
     size_t m_HistoryIndex = 0;
 };

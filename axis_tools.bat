@@ -118,9 +118,12 @@ if errorlevel 1 ( echo [ERROR] CMake configuration failed! & pause & goto SELECT
 echo [INFO] Building axis_compile in %COMPILE_BUILD_TYPE%...
 cmake --build build --config %COMPILE_BUILD_TYPE% --target axis_compile --parallel 4
 if errorlevel 1 ( echo [ERROR] Build failed! & pause & goto SELECT_ACTION )
+set "axis_compile_exe=build\bin\%COMPILE_BUILD_TYPE%\axis_compile.exe"
+if not exist "!axis_compile_exe!" set "axis_compile_exe=build\bin\axis_compile.exe"
+if not exist "!axis_compile_exe!" ( echo [ERROR] axis_compile executable not found. & pause & goto SELECT_ACTION )
 echo.
 echo Compiling !input_file! to !output_file!...
-build\bin\axis_compile.exe "!input_file!" "!output_file!"
+"!axis_compile_exe!" "!input_file!" "!output_file!"
 if errorlevel 1 ( echo [ERROR] Compilation failed! ) else ( echo [SUCCESS] Done! )
 pause
 goto COMPILE_SCENES
@@ -133,13 +136,16 @@ if errorlevel 1 ( echo [ERROR] CMake configuration failed! & pause & goto SELECT
 echo [INFO] Building axis_compile in %COMPILE_BUILD_TYPE%...
 cmake --build build --config %COMPILE_BUILD_TYPE% --target axis_compile --parallel 4
 if errorlevel 1 ( echo [ERROR] Build failed! & pause & goto SELECT_ACTION )
+set "axis_compile_exe=build\bin\%COMPILE_BUILD_TYPE%\axis_compile.exe"
+if not exist "!axis_compile_exe!" set "axis_compile_exe=build\bin\axis_compile.exe"
+if not exist "!axis_compile_exe!" ( echo [ERROR] axis_compile executable not found. & pause & goto SELECT_ACTION )
 echo.
 echo Compiling all .axs files in !input_dir!...
 for /r "!input_dir!" %%f in (*.axs) do (
     set "infile=%%f"
     set "outfile=%%~dpnf.axsb"
     echo Compiling %%~nxf...
-    build\bin\axis_compile.exe "!infile!" "!outfile!"
+    "!axis_compile_exe!" "!infile!" "!outfile!"
 )
 echo [INFO] Done compilation.
 pause

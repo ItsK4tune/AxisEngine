@@ -1888,7 +1888,6 @@ void EntityInspector::Draw(entt::registry& reg, entt::entity entity)
         ImGui::DragFloat("Interest Radius", &net.interestRadius, 0.5f, 0.0f, 1000000.0f, "%.1f m");
     });
 
-    // ====== PHASE 3: Add Component ======
     ImGui::Separator();
     if (ImGui::Button("+ Add Component"))
     {
@@ -2170,7 +2169,7 @@ void SceneHierarchyPanel::DuplicateEntity(Scene& scene, entt::entity srcEntity)
     }
     COPY_COMP(OcclusionComponent);
     COPY_COMP(StreamingComponent);
-    // Setup hierarchy properly (don't copy children directly, just attach to same parent)
+    // Children are duplicated recursively, so only the original parent is inherited here.
     reg.emplace<HierarchyComponent>(newEntity);
     if (reg.all_of<HierarchyComponent>(srcEntity))
     {

@@ -22,5 +22,6 @@ private:
     char m_IpAddress[128] = "127.0.0.1";
     int m_Port = 12345;
     int m_MaxClients = 32;
+    bool m_TrustedNetwork = false;
 };
 #endif

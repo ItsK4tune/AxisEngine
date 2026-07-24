@@ -9,6 +9,12 @@
 using NetworkPeerId = uint64_t;
 inline constexpr NetworkPeerId InvalidNetworkPeer = 0;
 
+enum class NetworkSecurityMode
+{
+    RequireSecure,
+    TrustedNetwork
+};
+
 struct NetworkConfig
 {
     std::string host;
@@ -17,6 +23,9 @@ struct NetworkConfig
     size_t channels = 2;
     uint32_t incomingBandwidth = 0;
     uint32_t outgoingBandwidth = 0;
+    bool allowAnyInterfaceFallback = false;
+    NetworkSecurityMode securityMode = NetworkSecurityMode::RequireSecure;
+    size_t maxPacketBytes = 1024 * 1024;
 };
 
 struct NetworkStats

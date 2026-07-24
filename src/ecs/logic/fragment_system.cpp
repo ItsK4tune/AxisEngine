@@ -29,7 +29,7 @@ void FragmentSystem::Update(Scene& scene, float dt)
 
     auto view = scene.View<FragmentComponent>();
 
-    // Resolve SceneManager once ΓÇö needed for both cleanup and re-registration
+    // Cleanup and re-registration must use the same scene-manager instance.
     auto* sceneMgr = sl.Resolve<SceneManager>();
 
     for (auto entity : view)

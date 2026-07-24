@@ -189,7 +189,6 @@ void DecalSystem::RenderDecals(Scene& scene, bool isDeferred)
     int width = io ? io->GetMonitorManager().GetWidth() : 800;
     int height = io ? io->GetMonitorManager().GetHeight() : 600;
 
-    // Safety check for viewport
     if (width <= 0 || height <= 0)
         return;
     Shader* shader = isDeferred ? m_DecalShader.get() : m_ForwardShader.get();

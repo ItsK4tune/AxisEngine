@@ -2,6 +2,7 @@
 
 #ifdef ENABLE_EDITOR
 #include <core/logic/logger.h>
+#include <editor/logic/editor_file_service.h>
 #include <imgui.h>
 #include <algorithm>
 #include <cstring>
@@ -17,23 +18,33 @@
 
 void FileHierarchyPanel::Initialize()
 {
-    m_CurrentPath = std::filesystem::current_path();
+    std::error_code error;
+    m_CurrentPath = std::filesystem::weakly_canonical(std::filesystem::current_path(), error);
+    if (error)
+        m_CurrentPath = std::filesystem::current_path();
     m_ProjectRoot = m_CurrentPath;
     m_PathInput = m_CurrentPath.string();
     m_History.push_back(m_CurrentPath);
     m_HistoryIndex = 0;
 }
 
-static void NavigateTo(std::filesystem::path& current, std::string& input, std::vector<std::filesystem::path>& history,
-                       size_t& histIdx, const std::filesystem::path& target)
+static bool NavigateTo(std::filesystem::path& current, std::string& input,
+                       std::vector<std::filesystem::path>& history, size_t& histIdx,
+                       const std::filesystem::path& projectRoot, const std::filesystem::path& target)
 {
-    // Trim forward history if branching
+    if (!EditorFileService::IsWithinRoot(projectRoot, target))
+        return false;
+    std::error_code error;
+    const std::filesystem::path normalized = std::filesystem::weakly_canonical(target, error);
+    if (error || !std::filesystem::is_directory(normalized, error) || error)
+        return false;
     if (histIdx + 1 < history.size())
         history.erase(history.begin() + histIdx + 1, history.end());
-    current = target;
-    input = target.string();
-    history.push_back(target);
+    current = normalized;
+    input = normalized.string();
+    history.push_back(normalized);
     histIdx = history.size() - 1;
+    return true;
 }
 
 void FileHierarchyPanel::OpenInSystemEditor(const std::filesystem::path& path)
@@ -80,17 +91,10 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     ImGui::SameLine();
     if (ImGui::Button("Duplicate"))
     {
-        std::error_code error;
-        if (std::filesystem::is_regular_file(m_SelectedFile))
-        {
-            auto destination = m_SelectedFile.parent_path() /
-                               (m_SelectedFile.stem().string() + "_copy" + m_SelectedFile.extension().string());
-            std::filesystem::copy_file(m_SelectedFile, destination, std::filesystem::copy_options::overwrite_existing,
-                                       error);
-            m_OperationStatus = error ? error.message() : "Asset duplicated.";
-        }
-        else
-            m_OperationStatus = "Only files can be duplicated.";
+        const EditorFileResult result = EditorFileService::DuplicateFile(m_ProjectRoot, m_SelectedFile);
+        m_OperationStatus = result.message;
+        if (result.success)
+            m_SelectedFile = result.path;
     }
     ImGui::SameLine();
     if (ImGui::Button("Delete"))
@@ -117,9 +121,9 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
                 m_OperationStatus = "Use a simple folder name without path separators.";
             else
             {
-                std::error_code error;
-                std::filesystem::create_directory(m_CurrentPath / m_AssetName.data(), error);
-                m_OperationStatus = error ? error.message() : "Folder created.";
+                const EditorFileResult result =
+                    EditorFileService::CreateProjectDirectory(m_ProjectRoot, m_CurrentPath / m_AssetName.data());
+                m_OperationStatus = result.message;
             }
             ImGui::CloseCurrentPopup();
         }
@@ -154,15 +158,13 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
                 std::filesystem::path path = m_CurrentPath / m_AssetName.data();
                 if (path.extension().empty())
                     path += extensions[std::clamp(m_NewAssetType, 0, 3)];
-                std::ofstream output(path, std::ios::trunc);
-                if (output)
+                const EditorFileResult result = EditorFileService::CreateAssetFile(
+                    m_ProjectRoot, path, templates[std::clamp(m_NewAssetType, 0, 3)]);
+                m_OperationStatus = result.message;
+                if (result.success)
                 {
-                    output << templates[std::clamp(m_NewAssetType, 0, 3)];
-                    m_OperationStatus = "Asset created.";
-                    m_SelectedFile = path;
+                    m_SelectedFile = result.path;
                 }
-                else
-                    m_OperationStatus = "Could not create asset.";
             }
             ImGui::CloseCurrentPopup();
         }
@@ -186,12 +188,12 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
                 m_OperationStatus = "Use a simple asset name without path separators.";
             else
             {
-                std::error_code error;
                 const auto destination = m_SelectedFile.parent_path() / m_AssetName.data();
-                std::filesystem::rename(m_SelectedFile, destination, error);
-                if (!error)
-                    m_SelectedFile = destination;
-                m_OperationStatus = error ? error.message() : "Asset renamed.";
+                const EditorFileResult result =
+                    EditorFileService::Rename(m_ProjectRoot, m_SelectedFile, destination);
+                m_OperationStatus = result.message;
+                if (result.success)
+                    m_SelectedFile = result.path;
             }
             ImGui::CloseCurrentPopup();
         }
@@ -208,13 +210,13 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     }
     if (ImGui::BeginPopupModal("Delete asset?", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextWrapped("Delete '%s'? Non-empty folders are never removed.", m_SelectedFile.filename().string().c_str());
+        ImGui::TextWrapped("Delete '%s'? Non-empty folders are never removed.",
+                           m_SelectedFile.string().c_str());
         if (ImGui::Button("Delete"))
         {
-            std::error_code error;
-            const bool removed = std::filesystem::remove(m_SelectedFile, error);
-            m_OperationStatus = removed ? "Asset deleted." : (error ? error.message() : "Nothing was deleted.");
-            if (removed)
+            const EditorFileResult result = EditorFileService::Remove(m_ProjectRoot, m_SelectedFile);
+            m_OperationStatus = result.message;
+            if (result.success)
             {
                 m_SelectedFile.clear();
                 m_PreviewLoaded = false;
@@ -229,7 +231,6 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     }
 
     ImGui::Separator();
-    // --- Nav Bar ---
     bool canBack = m_HistoryIndex > 0;
     bool canFwd = m_HistoryIndex + 1 < m_History.size();
 
@@ -266,12 +267,15 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     ImGui::SameLine();
     if (ImGui::Button("Up"))
     {
-        if (m_CurrentPath.has_parent_path())
+        if (m_CurrentPath != m_ProjectRoot && m_CurrentPath.has_parent_path())
         {
-            NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, m_CurrentPath.parent_path());
-            m_SelectedFile.clear();
-            m_PreviewContent.clear();
-            m_PreviewLoaded = false;
+            if (NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, m_ProjectRoot,
+                           m_CurrentPath.parent_path()))
+            {
+                m_SelectedFile.clear();
+                m_PreviewContent.clear();
+                m_PreviewLoaded = false;
+            }
         }
     }
 
@@ -284,9 +288,8 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     {
         m_PathInput = pathBuf;
         std::filesystem::path p(m_PathInput);
-        if (std::filesystem::exists(p) && std::filesystem::is_directory(p))
+        if (NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, m_ProjectRoot, p))
         {
-            NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, p);
             m_SelectedFile.clear();
             m_PreviewContent.clear();
             m_PreviewLoaded = false;
@@ -300,9 +303,8 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     if (ImGui::Button("Go"))
     {
         std::filesystem::path p(m_PathInput);
-        if (std::filesystem::exists(p) && std::filesystem::is_directory(p))
+        if (NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, m_ProjectRoot, p))
         {
-            NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, p);
             m_SelectedFile.clear();
             m_PreviewContent.clear();
             m_PreviewLoaded = false;
@@ -315,16 +317,18 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
 
     ImGui::Separator();
 
-    // --- Split: File List (left) | Preview (right) ---
     float availW = ImGui::GetContentRegionAvail().x;
     float listW = m_PreviewLoaded ? availW * 0.5f : availW;
 
     ImGui::BeginChild("FileList", ImVec2(listW, 0), false);
     try
     {
-        // Sort: dirs first, then files
         std::vector<std::filesystem::directory_entry> entries;
-        for (auto& e : std::filesystem::directory_iterator(m_CurrentPath)) entries.push_back(e);
+        for (auto& entry : std::filesystem::directory_iterator(m_CurrentPath))
+        {
+            if (EditorFileService::IsWithinRoot(m_ProjectRoot, entry.path()))
+                entries.push_back(entry);
+        }
         std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
             if (a.is_directory() != b.is_directory())
                 return a.is_directory() > b.is_directory();
@@ -353,21 +357,22 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
                     m_PreviewContent.clear();
                     if (ImGui::IsMouseDoubleClicked(0))
                     {
-                        NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, path);
-                        m_SelectedFile.clear();
-                        m_PreviewContent.clear();
-                        m_PreviewLoaded = false;
+                        if (NavigateTo(m_CurrentPath, m_PathInput, m_History, m_HistoryIndex, m_ProjectRoot,
+                                       path))
+                        {
+                            m_SelectedFile.clear();
+                            m_PreviewContent.clear();
+                            m_PreviewLoaded = false;
+                        }
                     }
                 }
                 else
                 {
-                    // Single click: load preview
                     if (m_SelectedFile != path)
                     {
                         m_SelectedFile = path;
                         m_PreviewLoaded = false;
                         m_PreviewContent.clear();
-                        // Load text preview (limit 8KB)
                         std::ifstream f(path, std::ios::binary);
                         if (f)
                         {
@@ -379,7 +384,6 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
                             m_PreviewLoaded = true;
                         }
                     }
-                    // Double click: open in system editor
                     if (ImGui::IsMouseDoubleClicked(0))
                     {
                         OpenInSystemEditor(path);
@@ -395,7 +399,6 @@ void FileHierarchyPanel::DrawContents(Scene& scene)
     }
     ImGui::EndChild();
 
-    // --- Preview Panel ---
     if (m_PreviewLoaded)
     {
         ImGui::SameLine();

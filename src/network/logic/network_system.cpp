@@ -1,5 +1,7 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <engine/network/network_system.h>
+#include <network/interface/i_network_security_provider.h>
+#include <network/logic/network_protocol.h>
 #include <core/logic/service_locator.h>
 #include <core/type/app_config.h>
 #include <ecs/logic/system_factory.h>
@@ -31,6 +33,8 @@ size_t s_ENetUsers = 0;
 
 constexpr uint32_t ReplicationMagic = 0x41585250u;  // AXRP
 constexpr uint16_t ReplicationVersion = 1;
+constexpr size_t MaxConfiguredPacketBytes = 16 * 1024 * 1024;
+constexpr size_t MaxSecurityOverheadBytes = 64 * 1024;
 
 void WriteU16(std::vector<uint8_t>& output, uint16_t value)
 {
@@ -221,7 +225,8 @@ void NetworkSystem::Update(Scene& scene, float dt)
 
 bool NetworkSystem::StartServer(const NetworkConfig& config)
 {
-    if (config.maxClients == 0 || config.channels == 0 || config.channels > 255)
+    if (config.maxClients == 0 || config.channels == 0 || config.channels > 255 || config.maxPacketBytes == 0 ||
+        config.maxPacketBytes > MaxConfiguredPacketBytes)
     {
         LOGGER_ERROR("NetworkSystem") << "Server config requires maxClients > 0 and channels in [1, 255]";
         return false;
@@ -233,6 +238,8 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
             return false;
     }
     Stop();
+    if (!PrepareSecurity(config, true))
+        return false;
 
     LOGGER_INFO("NetworkSystem") << "Starting IPv4 server on port " << config.port
                                  << " with max clients: " << config.maxClients;
@@ -244,6 +251,9 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
             enet_address_set_host(&address, config.host.c_str()) != 0)
         {
             LOGGER_ERROR("NetworkSystem") << "Failed to resolve bind host " << config.host;
+            if (securityProvider)
+                securityProvider->Stop();
+            securityProvider = nullptr;
             return false;
         }
     }
@@ -256,10 +266,10 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
     host = enet_host_create(&address, config.maxClients, config.channels, config.incomingBandwidth,
                             config.outgoingBandwidth);
 
-    if (!host && !config.host.empty())
+    if (!host && !config.host.empty() && config.allowAnyInterfaceFallback)
     {
         LOGGER_WARN("NetworkSystem") << "Failed to bind " << config.host << ":" << config.port
-                                     << ", retrying on all local interfaces";
+                                     << "; explicit fallback enabled, retrying on all local interfaces";
         ENetAddress fallbackAddress{};
         fallbackAddress.host = ENET_HOST_ANY;
         fallbackAddress.port = config.port;
@@ -268,7 +278,12 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
     }
     if (!host)
     {
-        LOGGER_ERROR("NetworkSystem") << "Failed to create ENet server host on port " << config.port;
+        LOGGER_ERROR("NetworkSystem") << "Failed to bind ENet server to "
+                                      << (config.host.empty() ? "all local interfaces" : config.host) << ":"
+                                      << config.port;
+        if (securityProvider)
+            securityProvider->Stop();
+        securityProvider = nullptr;
         return false;
     }
 
@@ -283,7 +298,8 @@ bool NetworkSystem::StartServer(const NetworkConfig& config)
 
 bool NetworkSystem::StartClient(const NetworkConfig& config)
 {
-    if (config.channels == 0 || config.channels > 255)
+    if (config.channels == 0 || config.channels > 255 || config.maxPacketBytes == 0 ||
+        config.maxPacketBytes > MaxConfiguredPacketBytes)
     {
         LOGGER_ERROR("NetworkSystem") << "Client config requires channels in [1, 255]";
         return false;
@@ -295,6 +311,8 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
             return false;
     }
     Stop();
+    if (!PrepareSecurity(config, false))
+        return false;
 
     LOGGER_INFO("NetworkSystem") << "Connecting IPv4 client to " << config.host << ":" << config.port;
 
@@ -302,6 +320,9 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
     if (!host)
     {
         LOGGER_ERROR("NetworkSystem") << "Failed to create ENet client host";
+        if (securityProvider)
+            securityProvider->Stop();
+        securityProvider = nullptr;
         return false;
     }
 
@@ -313,6 +334,9 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
         LOGGER_ERROR("NetworkSystem") << "Failed to resolve host " << hostName;
         enet_host_destroy(host);
         host = nullptr;
+        if (securityProvider)
+            securityProvider->Stop();
+        securityProvider = nullptr;
         return false;
     }
     address.port = config.port;
@@ -324,6 +348,9 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
                                       << config.port;
         enet_host_destroy(host);
         host = nullptr;
+        if (securityProvider)
+            securityProvider->Stop();
+        securityProvider = nullptr;
         return false;
     }
 
@@ -339,18 +366,17 @@ bool NetworkSystem::StartClient(const NetworkConfig& config)
 
 void NetworkSystem::Stop()
 {
-    if (!host)
-        return;
-
-    FlushOutgoing();
-
-    if (isClient && serverPeer)
+    if (host)
     {
-        enet_peer_disconnect_now(serverPeer, 0);
-        serverPeer = nullptr;
+        FlushOutgoing();
+        if (isClient && serverPeer)
+            enet_peer_disconnect_now(serverPeer, 0);
+        enet_host_destroy(host);
     }
 
-    enet_host_destroy(host);
+    if (securityProvider)
+        securityProvider->Stop();
+    securityProvider = nullptr;
     host = nullptr;
     serverPeer = nullptr;
     isServer = false;
@@ -358,7 +384,36 @@ void NetworkSystem::Stop()
     flushPending = false;
     replicationAccumulator = 0.0f;
     lastReplicationSignatures.clear();
+    receivedSequences.clear();
+    nextSequence = 1;
     currentScene = nullptr;
+}
+
+bool NetworkSystem::PrepareSecurity(const NetworkConfig& config, bool server)
+{
+    securityMode = config.securityMode;
+    maxPacketBytes = config.maxPacketBytes;
+    if (securityMode == NetworkSecurityMode::TrustedNetwork)
+    {
+        LOGGER_WARN("NetworkSystem") << "Starting unauthenticated, unencrypted TrustedNetwork session";
+        securityProvider = nullptr;
+        return true;
+    }
+
+    securityProvider = ServiceLocator::Instance().Resolve<INetworkSecurityProvider>();
+    if (!securityProvider)
+    {
+        LOGGER_ERROR("NetworkSystem") << "Secure networking is required but no INetworkSecurityProvider is registered";
+        return false;
+    }
+    if (!securityProvider->Start(server, config))
+    {
+        LOGGER_ERROR("NetworkSystem") << "Network security provider failed to initialize";
+        securityProvider->Stop();
+        securityProvider = nullptr;
+        return false;
+    }
+    return true;
 }
 
 void NetworkSystem::ApplyOptimizationConfig(const OptimizationConfig& config)
@@ -386,40 +441,108 @@ void NetworkSystem::UpdateEvents(uint32_t timeoutMs)
         switch (event.type)
         {
             case ENET_EVENT_TYPE_CONNECT:
+            {
+                const NetworkPeerId peerId = ToPeerId(event.peer);
+                if (securityProvider &&
+                    (!securityProvider->AcceptPeer(peerId) || !securityProvider->IsAuthenticated(peerId)))
+                {
+                    LOGGER_WARN("NetworkSystem") << "Security provider rejected or did not authenticate peer";
+                    securityProvider->RemovePeer(peerId);
+                    enet_peer_disconnect_now(event.peer, 1);
+                    break;
+                }
                 if (isClient)
                 {
                     serverPeer = event.peer;
                 }
                 if (onConnect)
                 {
-                    onConnect(ToPeerId(event.peer));
+                    onConnect(peerId);
                 }
                 break;
+            }
 
             case ENET_EVENT_TYPE_RECEIVE:
+            {
                 processedBytes += event.packet ? event.packet->dataLength : 0;
-                if (event.packet && HandleReplicationPacket(event.packet->data, event.packet->dataLength))
+                if (!event.packet)
+                    break;
+
+                const NetworkPeerId peerId = ToPeerId(event.peer);
+                const uint8_t* wireData = event.packet->data;
+                size_t wireSize = event.packet->dataLength;
+                const size_t wireLimit =
+                    maxPacketBytes + (securityProvider ? MaxSecurityOverheadBytes : NetworkProtocol::HeaderBytes);
+                if (wireSize > wireLimit)
                 {
-                    // Engine replication packets are consumed internally.
+                    LOGGER_WARN("NetworkSystem") << "Discarded oversized network packet";
+                    enet_packet_destroy(event.packet);
+                    break;
                 }
+                std::vector<uint8_t> plaintext;
+                if (securityProvider)
+                {
+                    if (!securityProvider->IsAuthenticated(peerId) ||
+                        !securityProvider->Open(peerId, wireData, wireSize, plaintext))
+                    {
+                        LOGGER_WARN("NetworkSystem") << "Discarded unauthenticated or invalid encrypted packet";
+                        enet_packet_destroy(event.packet);
+                        break;
+                    }
+                    wireData = plaintext.data();
+                    wireSize = plaintext.size();
+                }
+
+                NetworkProtocolPacket decoded;
+                if (!NetworkProtocol::Decode(wireData, wireSize, maxPacketBytes, decoded))
+                {
+                    LOGGER_WARN("NetworkSystem") << "Discarded malformed network protocol packet";
+                    enet_packet_destroy(event.packet);
+                    break;
+                }
+
+                uint32_t& lastSequence = receivedSequences[peerId][event.channelID];
+                if (decoded.sequence <= lastSequence)
+                {
+                    LOGGER_WARN("NetworkSystem") << "Discarded replayed or out-of-order network packet";
+                    enet_packet_destroy(event.packet);
+                    break;
+                }
+                if (securityProvider &&
+                    !securityProvider->AuthorizePacket(peerId, static_cast<uint8_t>(decoded.kind), event.channelID,
+                                                       decoded.payload.data(), decoded.payload.size()))
+                {
+                    LOGGER_WARN("NetworkSystem") << "Security provider denied network packet";
+                    enet_packet_destroy(event.packet);
+                    break;
+                }
+                lastSequence = decoded.sequence;
+
+                if (decoded.kind == NetworkPacketKind::Replication)
+                    HandleReplicationPacket(decoded.payload.data(), decoded.payload.size());
                 else if (onMessage)
-                {
-                    onMessage(ToPeerId(event.peer), event.packet->data, event.packet->dataLength, event.channelID);
-                }
+                    onMessage(peerId, decoded.payload.data(), decoded.payload.size(), event.channelID);
                 enet_packet_destroy(event.packet);
                 break;
+            }
 
             case ENET_EVENT_TYPE_DISCONNECT:
+            {
+                const NetworkPeerId peerId = ToPeerId(event.peer);
                 if (event.peer == serverPeer)
                 {
                     serverPeer = nullptr;
                 }
+                if (securityProvider)
+                    securityProvider->RemovePeer(peerId);
                 if (onDisconnect)
                 {
-                    onDisconnect(ToPeerId(event.peer));
+                    onDisconnect(peerId);
                 }
-                lastReplicationSignatures.erase(ToPeerId(event.peer));
+                lastReplicationSignatures.erase(peerId);
+                receivedSequences.erase(peerId);
                 break;
+            }
 
             case ENET_EVENT_TYPE_NONE:
                 break;
@@ -560,7 +683,7 @@ void NetworkSystem::ReplicateScene(Scene& scene, float dt)
             continue;
         packet[6] = static_cast<uint8_t>((count >> 8) & 0xFF);
         packet[7] = static_cast<uint8_t>(count & 0xFF);
-        if (!SendPacket(peerId, packet.data(), packet.size(), true, 0))
+        if (!SendProtocolPacket(peerId, NetworkPacketKind::Replication, packet.data(), packet.size(), true, 0))
             continue;
         for (const auto& [networkId, signature] : committedUpdates)
             previousSignatures[networkId] = signature;
@@ -671,7 +794,43 @@ void NetworkSystem::FlushOutgoing()
 
 bool NetworkSystem::SendPacket(NetworkPeerId peerId, const void* data, size_t size, bool reliable, uint8_t channel)
 {
+    return SendProtocolPacket(peerId, NetworkPacketKind::UserMessage, data, size, reliable, channel);
+}
+
+bool NetworkSystem::SendProtocolPacket(NetworkPeerId peerId, NetworkPacketKind kind, const void* data, size_t size,
+                                       bool reliable, uint8_t channel)
+{
     ENetPeer* peer = FindPeer(peerId);
+    if (!peer || peer->state != ENET_PEER_STATE_CONNECTED || channel >= peer->channelCount ||
+        (size != 0 && !data))
+        return false;
+
+    if (nextSequence == 0)
+    {
+        LOGGER_ERROR("NetworkSystem") << "Network packet sequence exhausted; restart the session";
+        return false;
+    }
+    const uint32_t sequence = nextSequence++;
+
+    std::vector<uint8_t> encoded;
+    if (!NetworkProtocol::Encode(kind, sequence, data, size, maxPacketBytes, encoded))
+        return false;
+
+    if (securityProvider)
+    {
+        if (!securityProvider->IsAuthenticated(peerId))
+            return false;
+        std::vector<uint8_t> ciphertext;
+        if (!securityProvider->Seal(peerId, encoded.data(), encoded.size(), ciphertext) || ciphertext.empty() ||
+            ciphertext.size() > maxPacketBytes + MaxSecurityOverheadBytes)
+            return false;
+        return SendWirePacket(peer, ciphertext.data(), ciphertext.size(), reliable, channel);
+    }
+    return SendWirePacket(peer, encoded.data(), encoded.size(), reliable, channel);
+}
+
+bool NetworkSystem::SendWirePacket(ENetPeer* peer, const void* data, size_t size, bool reliable, uint8_t channel)
+{
     if (!peer || peer->state != ENET_PEER_STATE_CONNECTED || channel >= peer->channelCount ||
         (size != 0 && !data))
         return false;
@@ -694,14 +853,12 @@ void NetworkSystem::BroadcastPacket(const void* data, size_t size, bool reliable
 {
     if (!host || channel >= host->channelLimit || (size != 0 && !data))
         return;
-    uint32_t flags = reliable ? ENET_PACKET_FLAG_RELIABLE : 0;
-    ENetPacket* packet = enet_packet_create(data, size, flags);
-    if (!packet)
-        return;
-    enet_host_broadcast(host, channel, packet);
-    flushPending = true;
-    if (!networkBatchingEnabled)
-        FlushOutgoing();
+    for (size_t peerIndex = 0; peerIndex < host->peerCount; ++peerIndex)
+    {
+        ENetPeer* peer = &host->peers[peerIndex];
+        if (peer->state == ENET_PEER_STATE_CONNECTED)
+            SendProtocolPacket(ToPeerId(peer), NetworkPacketKind::UserMessage, data, size, reliable, channel);
+    }
 }
 
 NetworkPeerId NetworkSystem::GetFirstConnectedPeer() const

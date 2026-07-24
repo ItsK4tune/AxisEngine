@@ -27,6 +27,8 @@ public:
     // Peak defaults to intensity because gameplay events do not have a sampled
     // microphone peak unless the caller supplies one explicitly.
     void EmitPulse(const glm::vec3& origin, float intensity = 1.0f, float duration = 0.6f, float peak = -1.0f);
+    void EmitTaggedPulse(const glm::vec3& origin, float intensity, float duration, float frequency,
+                         AudioPulseSource source, float emitRadius = 0.0f);
     void UpdatePulses(float deltaTime);
     void ClearPulses();
     const std::vector<AudioPulse>& GetPulses() const

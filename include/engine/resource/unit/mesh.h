@@ -56,9 +56,8 @@ public:
     {
         return !m_VertexData.empty();
     }
+    bool CopyCpuVertex(size_t vertexIndex, void* destination, size_t byteCount) const;
     glm::vec3 GetPosition(size_t vertexIndex) const;
-    // Retains a compact position stream for collision/nav/editor inspection,
-    // then releases the full interleaved render vertex stream.
     void ReleaseCpuVertexData();
 
     static void SetManagers(IBufferManager* buf, ITextureManager* tex, IDrawContext* draw);

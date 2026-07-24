@@ -24,7 +24,6 @@ void NetworkPanel::OnImGui(Scene& scene)
 
     if (ImGui::BeginTabBar("NetworkPanelTabs"))
     {
-        // TAB 1: CONNECTION & CONTROL
         if (ImGui::BeginTabItem("Connection"))
         {
             if (netSys->IsRunning())
@@ -32,6 +31,7 @@ void NetworkPanel::OnImGui(Scene& scene)
                 if (netSys->IsServer())
                 {
                     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Status: Server Running");
+                    ImGui::Text("Requested bind: %s", m_IpAddress[0] ? m_IpAddress : "all interfaces");
                     ImGui::Text("Port: %d", m_Port);
                 }
                 else if (netSys->IsClient())
@@ -63,19 +63,26 @@ void NetworkPanel::OnImGui(Scene& scene)
                 ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Status: Disconnected");
                 ImGui::Separator();
 
-                ImGui::InputText("IP Address", m_IpAddress, sizeof(m_IpAddress));
+                ImGui::InputText("Host / bind address", m_IpAddress, sizeof(m_IpAddress));
+                ImGui::TextDisabled("Clear the address only when binding every local interface is intended.");
                 ImGui::InputInt("Port", &m_Port);
                 ImGui::InputInt("Max Clients", &m_MaxClients);
                 m_Port = std::clamp(m_Port, 1, 65535);
                 m_MaxClients = std::clamp(m_MaxClients, 1, 4096);
+                ImGui::Checkbox("Trusted LAN mode (no authentication or encryption)", &m_TrustedNetwork);
+                if (m_TrustedNetwork)
+                    ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.1f, 1.0f),
+                                       "Do not expose this session to the Internet.");
 
                 ImGui::Separator();
                 if (ImGui::Button("Start Server", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 4.0f, 0)))
                 {
                     NetworkConfig config;
-                    config.host = "";
+                    config.host = m_IpAddress;
                     config.port = static_cast<uint16_t>(m_Port);
                     config.maxClients = static_cast<size_t>(m_MaxClients);
+                    config.securityMode = m_TrustedNetwork ? NetworkSecurityMode::TrustedNetwork
+                                                           : NetworkSecurityMode::RequireSecure;
                     netSys->StartServer(config);
                 }
                 ImGui::SameLine();
@@ -84,13 +91,14 @@ void NetworkPanel::OnImGui(Scene& scene)
                     NetworkConfig config;
                     config.host = m_IpAddress;
                     config.port = static_cast<uint16_t>(m_Port);
+                    config.securityMode = m_TrustedNetwork ? NetworkSecurityMode::TrustedNetwork
+                                                           : NetworkSecurityMode::RequireSecure;
                     netSys->StartClient(config);
                 }
             }
             ImGui::EndTabItem();
         }
 
-        // TAB 2: PEERS LIST (Server Only)
         if (ImGui::BeginTabItem("Connected Peers"))
         {
             const auto peers = netSys->GetPeers();
@@ -147,7 +155,6 @@ void NetworkPanel::OnImGui(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // TAB 3: NETWORK REPLICATION (ECS Entities View)
         if (ImGui::BeginTabItem("Replicated Entities"))
         {
             ImGui::Text("Entities containing NetworkComponent:");

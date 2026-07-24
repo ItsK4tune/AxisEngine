@@ -24,5 +24,5 @@ public:
     static std::vector<YAMLNode> ParseString(const std::string& content);
 
 private:
-    static std::vector<YAMLNode> ParseStream(std::istream& stream);
+    static std::vector<YAMLNode> ParseStream(std::istream& stream, const std::string& sourceName);
 };

@@ -1,4 +1,6 @@
 #include <axis_app.h>
+#include <core/logic/service_locator.h>
+#include <resource/logic/resource_manager.h>
 #include <scene/logic/scene_serializer.h>
 #include <scene/logic/binary_scene_serializer.h>
 #include <audio/logic/audio_service.h>

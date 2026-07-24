@@ -99,11 +99,9 @@ void LightingSystem::RenderDeferredLighting(Scene& scene, int width, int height)
     auto& rtm = context.GetRenderTargetManager();
     auto& bm = context.GetBufferManager();
 
-    // Clear main FBO before lighting pass if needed, though we usually overwrite
     auto* rs = m_RenderService;
     uint32_t mainFBO = rs ? rs->GetMainFBO() : 0;
     rtm.BindFramebuffer(FramebufferTarget::Framebuffer, mainFBO);
-    // rtm.Clear(BufferBit::Color); // Usually not needed as we fill fragments
 
     auto& tm = context.GetTextureManager();
     auto* geoSys = m_GeoService;

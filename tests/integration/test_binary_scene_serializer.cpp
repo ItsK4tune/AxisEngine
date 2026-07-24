@@ -206,3 +206,90 @@ AXIS_TEST_CASE("BinarySceneSerializer does not treat configless v3 scenes as con
 
     axis_test_support::ResetServices();
 }
+
+AXIS_TEST_CASE("BinarySceneSerializer rejects oversized payloads before mutating the scene")
+{
+    auto path = axis_test_support::TempPath("binary_scene_oversized_payload.axsb");
+    {
+        std::ofstream os(path, std::ios::binary);
+        const uint32_t magic = 0x41585342;
+        const uint32_t version = 5;
+        const std::string payload = "axis_scene:\n  Entities:\n    Existing:\n";
+        const uint32_t length = static_cast<uint32_t>(payload.size());
+        os.write(reinterpret_cast<const char*>(&magic), sizeof(magic));
+        os.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        os.write(reinterpret_cast<const char*>(&length), sizeof(length));
+        os.write(payload.data(), static_cast<std::streamsize>(payload.size()));
+    }
+
+    Scene scene;
+    scene.CreateEntity("Preserved");
+    const size_t originalCount = scene.GetEntityCount();
+    BinarySceneLoadLimits limits;
+    limits.maxPayloadBytes = 8;
+
+    BinarySceneSerializer serializer;
+    SceneLoadResult result;
+    AXIS_CHECK(!serializer.Deserialize(path.string(), scene, result, limits));
+    AXIS_CHECK(scene.GetEntityCount() == originalCount);
+    AXIS_CHECK(scene.FindByName("Preserved") != entt::null);
+}
+
+AXIS_TEST_CASE("BinarySceneSerializer rolls back partially read legacy scenes")
+{
+    auto path = axis_test_support::TempPath("binary_scene_truncated_legacy.axsb");
+    {
+        std::ofstream os(path, std::ios::binary);
+        auto writeU32 = [&](uint32_t value) { os.write(reinterpret_cast<const char*>(&value), sizeof(value)); };
+        auto writeI32 = [&](int32_t value) { os.write(reinterpret_cast<const char*>(&value), sizeof(value)); };
+        auto writeBool = [&](bool value) {
+            const uint8_t raw = value ? 1 : 0;
+            os.write(reinterpret_cast<const char*>(&raw), sizeof(raw));
+        };
+        auto writeString = [&](const std::string& value) {
+            writeU32(static_cast<uint32_t>(value.size()));
+            os.write(value.data(), static_cast<std::streamsize>(value.size()));
+        };
+
+        writeU32(0x41585342);
+        writeU32(4);
+        writeU32(2);
+        writeString("First");
+        writeString("default");
+        writeU32(1);
+        writeBool(false);
+        writeBool(false);
+        writeBool(false);
+        writeI32(-1);
+        for (int component = 0; component < 7; ++component)
+            writeBool(false);
+
+        writeU32(2u * 1024u * 1024u);
+    }
+
+    Scene scene;
+    scene.CreateEntity("Preserved");
+    const size_t originalCount = scene.GetEntityCount();
+
+    BinarySceneSerializer serializer;
+    AXIS_CHECK(!serializer.Deserialize(path.string(), scene));
+    AXIS_CHECK(scene.GetEntityCount() == originalCount);
+    AXIS_CHECK(scene.FindByName("Preserved") != entt::null);
+    AXIS_CHECK(scene.FindByName("First") == entt::null);
+}
+
+AXIS_TEST_CASE("BinarySceneSerializer enforces the configured legacy entity limit")
+{
+    AXIS_EXPECT_ERROR_LOGS(1);
+    auto path = axis_test_support::TempPath("binary_scene_entity_limit.axsb");
+    {
+        std::ofstream os(path, std::ios::binary);
+        const uint32_t values[] = {0x41585342, 4, 100001};
+        os.write(reinterpret_cast<const char*>(values), sizeof(values));
+    }
+
+    Scene scene;
+    BinarySceneSerializer serializer;
+    AXIS_CHECK(!serializer.Deserialize(path.string(), scene));
+    AXIS_CHECK(scene.GetEntityCount() == 0);
+}

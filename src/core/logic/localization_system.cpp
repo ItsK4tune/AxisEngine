@@ -1,4 +1,5 @@
 #include <core/logic/localization_system.h>
+#include <core/logic/filesystem.h>
 #include <core/logic/logger.h>
 #include <core/logic/service_locator.h>
 #include <core/logic/yaml_parser.h>
@@ -26,21 +27,23 @@ void LocalizationSystem::Shutdown()
 void LocalizationSystem::LoadLanguage(const std::string& path, const std::string& name)
 {
     std::string langName = name.empty() ? path : name;
+    const std::string resolvedPath = FileSystem::getPath(path);
 
-    if (!std::filesystem::exists(path))
+    if (!std::filesystem::exists(resolvedPath))
     {
-        LOGGER_WARN("LocalizationSystem") << "Language file not found: " << path;
+        LOGGER_WARN("LocalizationSystem") << "Language file not found: " << resolvedPath;
         return;
     }
 
-    std::vector<YAMLNode> roots = YAMLParser::Parse(path);
+    std::vector<YAMLNode> roots = YAMLParser::Parse(resolvedPath);
     std::unordered_map<std::string, std::string> entries;
 
     for (const auto& root : roots)
     {
         if (root.key.rfind("axis_", 0) == 0 && root.key != "axis_localization" && root.key != "axis_scene")
         {
-            LOGGER_WARN("LocalizationSystem") << "Potential typo in root key: '" << root.key << "', expected 'axis_localization' in " << path;
+            LOGGER_WARN("LocalizationSystem") << "Potential typo in root key: '" << root.key
+                                               << "', expected 'axis_localization' in " << resolvedPath;
         }
     }
 
@@ -56,7 +59,8 @@ void LocalizationSystem::LoadLanguage(const std::string& path, const std::string
                 }
                 else
                 {
-                    LOGGER_WARN("LocalizationSystem") << "Unknown block '" << section.key << "' in axis_localization in " << path;
+                    LOGGER_WARN("LocalizationSystem") << "Unknown block '" << section.key
+                                                       << "' in axis_localization in " << resolvedPath;
                 }
             }
         }

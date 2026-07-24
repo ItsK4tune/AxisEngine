@@ -136,7 +136,7 @@ void PhysicsLoader::LoadRigidBody(Scene& scene, entt::entity entity, const YAMLN
                                      "MinHeight",      "MaxHeight",      "HeightfieldScale", "Heights"},
                               "RigidBody");
 
-    // Check if we are loading the "unified" legacy format or just the dynamic part
+    // Legacy RigidBody nodes contain shape fields that now belong to RigidShape.
     bool isLegacy = !node.GetChildValue("Type").empty();
     if (isLegacy)
     {

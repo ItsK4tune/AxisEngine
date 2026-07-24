@@ -27,6 +27,47 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+namespace
+{
+void ScanSourceDirectories(const std::vector<fs::path>& directories,
+                           std::vector<std::pair<std::string, std::string>>& output)
+{
+    output.clear();
+    std::error_code error;
+    for (const fs::path& directory : directories)
+    {
+        if (!fs::is_directory(directory, error))
+        {
+            error.clear();
+            continue;
+        }
+        for (fs::directory_iterator iterator(directory, error), end; iterator != end && !error;
+             iterator.increment(error))
+        {
+            if (!iterator->is_regular_file(error))
+                continue;
+            const std::string extension = iterator->path().extension().string();
+            if (extension == ".cpp" || extension == ".h" || extension == ".hpp")
+                output.emplace_back(iterator->path().filename().string(), iterator->path().string());
+        }
+        error.clear();
+    }
+    std::sort(output.begin(), output.end());
+    output.erase(std::unique(output.begin(), output.end()), output.end());
+}
+}
+
+void ResourceBrowserPanel::Initialize()
+{
+    RefreshSourceFiles();
+}
+
+void ResourceBrowserPanel::RefreshSourceFiles()
+{
+    ScanSourceDirectories({"src/scripts", "include/scripts"}, m_Scripts);
+    ScanSourceDirectories({"src/states", "include/states"}, m_States);
+}
+
 static glm::vec3 RotatePoint(const glm::vec3& p, float rotX, float rotY)
 {
     float cx = std::cos(rotX);
@@ -59,12 +100,10 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
     float leftW = availW * 0.40f;
     float rightW = availW - leftW - ImGui::GetStyle().ItemSpacing.x;
 
-    // --- Left Pane: Resource Lists (with Tabs) ---
     ImGui::BeginChild("ResourceListPane", ImVec2(leftW, 0), true);
 
     if (ImGui::BeginTabBar("ResourceTabs"))
     {
-        // 1. Meshes
         if (ImGui::BeginTabItem("Meshes"))
         {
             m_ActiveTab = 0;
@@ -83,7 +122,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 2. Textures
         if (ImGui::BeginTabItem("Textures"))
         {
             m_ActiveTab = 1;
@@ -102,7 +140,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 3. Shaders
         if (ImGui::BeginTabItem("Shaders"))
         {
             m_ActiveTab = 2;
@@ -134,7 +171,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 4. Audio
         if (ImGui::BeginTabItem("Audio"))
         {
             m_ActiveTab = 3;
@@ -158,7 +194,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 5. Video
         if (ImGui::BeginTabItem("Video"))
         {
             m_ActiveTab = 4;
@@ -177,7 +212,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 6. Animations
         if (ImGui::BeginTabItem("Animations"))
         {
             m_ActiveTab = 5;
@@ -196,7 +230,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 7. Skyboxes
         if (ImGui::BeginTabItem("Skyboxes"))
         {
             m_ActiveTab = 6;
@@ -215,7 +248,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 8. Fonts
         if (ImGui::BeginTabItem("Fonts"))
         {
             m_ActiveTab = 7;
@@ -234,7 +266,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 9. Fragments
         if (ImGui::BeginTabItem("Fragments"))
         {
             m_ActiveTab = 8;
@@ -253,34 +284,15 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 10. Scriptable
         if (ImGui::BeginTabItem("Scriptable"))
         {
             m_ActiveTab = 9;
-            std::vector<std::pair<std::string, std::string>> scripts;
-            auto scanDir = [&](const std::string& dir) {
-                if (fs::exists(dir))
-                {
-                    for (const auto& entry : fs::directory_iterator(dir))
-                    {
-                        if (entry.is_regular_file())
-                        {
-                            std::string ext = entry.path().extension().string();
-                            if (ext == ".cpp" || ext == ".h" || ext == ".hpp")
-                            {
-                                scripts.push_back({entry.path().filename().string(), entry.path().string()});
-                            }
-                        }
-                    }
-                }
-            };
-            scanDir("src/scripts");
-            scanDir("include/scripts");
-
-            if (scripts.empty())
+            if (ImGui::SmallButton("Refresh source files"))
+                RefreshSourceFiles();
+            if (m_Scripts.empty())
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f),
                                    "No scripts found in src/scripts or include/scripts.");
-            for (const auto& item : scripts)
+            for (const auto& item : m_Scripts)
             {
                 bool selected = (m_SelectedName == item.first && m_SelectedType == "Scriptable");
                 if (ImGui::Selectable(item.first.c_str(), selected))
@@ -293,33 +305,14 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
             ImGui::EndTabItem();
         }
 
-        // 11. State
         if (ImGui::BeginTabItem("State"))
         {
             m_ActiveTab = 10;
-            std::vector<std::pair<std::string, std::string>> states;
-            auto scanDir = [&](const std::string& dir) {
-                if (fs::exists(dir))
-                {
-                    for (const auto& entry : fs::directory_iterator(dir))
-                    {
-                        if (entry.is_regular_file())
-                        {
-                            std::string ext = entry.path().extension().string();
-                            if (ext == ".cpp" || ext == ".h" || ext == ".hpp")
-                            {
-                                states.push_back({entry.path().filename().string(), entry.path().string()});
-                            }
-                        }
-                    }
-                }
-            };
-            scanDir("src/states");
-            scanDir("include/states");
-
-            if (states.empty())
+            if (ImGui::SmallButton("Refresh source files"))
+                RefreshSourceFiles();
+            if (m_States.empty())
                 ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No states found in src/states or include/states.");
-            for (const auto& item : states)
+            for (const auto& item : m_States)
             {
                 bool selected = (m_SelectedName == item.first && m_SelectedType == "State");
                 if (ImGui::Selectable(item.first.c_str(), selected))
@@ -338,7 +331,6 @@ void ResourceBrowserPanel::DrawContents(Scene& scene)
 
     ImGui::SameLine();
 
-    // --- Right Pane: Live Interactive Details & Previews ---
     ImGui::BeginChild("ResourceDetailsPane", ImVec2(rightW, 0), true);
 
     if (m_SelectedName.empty())

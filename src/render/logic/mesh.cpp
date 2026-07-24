@@ -1,7 +1,9 @@
 #include <algorithm>
+#include <limits>
 #include <utility>
 
 #include <resource/unit/mesh.h>
+#include <cstring>
 #include <cstddef>
 #include <core/logic/logger.h>
 #include <render/interface/i_buffer_manager.h>
@@ -244,11 +246,27 @@ glm::vec3 Mesh::GetPosition(size_t vertexIndex) const
         return glm::vec3(0.0f);
     if (!m_VertexData.empty())
     {
-        const float* value =
-            reinterpret_cast<const float*>(m_VertexData.data() + vertexIndex * m_VertexStride);
+        float value[3]{};
+        if (!CopyCpuVertex(vertexIndex, value, sizeof(value)))
+            return glm::vec3(0.0f);
         return glm::vec3(value[0], value[1], value[2]);
     }
     return vertexIndex < m_CompactPositions.size() ? m_CompactPositions[vertexIndex] : glm::vec3(0.0f);
+}
+
+bool Mesh::CopyCpuVertex(size_t vertexIndex, void* destination, size_t byteCount) const
+{
+    if (!destination || byteCount == 0 || vertexIndex >= m_VertexCount || m_VertexStride < byteCount)
+        return false;
+    if (vertexIndex > (std::numeric_limits<size_t>::max)() / m_VertexStride)
+        return false;
+
+    const size_t offset = vertexIndex * m_VertexStride;
+    if (offset > m_VertexData.size() || byteCount > m_VertexData.size() - offset)
+        return false;
+
+    std::memcpy(destination, m_VertexData.data() + offset, byteCount);
+    return true;
 }
 
 void Mesh::ReleaseCpuVertexData()

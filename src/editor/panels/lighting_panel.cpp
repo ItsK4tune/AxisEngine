@@ -195,30 +195,35 @@ bool LightingPanel::BakeLightmaps(Scene& scene)
         {
             if (!mesh.HasCpuVertexData() || mesh.indices.size() < 3)
                 continue;
-            const auto readVertex = [&](size_t index) {
-                BakeVertex result{};
-                const uint8_t* source = mesh.m_VertexData.data() + index * mesh.m_VertexStride;
+            const auto readVertex = [&](size_t index, BakeVertex& result) {
                 if (mesh.m_IsSkinned)
                 {
-                    const auto& vertex = *reinterpret_cast<const SkinnedVertex*>(source);
+                    SkinnedVertex vertex{};
+                    if (!mesh.CopyCpuVertex(index, &vertex, sizeof(vertex)))
+                        return false;
                     result = {vertex.Position, vertex.Normal, vertex.TexCoords};
                 }
                 else
                 {
-                    const auto& vertex = *reinterpret_cast<const StaticVertex*>(source);
+                    StaticVertex vertex{};
+                    if (!mesh.CopyCpuVertex(index, &vertex, sizeof(vertex)))
+                        return false;
                     result = {vertex.Position, vertex.Normal, vertex.TexCoords};
                 }
                 result.position = glm::vec3(world * glm::vec4(result.position, 1.0f));
                 result.normal = glm::normalize(normalMatrix * result.normal);
                 result.uv.y = 1.0f - result.uv.y;
-                return result;
+                return true;
             };
 
             for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3)
             {
-                const BakeVertex a = readVertex(mesh.indices[index]);
-                const BakeVertex b = readVertex(mesh.indices[index + 1]);
-                const BakeVertex c = readVertex(mesh.indices[index + 2]);
+                BakeVertex a{};
+                BakeVertex b{};
+                BakeVertex c{};
+                if (!readVertex(mesh.indices[index], a) || !readVertex(mesh.indices[index + 1], b) ||
+                    !readVertex(mesh.indices[index + 2], c))
+                    continue;
                 const glm::vec2 pa = a.uv * static_cast<float>(resolution - 1);
                 const glm::vec2 pb = b.uv * static_cast<float>(resolution - 1);
                 const glm::vec2 pc = c.uv * static_cast<float>(resolution - 1);

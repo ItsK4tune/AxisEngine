@@ -377,7 +377,6 @@ void ResourceManager::LoadShader(const std::string& name, const std::string& vsP
     auto shader = m_ShaderManager->Get(name);
     if (shader)
     {
-        // Smart detection: check name OR content of the fragment shader
         bool isDeferred = (name.find("deferred") != std::string::npos || fsPath.find("deferred") != std::string::npos);
         if (!isDeferred)
         {
@@ -705,7 +704,6 @@ std::shared_ptr<Texture> ResourceManager::GetTextureAuto(const std::string& name
     if (t)
         return t;
 
-    // Check if any existing texture has this path
     std::string fullPath = FileSystem::getPath(nameOrPath);
     {
         std::lock_guard<std::mutex> lock(m_ResourceMutex);
@@ -740,7 +738,6 @@ std::shared_ptr<Model> ResourceManager::GetModelAuto(const std::string& nameOrPa
     if (m)
         return m;
 
-    // Check if any existing model has this path
     std::string fullPath = FileSystem::getPath(nameOrPath);
     {
         std::lock_guard<std::mutex> lock(m_ResourceMutex);
@@ -779,7 +776,6 @@ std::shared_ptr<Font> ResourceManager::GetFontAuto(const std::string& nameOrPath
     if (f)
         return f;
 
-    // Check if any existing font has this path and size
     std::string fullPath = FileSystem::getPath(nameOrPath);
     std::string matchingFont;
     {
@@ -834,7 +830,6 @@ std::shared_ptr<IAudioSource> ResourceManager::GetSoundAuto(const std::string& n
     if (s)
         return s;
 
-    // Check if any existing sound has this path
     std::string fullPath = FileSystem::getPath(nameOrPath);
     {
         std::lock_guard<std::mutex> lock(m_ResourceMutex);

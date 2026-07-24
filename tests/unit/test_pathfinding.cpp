@@ -55,6 +55,19 @@ AXIS_TEST_CASE("Pathfinding returns empty path for disconnected graph")
     AXIS_CHECK(path.empty());
 }
 
+AXIS_TEST_CASE("Pathfinding ignores invalid neighbor indices")
+{
+    NavMeshComponent navMesh;
+    navMesh.nodes = {
+        Node({0.0f, 0.0f, 0.0f}, {999, 1}),
+        Node({1.0f, 0.0f, 0.0f}, {0}),
+    };
+
+    const auto path = Pathfinding::FindPath({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, navMesh);
+
+    AXIS_CHECK(!path.empty());
+}
+
 AXIS_TEST_CASE("Pathfinding shortest criteria chooses lower distance route")
 {
     NavMeshComponent navMesh;

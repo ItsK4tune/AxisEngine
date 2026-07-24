@@ -99,6 +99,9 @@ std::vector<glm::vec3> Pathfinding::FindPath(const glm::vec3& start, const glm::
 
         for (uint32_t neighbor : navMesh.nodes[current].neighbors)
         {
+            if (neighbor >= navMesh.nodes.size())
+                continue;
+
             const glm::vec3& currentPos = navMesh.nodes[current].position;
             const glm::vec3& neighborPos = navMesh.nodes[neighbor].position;
             float dist = glm::distance(currentPos, neighborPos);
