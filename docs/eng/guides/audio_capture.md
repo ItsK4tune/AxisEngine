@@ -1,33 +1,65 @@
-# Microphone capture
+# Audio Capture Guide (WASAPI Microphone)
 
-> [Tiếng Việt](../../vi/guides/audio_capture.md)
+> [Tiếng Việt](../../vi/guides/audio_capture.md) | [Audio System](audio.md) | [Configuration Reference](configuration.md) | [Documentation Index](../INDEX.md)
 
-Microphone input is independent from audio playback. Axis registers an `IAudioCaptureService`; Windows uses WASAPI shared-mode capture and other platforms expose an explicit unsupported null service until a capture backend is supplied.
+---
 
-## Configuration
+## 1. Introduction
 
-```yaml
-axis_config:
-  AUDIO_CAPTURE_ENABLED: 1
-  AUDIO_CAPTURE_DEVICE: "" # empty selects the default endpoint
-  AUDIO_CAPTURE_INPUT_VOLUME: 1.0 # software pre-amplifier, 0.0-4.0
-  AUDIO_CAPTURE_NOISE_GATE: 0.02
-  AUDIO_CAPTURE_GAIN: 4.0
-  AUDIO_CAPTURE_ATTACK_SECONDS: 0.05
-  AUDIO_CAPTURE_RELEASE_SECONDS: 0.05
-  AUDIO_CAPTURE_PEAK_DECAY_SECONDS: 0.125
-  AUDIO_CAPTURE_CALIBRATION_SECONDS: 1.0
-  AUDIO_CAPTURE_PULSE_THRESHOLD: 0.15
-  AUDIO_CAPTURE_PULSE_COOLDOWN: 0.08
-  AUDIO_CAPTURE_PULSE_DURATION: 0.6
+AxisEngine integrates native **WASAPI Microphone Audio Capture** on Windows systems. Managed via `IAudioCaptureService`, the capture subsystem processes real-time microphone input, applying pre-amplification gain, noise-gate filtering, ambient calibration, and pulse detection for voice-reactive game mechanics.
+
+---
+
+## 2. How to Use
+
+1. **Enable Audio Capture**: Set `AUDIO_CAPTURE_ENABLED: 1` in `axis_config.axs`.
+2. **Access Service**: Retrieve service instance via `ServiceLocator::Get<IAudioCaptureService>()`.
+3. **Query Volume Levels**: Call `capture->GetNormalizedLevel()` (returns `0.0` to `1.0`).
+4. **Subscribe to Events**: Register a listener for `VoicePulseEvent` via `EventManager`.
+
+---
+
+## 3. Examples
+
+### 1. Monitoring Microphone Volume Level Example
+```cpp
+#include <axis_sdk.h>
+
+void UpdateMicVolumeMeter() {
+    auto capture = ServiceLocator::Get<IAudioCaptureService>();
+    if (capture && capture->IsCapturing()) {
+        float level = capture->GetNormalizedLevel();
+        if (level > 0.6f) {
+            AXIS_LOG_INFO("Voice input peak detected: " + std::to_string(level));
+        }
+    }
+}
 ```
 
-`MIC_INPUT_VOLUME` and `MIC_INPUT_THRESHOLD` are accepted as aliases for `AUDIO_CAPTURE_INPUT_VOLUME` and `AUDIO_CAPTURE_NOISE_GATE`. Input volume is applied before calibration and gating; gain is applied afterward to the normalized voice intensity. Attack/release control RMS response, while peak decay controls how long transients remain visible.
+### 2. Subscribing to Voice Pulse Trigger Event Example
+```cpp
+#include <axis_sdk.h>
 
-At startup and on request, calibration samples ambient RMS to establish the noise floor. Each real-time update computes RMS, a decaying peak, gated intensity, and bounded pulses. `GetSnapshot()` returns a thread-safe copy for gameplay code.
+struct VoicePulseEvent { float peakAmplitude; };
 
-## Replacing the backend
+void SetupVoiceSpells() {
+    EventManager::Get().Subscribe<VoicePulseEvent>([](const VoicePulseEvent& e) {
+        AXIS_LOG_INFO("Voice spell cast triggered with amplitude: " + std::to_string(e.peakAmplitude));
+    });
+}
+```
 
-Implement `IAudioCaptureService`, install it with `AppBuilder::WithAudioCaptureFactory`, and pass that builder to the `Application` constructor. A miniaudio or FMOD implementation can feed raw RMS/peak values into `AudioCaptureProcessor`, which provides shared sanitization, smoothing, time-weighted calibration, noise gating, and bounded pulse lifecycle. Synchronization remains the owning service's responsibility when capture and frame updates use different threads. Playback remains behind `IAudioEngine`; recording is intentionally a separate service.
+---
 
-Custom post-process shaders receive the current level through `u_AudioLevel` and pulses through SSBO binding `26`; see [Graphics & Rendering Guide](graphics.md#9-custom-post-process-abi).
+## 4. API & Configuration Reference
+
+### Audio Capture Settings Reference Table
+
+| Setting Key | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `AUDIO_CAPTURE_ENABLED` | `bool` | `0` | Enables microphone capture device startup |
+| `AUDIO_CAPTURE_DEVICE` | `string` | `""` | Specific device ID (empty uses system default) |
+| `AUDIO_CAPTURE_INPUT_VOLUME`| `float` | `1.0` | Input pre-amplification scaling |
+| `AUDIO_CAPTURE_NOISE_GATE` | `float` | `0.05` | Minimum amplitude threshold below which signal is cut |
+| `AUDIO_CAPTURE_GAIN` | `float` | `1.0` | Post-gate output amplification multiplier |
+| `AUDIO_CAPTURE_PULSE_THRESHOLD`| `float` | `0.4` | Peak amplitude threshold for triggering voice pulse events |

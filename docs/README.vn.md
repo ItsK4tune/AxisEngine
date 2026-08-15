@@ -1,99 +1,105 @@
 <p align="center">
-  <img src="include/engine/asset/project/logo.png" alt="Logo AxisEngine" width="220">
+  <img src="../include/engine/asset/project/logo.png" alt="AxisEngine logo" width="220">
 </p>
 
-# AxisEngine
+# AxisEngine - Tổng quan Tiếng Việt
 
-AxisEngine là game engine và multimedia framework viết bằng C++20, sử dụng ECS.
-Bản hiện tại cung cấp renderer OpenGL, physics Bullet, Null audio mặc định, và
-có thể chọn FMOD hoặc irrKlang khi đã cài SDK tương ứng. Repository còn bao gồm
-scene serialization, scripting, navigation, networking, video, editor ImGui,
-scene compiler và ứng dụng mẫu gồm 33 scenario.
+> [English](README.eng.md) | [Mục lục Tài liệu](vi/INDEX.md) | [Sổ tay Sử dụng](vi/MANUAL.md)
 
-Đây là engine/framework, không phải game hoàn chỉnh. Khi bật sample, executable
-được tạo ra là `axis_samples`. Ứng dụng sử dụng engine cần cung cấp lớp
-`Application` và `State` đầu tiên.
+---
 
-[Trang song ngữ](README.md) | [English README](README.eng.md) |
-[Tài liệu tiếng Việt](docs/vi/INDEX.md) | [English documentation](docs/eng/INDEX.md) |
-[Báo cáo audit](docs/vi/audit/source_audit_2026-07-23.md)
+## 1. Giới thiệu
 
-## Khả năng hiện có
+AxisEngine là game engine C++20 xây dựng trên nền tảng EnTT Entity-Component-System. Engine cung cấp renderer OpenGL 4.6, vật lý Bullet 3D, backend âm thanh linh hoạt, bộ biên dịch scene nhị phân và bộ công cụ editor ImGui.
 
-| Hạng mục | Implementation đi kèm | Ghi chú |
-| --- | --- | --- |
-| Ngôn ngữ | C++20 | CMake 3.20 trở lên |
-| Graphics | OpenGL | Renderer yêu cầu OpenGL 4.6; không chạy được trên macOS |
-| Physics | Bullet | Chọn tại thời điểm configure |
-| Audio playback | Null, FMOD, irrKlang | Null là mặc định; FMOD/irrKlang cần SDK |
-| Microphone | WASAPI trên Windows | Nền tảng khác trả về trạng thái unsupported |
-| Nền tảng | Windows, Linux; macOS giới hạn | macOS không chạy được renderer OpenGL 4.6 hiện tại |
-| Editor | ImGui, tùy chọn | Bật bằng `ENABLE_EDITOR=ON` |
-| Scene | `.axs`, `.axsb` | `.axs` là YAML subset riêng; `.axsb` là binary đã compile |
+Ứng dụng người dùng tự định nghĩa lớp `Application` và `State` ban đầu. Dự án biên dịch ra thư viện tĩnh `Axis::Engine`, thư viện `Axis::Editor` và ứng dụng chạy scenario mẫu `axis_samples`.
 
-Các enum Vulkan, DirectX, PhysX và OpenAL vẫn còn để tương thích source/scene,
-nhưng bản phát hành này không có backend tương ứng.
+---
 
-## Build nhanh trên Windows
+## 2. Bảng Hỗ trợ Hệ thống
 
-Chỉ build static engine library:
+| Tính năng | Triển khai Hỗ trợ | Flag / Thiết lập | Ghi chú |
+| :--- | :--- | :--- | :--- |
+| Ngôn ngữ | Chuẩn C++20 | `CMAKE_CXX_STANDARD=20` | Yêu cầu CMake 3.20+ |
+| Đồ họa | OpenGL 4.6 | `AXIS_GRAPHICS_BACKEND=OpenGL` | Forward/Deferred PBR; ngoại trừ macOS |
+| Vật lý | Bullet Physics 3D | `AXIS_PHYSICS_BACKEND=Bullet` | Rigidbodies, colliders, constraints |
+| Âm thanh | Null, FMOD, irrKlang | `AXIS_AUDIO_BACKEND=Null/FMOD/IrrKlang` | Null là mặc định không phụ thuộc SDK ngoài |
+| Microphone | Thu âm WASAPI | Tự động trên Windows | Đo mức âm lượng & sự kiện giọng nói |
+| Nền tảng | Windows, Linux | Preset cấu hình sẵn | Windows MSVC / Linux Ninja |
+| Editor | Mở rộng ImGui | `ENABLE_EDITOR=ON` | Bao gồm mục tiêu `Axis::Editor` |
+| Scene | `.axs` (YAML subset), `.axsb` | Native Parsers / `axis_compile` | Hỗ trợ 5 loại schema `.axs` |
 
-```powershell
-cmake --preset windows-msvc
-cmake --build --preset windows-release
-```
+---
 
-Build editor và sample:
+## 3. Hướng dẫn Build
 
+### Biên dịch Engine và Editor
 ```powershell
 cmake --preset windows-msvc-editor
 cmake --build build --config Release --parallel
 .\build\bin\Release\axis_samples.exe
 ```
 
-Build và chạy test:
-
+### Chạy Bộ Kiểm thử
 ```powershell
 cmake -S . -B build -DENABLE_TESTS=ON
 cmake --build build --config Release --target axis_test --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-`axis_tools.bat` và `axis_tools.sh` là menu tiện ích. CMake vẫn là workflow
-chuẩn và dễ tái lập nhất.
+---
 
-## Public API
+## 4. Mã nguồn Mẫu Tối giản
 
-- Dùng `axis_sdk.h` cho game và tool.
-- Dùng `axis_plugin.h` để thay provider/module.
-- Chỉ dùng `axis_advanced.h` khi cần tích hợp system cấp thấp.
-- Header trong thư mục `strategy/` là implementation detail và không được cài
-  cùng SDK package.
+```cpp
+#include <axis_sdk.h>
 
-Đọc [manual tiếng Việt](docs/vi/MANUAL.md) để xem workflow đầy đủ, cấu trúc
-project, scene, script, editor, đóng gói và troubleshooting.
+class GameplayState final : public State {
+public:
+    void OnEnter() override { AXIS_LOG_INFO("Gameplay State dang hoat dong"); }
+    void OnUpdate(float dt) override {}
+    void OnRender() override {}
+    void OnExit() override {}
+};
 
-Các hướng dẫn chính:
+class GameApp final : public Application {
+public:
+    void RegisterUserScripts() override {}
+};
 
-- [Bắt đầu sử dụng](docs/vi/core/getting_started.md)
-- [Hướng dẫn build](docs/vi/guides/build_guide.md)
-- [Hướng dẫn editor](docs/vi/guides/editor.md)
-- [Mở rộng editor](docs/vi/guides/editor_extensions.md)
-- [Scriptable API](docs/vi/scripting/scriptable_api.md)
-- [State API](docs/vi/state/state_api.md)
+int main() {
+    auto app = std::make_shared<GameApp>();
+    AppConfig config;
+    config.title = "AxisEngine Quickstart";
+    config.window.width = 1280;
+    config.window.height = 720;
 
-## Ranh giới an toàn
+    if (!app->Initialize(config)) return 1;
+    app->PushState<GameplayState>();
+    app->Run();
+    return 0;
+}
+```
 
-AxisEngine xem scene và asset là dữ liệu tin cậy của project. Network mặc định
-`RequireSecure` và từ chối khởi động nếu chưa có `INetworkSecurityProvider`.
-Chế độ `TrustedNetwork` dùng ENet không xác thực/mã hóa và không được public ra
-Internet. AxisEngine chưa đi kèm cryptographic provider; ứng dụng production
-phải cung cấp implementation đã được review.
+---
 
-Xem [báo cáo khắc phục](docs/vi/audit/remediation_2026-07-23.md).
+## 5. Cấu trúc Repository
 
-## License
+| Đường dẫn | Mô tả |
+| :--- | :--- |
+| `include/` | Header SDK công khai (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`) |
+| `src/` | Mã nguồn engine và công cụ `Axis::Editor` |
+| `sample/` | 33 scenario demo, scene thử nghiệm, texture và asset |
+| `compiler/` | Công cụ biên dịch scene nhị phân `axis_compile` |
+| `tests/` | Các bộ kiểm thử unit test, integration test |
+| `docs/` | Hướng dẫn, tài liệu API, sổ tay sử dụng và mục lục |
+| `cmake/` | Cấu hình package, toolchain overlays và phụ thuộc |
 
-Repository hiện chưa có file license. Không nên mô tả hoặc phân phối dự án như
-phần mềm MIT cho đến khi license chính thức được thêm vào. FMOD và irrKlang cũng
-có điều khoản cấp phép riêng.
+---
+
+## 6. Sơ đồ Tài liệu
+
+- Core Engine: [Bắt đầu nhanh](vi/core/getting_started.md) | [Kiến trúc Engine](vi/core/architecture.md) | [Bề mặt API](vi/core/api_surface.md) | [Quản lý Managers](vi/core/managers.md)
+- Cấu hình & Định dạng: [Hướng dẫn Build](vi/guides/build_guide.md) | [Cấu hình Configuration](vi/guides/configuration.md) | [Định dạng Scene](vi/guides/scene_format.md) | [Tra cứu Component](vi/guides/components_reference.md)
+- Subsystem Runtime: [Đồ họa](vi/guides/graphics.md) | [Vật lý](vi/guides/physics.md) | [Âm thanh](vi/guides/audio.md) | [Thu âm Microphone](vi/guides/audio_capture.md) | [Hệ thống UI](vi/guides/ui.md) | [Điều hướng NavMesh](vi/guides/navigation.md)
+- Editor & Scripting: [Hướng dẫn Editor](vi/guides/editor.md) | [Mở rộng Editor](vi/guides/editor_extensions.md) | [Lập trình Scripting API](vi/scripting/scriptable_api.md) | [Quản lý State API](vi/state/state_api.md) | [Hệ thống Debug](vi/guides/debug_system.md)

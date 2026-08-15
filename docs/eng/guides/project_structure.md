@@ -1,90 +1,60 @@
-# AxisEngine repository and consumer-project structure
+# Project Structure Guide
 
-> [Tiếng Việt](../../vi/guides/project_structure.md)
+> [Tiếng Việt](../../vi/guides/project_structure.md) | [Build Guide](build_guide.md) | [Documentation Index](../INDEX.md)
 
-## Repository
+---
 
-```text
-AxisEngine/
-  include/                 Public umbrellas and engine headers
-    axis_sdk.h             Preferred game/tool API
-    axis_plugin.h          Provider and extension contracts
-    axis_advanced.h        Lower-level supported integration
-    engine/asset/          Built-in runtime assets in the source tree
-  src/
-    audio/                 Playback/capture services and providers
-    core/                  Application, loop, state, jobs, events, config
-    ecs/                   Entities, components, systems, builders
-    editor/                Optional ImGui editor
-    navigation/            Navmesh and pathfinding
-    network/               ENet service and transform replication
-    physics/               Physics logic and Bullet provider
-    platform/              Filesystem/runtime/input/window implementations
-    render/                Renderer and OpenGL provider
-    resource/              Asset managers and caches
-    scene/                 Scene, validation, text/binary serialization
-    script/                Script registry and Scriptable behavior
-  sample/                  Reference app, assets, scene, scripts, 33 scenarios
-  compiler/                axis_compile source
-  tests/                   Unit, integration, API, package-consumer tests
-  template/                Custom shader templates
-  docs/
-    eng/                   Complete English documentation tree
-    vi/                    Complete Vietnamese documentation tree
-    testcases/             Language-neutral test artifacts
-  cmake/                   Find modules, package config, triplets, overlays
-  CMakeLists.txt           Targets, options, install/export rules
-  CMakePresets.json        Windows/Linux/macOS and CI presets
-  vcpkg.json               Dependency manifest
+## 1. Introduction
+
+AxisEngine organizes code into distinct top-level directories (`include/`, `src/`, `sample/`, `compiler/`, `tests/`, `docs/`, `cmake/`) to isolate public headers from implementation code, test suites, assets, and tools.
+
+---
+
+## 2. How to Use
+
+1. **Developing Games**: Include headers from `include/`, write application logic in your project folder, and load assets relative to the executable or using `asset://`.
+2. **Accessing Engine Built-in Assets**: Use the `asset://` URI protocol to resolve engine default shaders, textures, and meshes.
+3. **Compiling Scenes**: Use the compiler tool located in `compiler/` (`axis_compile`) to transform `.axs` files to `.axsb`.
+
+---
+
+## 3. Examples
+
+### Path Resolution Example
+```cpp
+#include <axis_sdk.h>
+
+void LoadAssetsDemo() {
+    auto& resources = ResourceManager::Get();
+
+    // 1. Built-in asset URI protocol
+    auto checkerTex = resources.LoadTexture("asset://textures/default_checker.png");
+
+    // 2. Project relative asset path
+    auto modelMesh = resources.LoadModel("models/hero.obj");
+}
 ```
 
-There is no repository-level `game/`, `resources/`, or `scenes/` directory.
-Game-facing examples live under `sample/`. Third-party source is not embedded
-under `include/`; dependencies are supplied through packages.
+---
 
-Build output goes to `build/`:
+## 4. API & Configuration Reference
 
-```text
-build/
-  bin/<Config>/            Multi-config executables and runtime DLLs
-  lib/<Config>/            Static/import libraries
-  tests/                   Generated test project files
-  vcpkg_installed/         Build-local vcpkg packages when used
-```
+### Directory Structure Reference Table
 
-Single-config generators normally use flat `build/bin` and `build/lib`.
+| Directory Path | Purpose & Contents | Output Artifact |
+| :--- | :--- | :--- |
+| `include/` | Public SDK umbrella headers (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`) | Installed header SDK tree |
+| `src/` | Engine sources and `Axis::Editor` ImGui implementation | `axis_engine.lib`, `axis_editor.lib` |
+| `sample/` | 33 demo scenarios, test scenes, textures, and shaders | `axis_samples.exe` |
+| `compiler/` | `axis_compile` binary scene compiler utility | `axis_compile.exe` |
+| `tests/` | Unit, integration, and CTest test cases | `axis_test.exe` |
+| `docs/` | Comprehensive bilingual documentation index and guides | Markdown documentation |
+| `cmake/` | Package config, find modules, triplets, and vcpkg toolchain | `AxisEngineConfig.cmake` |
 
-## Recommended consumer project
+### Path Protocols Reference
 
-Keep game code outside the engine repository:
-
-```text
-MyGame/
-  CMakeLists.txt
-  config.axs
-  assets/
-    scenes/
-    prefabs/
-    models/
-    textures/
-    shaders/
-    audio/
-    video/
-    fonts/
-    input/
-    localization/
-  src/
-    main.cpp
-    states/
-    scripts/
-    systems/
-    editor/                 Optional game-specific editor extensions
-  tests/
-```
-
-Link `Axis::Engine` for the runtime and `Axis::Editor` only for an editor host.
-Use project-relative paths for game content and `asset://` only for built-in
-AxisEngine assets.
-
-See the [English build guide](build_guide.md) or
-[Vietnamese build guide](../../vi/guides/build_guide.md).
+| Protocol Scheme | Resolution Path | Purpose |
+| :--- | :--- | :--- |
+| `asset://` | `share/AxisEngine/assets/` | Access built-in fallback engine textures, shaders, meshes |
+| Relative Path | Execution Working Dir | Access project-specific models, textures, audio files |
+| Absolute Path | Direct File System Path | Developer tools and editor import operations |

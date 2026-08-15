@@ -1,40 +1,62 @@
-# Bề mặt API công khai
+# Hướng dẫn Bề mặt API Công khai (Public API Surface)
 
-> [English](../../eng/core/api_surface.md)
+> [English](../../eng/core/api_surface.md) | [Tổng quan Kiến trúc](architecture.md) | [Mục lục Tài liệu](../INDEX.md)
 
-AxisEngine chia header đã cài đặt theo mức ổn định và đối tượng sử dụng.
+---
 
-| Header | Đối tượng | Cam kết |
-|---|---|---|
-| `axis_sdk.h` | Game và tool | API ổn định cho application, state, component và kiểu công khai |
-| `axis_plugin.h` | Module thay thế được | Interface backend, lifecycle, resource, navigation, network, editor, serializer và post-process |
-| `axis_advanced.h` | Tích hợp sâu với engine | System/manager cụ thể; được hỗ trợ nhưng dễ thay đổi hơn |
-| `axis_all.h` | Tương thích source | Hợp của ba bề mặt trên; không nên dùng cho plugin tái sử dụng |
+## 1. Giới thiệu
 
-Header dưới `strategy/`, editor `modules/` và `panels/` là chi tiết triển khai,
-không thuộc SDK cài đặt. `ServiceLocator` là cơ chế runtime; gameplay nên dùng
-`EngineAccessor` hoặc interface trong `axis_plugin.h`.
+AxisEngine tổ chức các API C++ công khai thành bốn tầng header (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`, `axis_all.h`). Việc phân tầng này tách biệt ứng dụng bên ngoài khỏi chi tiết triển khai nội bộ đằng sau mà vẫn đảm bảo tốc độ biên dịch và sự ổn định ABI.
 
-`StaticBatchManager` và `TextureAtlas` vẫn là implementation nội bộ vì chưa có
-renderer contract giữ nguyên material identity và entity picking.
+---
 
-## Quy tắc ownership và thay thế
+## 2. Cách dùng
 
-- `Application` sở hữu backend do factory của `AppBuilder` trả về.
-- Override resource library là `shared_ptr` được builder profile giữ lại.
-- Platform provider trả `shared_ptr` để lời gọi đang chạy vẫn hợp lệ khi đổi provider.
-- System, script, component codec, post-process và editor extension đăng ký qua
-  registry tương ứng; phải unregister owner trước khi unload module.
-- Gameplay dùng localization qua `ILocalizationService`.
-- Mỗi thời điểm chỉ một `Application` được initialize; worker của Job System
-  nhìn thấy đúng service context của application đó.
+Lựa chọn header phù hợp tùy thuộc vào vai trò ứng dụng của bạn:
 
-## Provider hiện có
+1. **Lập trình Game & Scripting**: `#include <axis_sdk.h>` (API cấp cao ổn định).
+2. **Provider Tùy chỉnh & Mở rộng**: `#include <axis_plugin.h>` (Hợp đồng plugin cho audio/physics/renderer).
+3. **Tích hợp Cấp thấp Engine**: `#include <axis_advanced.h>` (Truy cập trực tiếp con trỏ Bullet/OpenGL).
+4. **Biên dịch Nội bộ Engine**: `#include <axis_all.h>` (Chỉ dành cho precompiled header nội bộ).
 
-- Graphics: OpenGL 4.6.
-- Physics: Bullet.
-- Playback: Null, tùy chọn FMOD hoặc irrKlang.
-- Microphone trên Windows: WASAPI; nền tảng khác cần provider riêng.
-- Vulkan, DirectX, PhysX và OpenAL chỉ còn để tương thích serialization/source,
-  chưa phải backend có thể chọn.
-- Renderer OpenGL 4.6 không chạy trên macOS OpenGL 4.1 và sẽ fail rõ khi startup.
+---
+
+## 3. Ví dụ
+
+### Ví dụ Tầng 1 (`<axis_sdk.h>`)
+```cpp
+#include <axis_sdk.h>
+
+void CreatePlayer(Scene& scene) {
+    auto player = scene.CreateEntity("Player");
+    player.AddComponent<TransformComponent>(Vector3(0.0f, 1.0f, 0.0f));
+    player.AddComponent<MeshRendererComponent>("models/character.obj");
+}
+```
+
+### Ví dụ Tầng 2 (`<axis_plugin.h>`)
+```cpp
+#include <axis_plugin.h>
+
+class CustomAudioProvider final : public IAudioService {
+public:
+    bool Initialize() override { return true; }
+    void Shutdown() override {}
+    void PlaySound(const std::string& path, float volume) override {}
+    void SetMasterVolume(float volume) override {}
+};
+AXIS_EXPORT_PLUGIN_PROVIDER(IAudioService, CustomAudioProvider)
+```
+
+---
+
+## 4. Tra cứu Param, Setting & API Reference
+
+### Bảng Tra cứu Lựa chọn Header & Độ Ổn định
+
+| File Header | Đối tượng Phù hợp | Mức độ Ổn định | Hướng dẫn Include |
+| :--- | :--- | :--- | :--- |
+| `<axis_sdk.h>` | Lập trình viên Game, Scripter | **Cao (Ổn định)** | Header chính cho game & script người dùng |
+| `<axis_plugin.h>` | Tác giả Plugin, Provider | **Trung bình** | Dùng cho backend âm thanh/vật lý/mạng tùy chỉnh |
+| `<axis_advanced.h>` | Người Tích hợp Cấp thấp | **Thấp (Nội bộ)** | Dùng khi cần lấy con trỏ OpenGL/Bullet gốc |
+| `<axis_all.h>` | Chỉ Dùng khi Build Nội bộ | **Nội bộ** | Không include trong các ứng dụng bên ngoài |

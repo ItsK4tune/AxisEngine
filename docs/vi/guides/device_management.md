@@ -1,48 +1,46 @@
-# Quản lý thiết bị
+# Hướng dẫn Quản lý Thiết bị & Màn hình Display
 
-> [English](../../eng/guides/device_management.md)
+> [English](../../eng/guides/device_management.md) | [Tra cứu Cấu hình Configuration](configuration.md) | [Mục lục Tài liệu](../INDEX.md)
 
-Monitor và input dùng `IDeviceManager`. Playback và microphone có interface
-riêng vì lifecycle/capability khác nhau.
+---
 
-## 1. IDeviceManager
+## 1. Giới thiệu
 
+AxisEngine cung cấp khả năng quản lý màn hình đa hiển thị và thiết bị đầu vào qua GLFW. Subsystem điều khiển các chế độ hiển thị (Fullscreen, Windowed, Borderless), lựa chọn màn hình chỉ định, điều tiết VSync và cắm rút nóng gamepad.
+
+---
+
+## 2. Cách dùng
+
+1. **Truy cập Đối tượng Cửa sổ**: Lấy đối tượng cửa sổ qua `Application::Get().GetWindow()`.
+2. **Truy vấn Màn hình**: Gọi `window.GetMonitorCount()`.
+3. **Chuyển Chế độ Hiển thị**: Gọi `window.SetDisplayMode(mode, width, height, monitorIndex)`.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Chuyển Độ phân giải Màn hình
 ```cpp
-struct DeviceInfo {
-    std::string id;
-    std::string name;
-    DeviceType type;
-    bool isDefault;
-};
+#include <axis_sdk.h>
 
-virtual std::vector<DeviceInfo> GetAllDevices() const = 0;
-virtual DeviceInfo GetCurrentDevice() const = 0;
-virtual bool SetActiveDevice(const std::string& deviceId) = 0;
+void SetSecondaryDisplay() {
+    auto& window = Application::Get().GetWindow();
+    if (window.GetMonitorCount() > 1) {
+        window.SetDisplayMode(WindowMode::FULLSCREEN, 1920, 1080, 1);
+    }
+}
 ```
 
-Luôn lưu/chọn bằng `id` ổn định, không dùng vị trí trong vector enumerate.
+---
 
-## 2. Manager được hỗ trợ
+## 4. Tra cứu Param, Setting & API Reference
 
-### MonitorManager
+### Bảng Tra cứu Thiết lập Màn hình Display
 
-Quản lý GLFW window/monitor, resize, fullscreen/windowed và vsync.
-
-### InputManager
-
-- Keyboard, mouse, mapped gamepad và raw joystick.
-- ID `gamepad_N`, `joystick_N`; thiết bị active mất kết nối sẽ fallback merged input.
-- Axis hỗ trợ `leftx`, `lefty`, `rightx`, `righty`, `lefttrigger`,
-  `righttrigger`; đọc bằng `EngineAccessor::GetAxis`.
-- `GAMEPAD_DEAD_ZONE` áp radial filtering.
-- Button hỗ trợ held/pressed/released. Rumble chưa có API công khai.
-
-### Audio
-
-- `IAudioEngine`: playback/output.
-- `IAudioCaptureService`: enumerate microphone, calibration, level và pulse.
-- Xem [thu âm microphone](audio_capture.md).
-
-## 3. Debug
-
-Xem [debug và phím editor](debug_system.md).
+| Tham số / Thuộc tính | Kiểu dữ liệu | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `MONITOR` | `int` | `0` | Chỉ số màn hình mục tiêu (`0` cho màn hình chính) |
+| `WINDOW_MODE` | `Enum` | `BORDERLESS_FULLSCREEN` | Chế độ hiển thị (`WINDOWED`, `FULLSCREEN`, `BORDERLESS`) |
+| `REFRESH_RATE` | `int` | `60` | Tần số quét màn hình tính bằng Hz |
+| `RENDER_SCALE` | `float` | `1.0` | Hệ số độ phân giải dựng hình nội bộ (`0.5` đến `2.0`) |

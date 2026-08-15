@@ -1,65 +1,54 @@
-# AxisEngine documentation
+# AxisEngine Documentation Index
 
-> [Tiếng Việt](../vi/INDEX.md)
+> [Tiếng Việt](../vi/INDEX.md) | [User Manual](MANUAL.md) | [Root README](../README.eng.md)
 
-This documentation describes the repository at commit `787f438` (2026-07-23).
-When a guide conflicts with code, the public headers, CMake options, sample
-application, and tests are authoritative.
+Technical reference manuals, API guides, and architectural documentation for developers building C++20 applications with AxisEngine.
 
-Vietnamese readers can start with the [Vietnamese documentation](../vi/INDEX.md).
+---
 
-## Start here
+## 1. Core Architecture & Foundation
+- [Getting Started](core/getting_started.md): Installation, project setup, and minimal application creation.
+- [Architecture Overview](core/architecture.md): EnTT ECS registry, thread execution loop, state machine, Entity, Scene, and EntityBuilder API.
+- [Public API Surface](core/api_surface.md): SDK header tiers (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`).
+- [Managers & Services](core/managers.md): `ResourceManager`, `EventManager`, `InputManager`, `SceneManager`, and `JobSystem`.
 
-- [Manual](MANUAL.md): supported platforms, build, architecture, development
-  workflow, deployment, and operational limits.
-- [Getting started](core/getting_started.md): build and create a minimal
-  application.
-- [Build guide](guides/build_guide.md): presets, options, tests, installation,
-  package consumption, and scene compilation.
-- [Public API surface](core/api_surface.md): stable, plugin, advanced, and
-  implementation-only boundaries.
-- [Source audit, 2026-07-23](audit/source_audit_2026-07-23.md): correctness,
-  security, performance, completeness, UX, and test findings.
-- [Audit remediation, 2026-07-23](audit/remediation_2026-07-23.md):
-  implemented fixes, verification, and remaining security boundary.
+---
 
-## Engine model
+## 2. Build & Configuration
+- [Build Guide](guides/build_guide.md): CMake presets, compiler flags, MSVC/GCC configuration, and package exporting.
+- [Configuration Reference](guides/configuration.md): Global engine configuration properties, graphics/physics settings, and runtime optimizations.
+- [Project Structure](guides/project_structure.md): Organization of engine directories, CMake targets, and user assets.
+- [Comment Policy](guides/comment_policy.md): Coding style conventions and internal code comment standards.
 
-- [Architecture](core/architecture.md)
-- [Core systems](systems/core_systems.md)
-- [Managers and services](core/managers.md)
-- [Project structure](guides/project_structure.md)
-- [State API](state/state_api.md)
-- [Scriptable API](scripting/scriptable_api.md)
-- [Extending the engine](guides/extending_engine.md)
-- [Comment policy](guides/comment_policy.md)
+---
 
-## Content and runtime guides
+## 3. Scene & Components
+- [Scene Format (`.axs` / `.axsb`)](guides/scene_format.md): Reference for the five `.axs` schemas (`axis_scene`, `axis_input`, `axis_data`, `axis_localization`, `axis_config`) and binary compiler usage.
+- [Components Reference](guides/components_reference.md): Reference for all built-in ECS components and `EntityBuilder` C++ creation API.
+- [Assets & Resource Management](guides/assets.md): Texture/model loading, hot-reloading, and resource streaming.
 
-- [Scene format](guides/scene_format.md)
-- [Component reference](guides/components_reference.md)
-- [Assets and resources](guides/assets.md)
-- [Configuration](guides/configuration.md)
-- [Graphics](guides/graphics.md)
-- [Physics](guides/physics.md)
-- [Navigation](guides/navigation.md)
-- [UI](guides/ui.md)
-- [Audio](guides/audio.md)
-- [Microphone capture](guides/audio_capture.md)
-- [Device management](guides/device_management.md)
-- [Debug controls](guides/debug_system.md)
+---
 
-## Editor
+## 4. Subsystems
+- [Graphics & Renderer](guides/graphics.md): OpenGL 4.6 PBR renderer, lighting, shadows, post-processing, particles, and terrain.
+- [Physics Simulation](guides/physics.md): Bullet 3D integration, rigidbodies, colliders, character controllers, and raycasting.
+- [Audio Playback](guides/audio.md): 2D/3D sound playback with Null, FMOD, and irrKlang backends.
+- [Audio Capture](guides/audio_capture.md): WASAPI microphone streaming, noise gates, and voice reactivity.
+- [User Interface (UI)](guides/ui.md): Canvas-based UI components, buttons, text, anchoring, and layout rules.
+- [Navigation System](guides/navigation.md): Recast/Detour NavMesh generation, pathfinding, and spatial hashing.
+- [Device Management](guides/device_management.md): Display modes, resolution scaling, and input device handling.
 
-- [Editor manual](guides/editor.md)
-- [Editor extensions](guides/editor_extensions.md)
+---
 
-## Documentation conventions
+## 5. Scripting, State & Systems
+- [Scriptable API](scripting/scriptable_api.md): C++ `Scriptable` lifecycle hooks, entity queries, and variable exposure.
+- [State API](state/state_api.md): Stack-based `StateMachine`, state transitions, and modal overlays.
+- [Core Systems](systems/core_systems.md): Registering custom `ISystem` instances and frame phase execution order.
+- [Extending the Engine](guides/extending_engine.md): Building custom plugins, providers, and renderer strategies.
 
-- `.axs` means AxisEngine's YAML-like subset, not general YAML.
-- Paths are normally resolved relative to the detected application/project
-  root. `asset://` addresses built-in engine assets.
-- A feature listed in an enum is not necessarily a shipped backend. Consult
-  the provider matrix in the manual.
-- Code under `sample/` demonstrates behavior; it is not installed as part of
-  the engine SDK.
+---
+
+## 6. Tools & Debugging
+- [Debug & Editor Controls](guides/debug_system.md): Keyboard shortcuts (F1-F12), debug GUI panels, `AXIS_LOG_*` logging, `AXIS_ASSERT` macros, `DebugConfig`, physics/audio drawers, and profiling.
+- [Editor Manual](guides/editor.md): Visual scene editing, hierarchy, inspector, prefabs, and project management with ImGui.
+- [Editor Extensions](guides/editor_extensions.md): Writing custom editor windows, inspector drawers, and wizard panels.

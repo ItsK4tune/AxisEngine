@@ -1,114 +1,72 @@
-# Hướng dẫn build AxisEngine
+# Hướng dẫn Build & Cấu hình CMake
 
-> [English](../../eng/guides/build_guide.md)
+> [English](../../eng/guides/build_guide.md) | [Tra cứu Cấu hình Configuration](configuration.md) | [Mục lục Tài liệu](../INDEX.md)
 
-## Yêu cầu
+---
 
-- CMake 3.20 trở lên.
-- Compiler C++20.
-  - Windows: Visual Studio 2022/MSVC là đường build được duy trì chính.
-  - Linux: GCC hoặc Clang với Ninja/Makefiles.
-- Git và Git LFS.
-- Dependency từ `vcpkg.json` hoặc system package tương thích.
+## 1. Giới thiệu
 
-Null audio là mặc định. FMOD và irrKlang cần SDK riêng, không được vendored.
+AxisEngine sử dụng **CMake 3.20+** làm hệ thống sinh dự án đa nền tảng. Hệ thống build biên dịch thư viện tĩnh `Axis::Engine`, thư viện editor trực quan tùy chọn `Axis::Editor`, các bộ kiểm thử tự động và công cụ biên dịch scene.
 
-## Windows
+---
 
-Engine-only:
+## 2. Cách dùng
 
+1. **Chọn CMake Preset**: Lựa chọn preset phù hợp trong `CMakePresets.json` (`windows-msvc`, `windows-msvc-editor`, `linux-ninja`, `linux-ninja-editor`).
+2. **Cấu hình Engine**: Chạy `cmake --preset <tên_preset>` từ gốc repository.
+3. **Biên dịch Target**: Chạy `cmake --build build --config Release --parallel`.
+4. **Chạy Mẫu / Test**: Chạy `axis_samples.exe` hoặc thực thi `ctest --test-dir build`.
+
+---
+
+## 3. Ví dụ
+
+### 1. Ví dụ Build Editor & Samples qua CLI
 ```powershell
-cmake --preset windows-msvc `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-cmake --build --preset windows-release
-```
+# Cấu hình với preset MSVC Editor
+cmake --preset windows-msvc-editor
 
-Editor và sample:
-
-```powershell
-cmake --preset windows-msvc-editor `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+# Build các file binary Release song song
 cmake --build build --config Release --parallel
+
+# Chạy ứng dụng mẫu
 .\build\bin\Release\axis_samples.exe
 ```
 
-## Linux
-
-```bash
-cmake --preset linux-ninja
-cmake --build --preset linux-release
-```
-
-Editor/sample:
-
-```bash
-cmake --preset linux-ninja-editor
-cmake --build build --parallel
-./build/bin/axis_samples
-```
-
-Renderer hiện cần OpenGL 4.6 và driver tương thích.
-
-## macOS
-
-Repository có preset và platform source cho macOS, nhưng renderer dùng OpenGL/
-GLSL 4.6 trong khi macOS chỉ hỗ trợ OpenGL 4.1. Renderer hiện không phải runtime
-target được hỗ trợ trên macOS.
-
-## Option chính
-
-```text
-ENABLE_EDITOR=OFF
-BUILD_SAMPLES=ON
-ENABLE_TESTS=OFF
-ENABLE_LTO=ON
-ENABLE_PCH=ON
-ENABLE_UNITY_BUILD=ON
-AXIS_GRAPHICS_BACKEND=OpenGL
-AXIS_PHYSICS_BACKEND=Bullet
-AXIS_AUDIO_BACKEND=Null
-```
-
-`BUILD_SAMPLES` chỉ có tác dụng khi `ENABLE_EDITOR=ON`.
-
-## Test
-
-```powershell
-cmake -S . -B build -DENABLE_TESTS=ON
-cmake --build build --config Release --target axis_test --parallel
-ctest --test-dir build -C Release --output-on-failure
-```
-
-## Scene compiler
-
-```powershell
-cmake --build build --config Release --target axis_compile
-.\build\bin\Release\axis_compile.exe input.axs output.axsb
-```
-
-Với Ninja/Makefiles:
-
-```bash
-cmake --build build --target axis_compile
-./build/bin/axis_compile input.axs output.axsb
-```
-
-Menu Windows hiện có known issue về path multi-config; dùng lệnh trực tiếp cho
-đến khi `axis_tools.bat` được sửa.
-
-## Install và dùng từ project khác
-
-```powershell
-cmake --install build --config Release --prefix C:\AxisEngine
-```
-
+### 2. Ví dụ Sử dụng Package AxisEngine (`CMakeLists.txt`)
 ```cmake
-find_package(AxisEngine CONFIG REQUIRED)
-add_executable(my_game src/main.cpp)
-target_link_libraries(my_game PRIVATE Axis::Engine)
-target_compile_features(my_game PRIVATE cxx_std_20)
+cmake_minimum_required(VERSION 3.20)
+project(MyGame LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+find_package(AxisEngine REQUIRED)
+
+add_executable(MyGame src/main.cpp)
+target_link_libraries(MyGame PRIVATE Axis::Engine)
 ```
 
-Configure consumer bằng `-DCMAKE_PREFIX_PATH=C:/AxisEngine` và cung cấp cùng
-dependency package. Asset nội bộ nằm ở `share/AxisEngine/assets`; cần đóng gói
-thư mục này cùng DLL/shared library tương ứng.
+---
+
+## 4. Tra cứu Param, Setting & API Reference
+
+### Bảng Tra cứu Cấu hình CMake Presets
+
+| Tên Preset | Nền tảng | Trạng thái Editor | Trình biên dịch / Generator |
+| :--- | :--- | :--- | :--- |
+| `windows-msvc` | Windows | `OFF` | MSVC 2022 Thư viện Engine Tĩnh |
+| `windows-msvc-editor` | Windows | `ON` | MSVC 2022 + Editor ImGui + `axis_samples` |
+| `linux-ninja` | Linux | `OFF` | GCC / Clang + Ninja Generator |
+| `linux-ninja-editor` | Linux | `ON` | GCC / Clang + Ninja + Editor + Samples |
+
+### Bảng Tra cứu Tùy chọn Cấu hình CMake Reference
+
+| Khóa Tùy chọn | Mặc định | Giá trị | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `ENABLE_EDITOR` | `OFF` | `ON` / `OFF` | Biên dịch thư viện editor ImGui (`Axis::Editor`) |
+| `BUILD_SAMPLES` | `ON` | `ON` / `OFF` | Biên dịch file thực thi `axis_samples` |
+| `ENABLE_TESTS` | `OFF` | `ON` / `OFF` | Biên dịch bộ unit/integration test (`axis_test`) |
+| `ENABLE_LTO` | `ON` | `ON` / `OFF` | Bật Tối ưu hóa lúc liên kết (IPO) |
+| `ENABLE_PCH` | `ON` | `ON` / `OFF` | Bật Precompiled Header |
+| `AXIS_GRAPHICS_BACKEND` | `OpenGL`| `OpenGL` | Provider dựng hình đồ họa |
+| `AXIS_PHYSICS_BACKEND` | `Bullet` | `Bullet` | Provider mô phỏng vật lý |
+| `AXIS_AUDIO_BACKEND` | `Null` | `Null`, `FMOD`, `IrrKlang` | Provider phát âm thanh |

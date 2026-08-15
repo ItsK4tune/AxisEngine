@@ -1,77 +1,57 @@
-# Mở rộng AxisEngine
+# Hướng dẫn Mở rộng Engine (Plugins & Providers)
 
-> [English](../../eng/guides/extending_engine.md)
+> [English](../../eng/guides/extending_engine.md) | [Bề mặt API Công khai](../core/api_surface.md) | [Mục lục Tài liệu](../INDEX.md)
 
-Game bắt đầu với `axis_sdk.h`; plugin contract nằm trong `axis_plugin.h`;
-`axis_advanced.h` dành cho tích hợp sâu có chi phí nâng cấp cao hơn. Header
-`engine/*/strategy` là nội bộ và không được install.
+---
 
-## Provider của application
+## 1. Giới thiệu
 
-Tạo `AppBuilder`, cấu hình factory rồi truyền vào constructor `Application`.
-Provider thuộc riêng application profile, không rò sang test/application khác.
+AxisEngine sử dụng kiến trúc strategy trừu tượng cho phép các nhà phát triển xây dựng các mô-đun cắm rút tùy chỉnh, provider và plugin hệ thống bằng cách sử dụng `#include <axis_plugin.h>`.
 
+---
+
+## 2. Cách dùng
+
+1. **Include Plugin Header**: `#include <axis_plugin.h>`.
+2. **Kế thừa Hợp đồng Provider**: Kế thừa `IGraphicsContext`, `IPhysicsWorld`, `IAudioService`, hoặc `INetworkSecurityProvider`.
+3. **Đăng ký Instance**: Đăng ký instance provider vào `ServiceLocator`.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Provider Bảo mật Mạng Tùy chỉnh
 ```cpp
-AppBuilder providers;
-providers
-    .WithGraphicsContextFactory([](const AppConfig&) {
-        return std::make_unique<MyGraphicsContext>();
-    })
-    .WithPhysicsWorldFactory([](const AppConfig&) {
-        return std::make_unique<MyPhysicsWorld>();
-    })
-    .WithAudioEngineFactory([](const AppConfig&) {
-        return std::make_unique<MyAudioEngine>();
-    })
-    .WithAudioCaptureFactory([] {
-        return std::make_unique<MyAudioCaptureService>();
-    });
-```
+#include <axis_plugin.h>
 
-Factory phải trả object hợp lệ. Null/exception làm `Initialize` fail và rollback
-subsystem đã initialize. Có thể thay riêng shader, texture, model, sound, font,
-skybox library bằng `With*Library(shared_ptr<...>)`.
+class CustomSecurityProvider final : public INetworkSecurityProvider {
+public:
+    bool AuthenticateHandshake(const NetworkPeerInfo& peer) override { return true; }
+    bool SealPacket(const uint8_t* in, size_t size, std::vector<uint8_t>& out) override {
+        out.assign(in, in + size);
+        return true;
+    }
+    bool OpenPacket(const uint8_t* in, size_t size, std::vector<uint8_t>& out) override {
+        out.assign(in, in + size);
+        return true;
+    }
+};
 
-Platform provider dùng `SetPlatformFileSystemProvider` và
-`SetPlatformRuntimeProvider`; lấy handle an toàn bằng `AcquirePlatform*`.
-
-## System và script
-
-Đăng ký system theo application trong `RegisterUserSystems`; system trùng tên
-built-in sẽ thay built-in đó. Script đăng ký trong `RegisterUserScripts`.
-
-```cpp
-void GameApplication::RegisterUserSystems(ISystemRegistry& systems) {
-    systems.RegisterSystem(std::make_unique<MyNavigationSystem>());
-}
-
-void GameApplication::RegisterUserScripts() {
-    RegisterScript<PlayerController>("PlayerController");
+void RegisterCustomSecurity() {
+    ServiceLocator::Register<INetworkSecurityProvider>(
+        std::make_shared<CustomSecurityProvider>());
 }
 ```
 
-Runtime chỉ link `Axis::Engine`. Editor host link `Axis::Editor`, target này tự
-truyền `ENABLE_EDITOR` và giữ bootstrap anchor.
+---
 
-## Registry có owner
+## 4. Tra cứu Param, Setting & API Reference
 
-- `IPostProcessRegistry`: effect, priority, rect, input mask.
-- `IEditorExtensionRegistry`: module/panel factory.
-- `IComponentCodecRegistry`: loader/serializer component.
-- Gọi `UnregisterOwner` trước khi unload module.
-- `INetworkService` và `INavigationService` che implementation ENet/pathfinding.
+### Bảng Tra cứu Hợp đồng Giao diện Provider
 
-## File loader thống nhất
-
-Implement `ILoaderStrategy`, trả type name ổn định từ `GetName`, rồi gọi
-`ResourceManager::RegisterLoader`. Loader module đăng ký trước initialize không
-bị default `CONFIG`/`INPUT` ghi đè.
-
-## Biên truy cập runtime
-
-`State` và `Scriptable` kế thừa `EngineAccessor`. Ưu tiên API scene, input,
-config, data, time, render và physics cấp cao; chỉ dùng `Get<T>()`,
-`Resolve<T>()`, `GetSystem<T>()` khi cần tích hợp nâng cao.
-
-Xem [bề mặt API](../core/api_surface.md), [microphone](audio_capture.md),
-[graphics](graphics.md) và [mở rộng editor](editor_extensions.md).
+| Hợp đồng Provider | Đường dẫn Header | Mục đích Mở rộng |
+| :--- | :--- | :--- |
+| `IGraphicsContext` | `<engine/graphics/igraphics_context.h>` | Provider pipeline dựng hình đồ họa tùy chỉnh |
+| `IPhysicsWorld` | `<engine/physics/iphysics_world.h>` | Provider mô phỏng vật lý 3D/2D tùy chỉnh |
+| `IAudioService` | `<engine/audio/iaudio_service.h>` | Provider backend phát âm thanh tùy chỉnh |
+| `INetworkSecurityProvider` | `<engine/network/isecurity_provider.h>` | Provider mã hóa và xác thực mạng tùy chỉnh |

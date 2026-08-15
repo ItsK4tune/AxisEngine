@@ -1,77 +1,59 @@
-# Extending the AxisEngine editor
+# Editor Extensions Guide
 
-> [Tiếng Việt](../../vi/guides/editor_extensions.md)
+> [Tiếng Việt](../../vi/guides/editor_extensions.md) | [Editor Manual](editor.md) | [Documentation Index](../INDEX.md)
 
-Editor extensions register modules and panels through
-`IEditorExtensionRegistry`; they do not need to modify `EditorSystem`.
-The working example is in `sample/src/editor/sample_editor_extension.*`.
+---
 
-## Register
+## 1. Introduction
 
+AxisEngine allows developers to write custom ImGui editor windows, wizard panels, and inspector extensions. Custom extensions inherit from `IEditorPanel` and register with `EditorSystem` to draw during the editor render phase.
+
+---
+
+## 2. How to Use
+
+1. **Subclass `IEditorPanel`**: Inherit from `IEditorPanel` and implement `void OnImGuiRender() override`.
+2. **Add ImGui Widgets**: Write ImGui code inside `OnImGuiRender()` (`ImGui::Begin`, `ImGui::Button`, etc.).
+3. **Register Panel**: Call `editorSystem.RegisterPanel<MyPanel>("Window Title")`.
+
+---
+
+## 3. Examples
+
+### Custom ImGui Editor Panel Example
 ```cpp
-constexpr char kOwner[] = "my_company.my_game.level_tools";
-auto state = std::make_shared<MyExtensionState>();
+#include <axis_sdk.h>
+#include <axis_editor.h>
+#include <imgui.h>
 
-const bool moduleOk = registry.RegisterModule(
-    kOwner, "level.validation",
-    [state] { return std::make_unique<LevelValidationModule>(state); });
+class LevelGeneratorPanel final : public IEditorPanel {
+private:
+    int m_gridSize = 10;
 
-const bool panelOk = registry.RegisterPanel(
-    kOwner, "level.panel",
-    [state] { return std::make_unique<LevelToolsPanel>(state); });
+public:
+    void OnImGuiRender() override {
+        ImGui::Begin("Level Generator");
+        ImGui::SliderInt("Grid Size", &m_gridSize, 5, 50);
 
-if (!moduleOk || !panelOk)
-    registry.UnregisterOwner(kOwner);
-```
-
-Owner and internal names must be stable and unique. Panel display text comes
-from `IEditorPanel::GetTitle`; never use panel-vector position as identity.
-
-When the editor is initialized, registration immediately creates and
-initializes the instance. `UnregisterOwner` calls `Shutdown` before destruction.
-Unregister before unloading code/DLLs that contain factories or virtual methods.
-
-## Mutate safely
-
-```cpp
-auto* selection = ServiceLocator::Instance().Resolve<EditorSelection>();
-if (selection && !selection->Empty())
-{
-    EditorSystem::BeginTransaction(scene, "Move selected entities");
-    for (entt::entity entity : selection->GetAll())
-    {
-        if (auto* position = scene.TryGetComponent<PositionComponent>(entity))
-        {
-            position->value.x += 1.0f;
-            scene.MarkTransformDirty(entity);
+        if (ImGui::Button("Generate Tiles")) {
+            AXIS_LOG_INFO("Generating level grid tiles...");
         }
+        ImGui::End();
     }
+};
+
+void RegisterExtension(EditorSystem& editor) {
+    editor.RegisterPanel<LevelGeneratorPanel>("Level Generator");
 }
 ```
 
-Create one transaction for a multi-entity operation. Start continuous
-slider/drag transactions on activation, not every frame. Call the appropriate
-dirty hook after direct component mutation. Do not retain a `Scene&` or raw
-module/panel pointer across lifetime boundaries.
+---
 
-## Build
+## 4. API & Configuration Reference
 
-Runtime-only targets link `Axis::Engine`. Editor hosts link `Axis::Editor`,
-which propagates `ENABLE_EDITOR`:
+### Editor Extension API Reference Table
 
-```cmake
-target_link_libraries(MyGame PRIVATE Axis::Engine)
-target_link_libraries(MyGameEditor PRIVATE Axis::Editor)
-```
-
-Guard shared integration source with `#ifdef ENABLE_EDITOR`.
-
-## Checklist
-
-- Unique stable owner ID; rollback partial registration.
-- Symmetric initialize/shutdown; unregister before code unload.
-- Transaction and dirty notification for scene mutation.
-- Respect multi-selection and input ownership.
-- Mark editor helper entities transient.
-- Do not serialize extension-only runtime state accidentally.
-- Test editor-enabled and runtime-only configurations.
+| Interface / Class | Key Method | Purpose |
+| :--- | :--- | :--- |
+| `IEditorPanel` | `virtual void OnImGuiRender() = 0` | Base interface for custom editor windows |
+| `EditorSystem` | `RegisterPanel<T>(title)` | Registers panel instance into main editor dockspace |

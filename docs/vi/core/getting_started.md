@@ -1,157 +1,73 @@
-# Bắt đầu với AxisEngine
+# Hướng dẫn Bắt đầu Nhanh (Getting Started Guide)
 
-> [English](../../eng/core/getting_started.md)
+> [English](../../eng/core/getting_started.md) | [Tổng quan Kiến trúc](architecture.md) | [Mục lục Tài liệu](../INDEX.md)
 
-## 1. Build sample tham chiếu
+---
 
-Trên Windows:
+## 1. Giới thiệu
 
-```powershell
-cmake --preset windows-msvc-editor `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-cmake --build build --config Release --parallel
-.\build\bin\Release\axis_samples.exe
-```
+AxisEngine là game & multimedia engine C++20 phát triển theo mô hình Entity-Component-System (ECS). Bài hướng dẫn này dẫn dắt bạn qua các bước cài đặt phụ thuộc, biên dịch binary của engine và tạo ứng dụng tối giản đầu tiên.
 
-Sample gồm 33 scenario và là cách nhanh nhất để kiểm tra renderer, editor,
-resource, input và runtime. Xem
-[hướng dẫn build](../guides/build_guide.md) nếu dependency chưa được cấu
-hình.
+---
 
-## 2. Cấu trúc project
+## 2. Cách dùng
 
-```text
-MyGame/
-  CMakeLists.txt
-  config.axs
-  assets/
-    scenes/
-    models/
-    textures/
-    audio/
-    shaders/
-  src/
-    main.cpp
-    game_state.h
-    scripts/
-```
+Thực hiện theo các bước sau để thiết lập và chạy một dự án AxisEngine:
 
-```cmake
-cmake_minimum_required(VERSION 3.20)
-project(MyGame LANGUAGES CXX)
+1. **Chuẩn bị Môi trường**: Cài đặt trình biên dịch C++20 (MSVC 2022 / GCC 11+), CMake 3.20+ và driver GPU hỗ trợ OpenGL 4.6.
+2. **Clone & Cấu hình**: Clone repository và cấu hình dự án bằng CMake presets.
+3. **Biên dịch Target**: Build thư viện tĩnh và file thực thi ứng dụng mẫu (`axis_samples`).
+4. **Tạo Ứng dụng**: Kế thừa `Application`, ghi đè `RegisterUserScripts()`, định nghĩa một `State` và gọi `Run()`.
 
-find_package(AxisEngine CONFIG REQUIRED)
-add_executable(my_game src/main.cpp)
-target_link_libraries(my_game PRIVATE Axis::Engine)
-target_compile_features(my_game PRIVATE cxx_std_20)
-```
+---
 
-## 3. Application và state đầu tiên
+## 3. Ví dụ
 
+### Ví dụ Ứng dụng C++ Tối giản
 ```cpp
 #include <axis_sdk.h>
 
-class GameState final : public State
-{
+class MainGameState final : public State {
 public:
-    void OnEnter() override {}
-    void OnUpdate(float) override {}
+    void OnEnter() override { AXIS_LOG_INFO("MainGameState Bat Dau"); }
+    void OnUpdate(float dt) override {}
     void OnRender() override {}
     void OnExit() override {}
 };
 
-class GameApplication final : public Application
-{
+class GameApp final : public Application {
 public:
-    void RegisterUserScripts() override
-    {
-        // RegisterScript<PlayerController>("PlayerController");
-    }
+    void RegisterUserScripts() override {}
 };
 
-int main()
-{
-    auto app = std::make_shared<GameApplication>();
+int main() {
+    auto app = std::make_shared<GameApp>();
+
     AppConfig config;
-    config.title = "My AxisEngine Game";
+    config.title = "AxisEngine Bat Dau Nhanh";
     config.window.width = 1280;
     config.window.height = 720;
 
-    if (!app->Initialize(config))
-        return 1;
-    app->PushState<GameState>();
+    if (!app->Initialize(config)) return 1;
+    app->PushState<MainGameState>();
     app->Run();
     return 0;
 }
 ```
 
-`OnEnter`, `OnUpdate`, `OnRender`, `OnExit` là bắt buộc. Fixed update, debug
-render, pause và resume là hook tùy chọn.
+---
 
-## 4. Scene `.axs`
+## 4. Tra cứu Param, Setting & API Reference
 
-`.axs` là YAML-like subset riêng, không phải YAML đầy đủ. Dùng space, không dùng
-tab.
+### Bảng Param Cấu hình `AppConfig`
 
-```yaml
-axis_scene:
-  Resources:
-  Entities:
-    Cube:
-      Tag: World
-      Component: Transform
-        Position: 0 0 0
-        Rotation: 0 0 0
-        Scale: 1 1 1
-```
-
-Tra key chính xác trong
-[scene format](../guides/scene_format.md) và
-[component reference](../guides/components_reference.md).
-
-## 5. Script
-
-```cpp
-#pragma once
-#include <axis_sdk.h>
-
-class RotateScript final : public Scriptable
-{
-public:
-    void OnUpdate(float dt) override
-    {
-        auto& rotation = GetComponent<RotationComponent>();
-        rotation.value =
-            glm::normalize(glm::angleAxis(glm::radians(45.0f * dt),
-                                         glm::vec3(0.0f, 1.0f, 0.0f)) *
-                           rotation.value);
-        MarkTransformDirty();
-    }
-};
-```
-
-Đăng ký bằng đúng tên dùng trong scene:
-
-```cpp
-void RegisterUserScripts() override
-{
-    RegisterScript<RotateScript>("RotateScript");
-}
-```
-
-## 6. Test
-
-```powershell
-cmake -S . -B build -DENABLE_TESTS=ON
-cmake --build build --config Release --target axis_test --parallel
-ctest --test-dir build -C Release --output-on-failure
-```
-
-## 7. Lỗi thường gặp
-
-- Initialize fail: xem `logs/`, kiểm tra OpenGL 4.6, DLL/shared library và SDK.
-- Default asset fail: đóng gói `share/AxisEngine/assets`.
-- Script not found: đăng ký đúng tên trước khi load scene.
-- Asset not found: xem resolved path trong log.
-- Scene parse sai: dùng space và chỉ dùng AxisEngine subset.
-- macOS renderer fail: renderer hiện yêu cầu OpenGL 4.6 và không hỗ trợ macOS.
+| Tên Tham số | Kiểu dữ liệu | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `title` | `std::string` | `"AxisEngine"` | Chuỗi tiêu đề hiển thị trên cửa sổ |
+| `window.width` | `uint32_t` | `1280` | Chiều rộng cửa sổ tính bằng pixel |
+| `window.height` | `uint32_t` | `720` | Chiều cao cửa sổ tính bằng pixel |
+| `window.mode` | `WindowMode` | `WINDOWED` | Chế độ hiển thị (`WINDOWED`, `FULLSCREEN`, `BORDERLESS`) |
+| `window.vsync` | `bool` | `true` | Bật đồng bộ hóa dọc VSync |
+| `graphicsApi` | `GraphicsAPI` | `OPENGL` | Provider dựng hình đồ họa |
+| `physicsEngine` | `PhysicsEngine`| `BULLET` | Provider mô phỏng vật lý |
+| `audioEngine` | `AudioEngine` | `NULL` | Provider phát âm thanh |

@@ -1,88 +1,63 @@
-# Hướng dẫn AxisEngine Editor
+# Sổ tay Hướng dẫn Sử dụng Editor (`Axis::Editor`)
 
-> [English](../../eng/guides/editor.md)
+> [English](../../eng/guides/editor.md) | [Mở rộng Editor](editor_extensions.md) | [Hệ thống Debug](debug_system.md) | [Mục lục Tài liệu](../INDEX.md)
 
-Cập nhật: 2026-07-23. Phạm vi: build có `ENABLE_EDITOR=ON`.
+---
 
-## Kiến trúc
+## 1. Giới thiệu
 
-Editor được bootstrap qua `Axis::Editor`, dùng chung selection, command history,
-viewport state và input router. Module giữ logic tool/overlay theo frame; panel
-giữ cửa sổ ImGui. Extension đăng ký factory qua
-`IEditorExtensionRegistry` bằng owner ID ổn định.
+`Axis::Editor` là một **Visual Editor tích hợp dựa trên ImGui** được biên dịch khi `ENABLE_EDITOR=ON`. Editor cung cấp khả năng duyệt cây hierarchy, inspector component, gizmo viewport, duyệt asset, thông số profiler và nút điều khiển mô phỏng.
 
-Game render thẳng ra platform backbuffer. Dockspace trung tâm trong suốt và UI
-editor phủ lên trên; không có G-buffer editor thứ hai bắt buộc.
+---
 
-## Selection và transform
+## 2. Cách dùng
 
-- Click hoặc box-drag trong viewport để chọn qua ID buffer.
-- Giữ `Ctrl` để cộng/toggle selection.
-- `Shift+click` trong Hierarchy để chọn range.
-- Entity chọn gần nhất là primary và được Inspector chỉnh.
-- Entity transient/editor-only vẫn hiện nhưng không được serialize bình thường.
+1. **Bật Build Editor**: Cấu hình CMake với `ENABLE_EDITOR=ON`.
+2. **Đăng ký Editor System**: Đăng ký `EditorSystem` vào `SystemRegistry` của engine.
+3. **Kiểm tra & Chỉnh sửa**: Click vào entity trong Hierarchy để chỉnh sửa component trong Inspector; dùng gizmo 3D viewport để di chuyển/xoay/co giãn.
+4. **Play / Pause / Stop**: Sử dụng thanh công cụ phía trên để chạy thử mô phỏng game.
 
-Gizmo hỗ trợ move, rotate, scale, world/local, pivot/center và snapping. Một lần
-drag tạo một undo transaction.
+---
 
-- `Alt` + arrow/PageUp/PageDown: move.
-- `Ctrl+Alt` + arrow/PageUp/PageDown: rotate.
-- `Shift+Alt` + arrow/PageUp/PageDown: scale.
+## 3. Ví dụ
 
-## Play/Edit/Stop và history
+### Ví dụ Khởi chạy Editor Host
+```cpp
+#include <axis_sdk.h>
 
-- Play chụp snapshot đầy đủ của edit scene.
-- Pause dừng runtime progression.
-- Stop khôi phục snapshot và reset history.
-- `Ctrl+S` lưu scene.
-- `Ctrl+R` reload; nếu dirty sẽ hỏi trước khi discard.
-- Undo: `Ctrl+Z`; redo: `Ctrl+Shift+Z`.
+#if defined(AXIS_ENABLE_EDITOR)
+#include <axis_editor.h>
+#endif
 
-Luôn dùng version control. File/prefab operation ghi trực tiếp vào project.
-File Hierarchy canonicalize path dưới project root, create không ghi đè,
-duplicate sinh tên duy nhất và rename từ chối conflict. Các lệnh save/apply
-được chọn rõ vẫn thay output của chính chúng.
+int main() {
+    auto app = std::make_shared<Application>();
+    AppConfig config;
+    config.title = "AxisEngine Editor Host";
 
-## Panel
+    if (!app->Initialize(config)) return 1;
 
-Editor gồm Hierarchy, Project/Assets, Inspector, Tools, Settings, Profiler,
-Console, State, Network, Help, Animation Graph, VFX Graph, Input Actions,
-Navigation, Frame Debugger, Lighting, Prefabs, File Hierarchy và Resource
-Browser.
+    #if defined(AXIS_ENABLE_EDITOR)
+    app->GetSystemRegistry().RegisterSystem<EditorSystem>();
+    #endif
 
-`Project / Assets` quản lý browse/import/dependency/reimport. `Prefabs` dùng
-fragment `.axs`. `Lighting` queue probe capture và bake lightmap PPM đơn giản
-theo UV cho static mesh. `Navigation` chỉnh navmesh và cost rule.
+    app->Run();
+    return 0;
+}
+```
 
-## Shortcut
+---
 
-- `Ctrl+1..0`: Hierarchy, Project/Assets, Inspector, Tools, Settings, Profiler,
-  Console, State, Network, Help.
-- `Ctrl+Shift+1`: Animation Graph; `+2`: VFX; `+3`: Input Actions;
-  `+4`: Navigation; `+5`: Frame Debugger; `+6`: Lighting; `+7`: Prefabs.
-- `F1..F9`: các overlay/debug toggle.
-- `F10`: editor cursor; `Shift+F10`: Debug Camera.
-- `F11`: pause/resume; `F12`: đổi time scale.
+## 4. Tra cứu Param, Setting & API Reference
 
-Shortcut yêu cầu đúng modifier. Khi editor/ImGui giữ keyboard, gameplay không
-nhận event tương ứng.
+### Bảng Tra cứu Các Bảng điều khiển Editor
 
-## Debug Camera
-
-- RMB + WASD; `Q/E` đi xuống/lên.
-- MMB pan; `Alt+LMB` orbit; scroll dolly.
-- `F` focus primary selection.
-- `Shift`/`Ctrl` tăng/giảm speed.
-
-Game camera được khôi phục khi kết thúc. Debug Camera là transient và không save.
-
-## Quy tắc extension
-
-- Logic theo frame/world đặt trong module; cửa sổ đặt trong panel.
-- Dùng owner/name ổn định, không dùng vector index.
-- Mở editor transaction trước ECS mutation.
-- Đánh dấu helper entity bằng `InfoComponent::isTransient`.
-- Overlay/picking dùng main viewport/G-buffer context.
-- Asset loader đăng ký qua loader registry.
-
-Xem [mở rộng editor](editor_extensions.md).
+| Tên Bảng điều khiển | Mục đích & Khả năng |
+| :--- | :--- |
+| **Hierarchy Panel** | Duyệt cây entity scene, tạo entity, đổi cha, xóa entity |
+| **Inspector Panel** | Chỉnh sửa thuộc tính component thời gian thực, gắn script |
+| **Project Browser** | Cây hệ thống file workspace, xem trước asset, nạp scene |
+| **Viewport Window** | Màn hình dựng hình 3D kèm gizmo Di chuyển, Xoay và Co giãn |
+| **Tools Panel** | Bật tắt đồ họa trực tiếp (bóng đổ, post-processing, khung dây vật lý) |
+| **Profiler Panel** | Phân rã thời gian khung hình CPU/GPU và số lượng draw call |
+| **Console Panel** | Cửa sổ hiển thị log đầu ra hỗ trợ lọc |
+| **Play Controls** | Bộ chuyển đổi trạng thái mô phỏng engine (**Play**, **Pause**, **Stop**) |

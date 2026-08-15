@@ -1,84 +1,64 @@
-# Navigation Guide
+# Navigation & Pathfinding Guide (Recast/Detour)
 
-> [Tiếng Việt](../../vi/guides/navigation.md)
-
-AXIS Engine provides navigation for AI pathfinding and character movement through generated NavMeshes and grid-based A* providers.
+> [Tiếng Việt](../../vi/guides/navigation.md) | [Components Reference](components_reference.md) | [Configuration Reference](configuration.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## 1. Navigation Components
+## 1. Introduction
 
-### NavMeshComponent
-Stores the spatial data used for NavMesh pathfinding.
-- **Data**: Vertices, Indices, and path-optimized polygons.
-- **Usage**: Automatically processed by the `NavigationSystem` for A* calculations.
-
-### PathFollowerComponent
-Enables an entity to traverse a navigation provider.
-- **Movement**: `MoveSpeed`, `ArrivalDistance`.
-- **Rotation**: `RotationSpeed`, `MaxRotationSpeed`, `RotationAcceleration` (for smooth orientation).
-- **Alignment**: `RotationOffset` to fix character model facing.
-- **Provider Binding**: `navigationProviderEntity` can bind the follower to a specific `NavMeshComponent` or `NavigationGridComponent`; otherwise the system falls back to the first valid provider in the scene.
+AxisEngine integrates **Recast & Detour Navigation Mesh** to provide automatic 3D NavMesh generation, pathfinding queries, agent collision avoidance, and tiled dynamic rebuilding for AI pathfinding.
 
 ---
 
-## 2. NavMesh Generation
-NavMeshes are baked from existing scene geometry.
+## 2. How to Use
 
-### Baking Steps
-1.  **Tag Geometry**: Set the `Tag` of all floors and ramps to `Walkable`.
-2.  **Add NavMesh Entity**: Create an empty entity with a `NavMeshComponent`.
-3.  **Generate**: Add a `NavMeshComponent` and set `needsRebuild = true`; `NavigationSystem` rebuilds it during update through `NavMeshGenerator`.
+1. **Creating NavAgents**: Add `NavAgentComponent` to AI entity and set `speed`, `acceleration`, `radius`, `height`.
+2. **Setting Target Destination**: Set `agent.targetPosition = destinationVector`.
+3. **Querying Async Paths**: Use `ServiceLocator::Get<INavigationService>()->FindPathAsync(start, end, callback)`.
 
 ---
 
-## 3. Navigation System Features
-The `NavigationSystem` automatically manages entities with a `PathFollowerComponent`:
+## 3. Examples
 
-- **A* Pathfinding**: Finds traversable paths between world points on either NavMesh or grid providers.
-- **Path Smoothing**: Skips unnecessary nodes if a direct line-of-sight exists on the NavMesh.
-- **Ground Alignment**: Automatically rotates the character to match the slope of the ground normal.
-- **Steering**: Handles smooth rotation, local separation, and obstacle avoidance.
-
----
-
-## 4. Pathfinding Logic
-The system supports multiple criteria to suit different gameplay needs:
-
-- **Shortest**: Standard Euclidean distance (Fastest).
-- **Smoothest**: Minimizes altitude (slope) changes for more natural movement.
-- **StayOnRoad**: Prefers nodes with specific tags (e.g., `road`, `walkable`).
-- **StraightLine**: Bypasses the NavMesh and moves directly from start to target.
-- **HighGround**: Biases path cost toward higher nodes.
-- **Custom**: Evaluates path cost via a user-defined C++ callback.
-
-### PathfindingOptions
-Configure behavior via the `PathfindingOptions` struct:
-- `preferredTags`: List of tags that reduce movement cost.
-- `tagWeightBonus`: Multiplier to prioritize preferred areas.
-- `altitudePenaltyWeight`: Scaling for slope-based cost (Smoothest mode).
-- `provider`: `Auto`, `NavMesh`, or `Grid`.
-- `customCostFunc`: NavMesh-specific custom edge cost callback.
-- `customGridCostFunc`: Grid-specific custom cell cost callback.
-
----
-
-## 5. Scripting API
+### 1. Setting NavMesh Destination Example
 ```cpp
-auto& follower = GetComponent<PathFollowerComponent>();
+#include <axis_sdk.h>
 
-// To move a character:
-follower.SetTarget(targetPosition);
+void MoveAgentToTarget(Entity agentEntity, const Vector3& targetPos) {
+    if (agentEntity.HasComponent<NavAgentComponent>()) {
+        auto& agent = agentEntity.GetComponent<NavAgentComponent>();
+        agent.targetPosition = targetPos;
+        agent.speed = 4.5f;
+    }
+}
+```
 
-// The NavigationSystem handles the rest:
-// - Calculating path
-// - Following nodes
-// - Re-calculating if target moves
+### 2. Async Pathfinding Query Example
+```cpp
+#include <axis_sdk.h>
+
+void QueryAsyncPath(const Vector3& start, const Vector3& goal) {
+    auto nav = ServiceLocator::Get<INavigationService>();
+    if (nav) {
+        nav->FindPathAsync(start, goal, [](const std::vector<Vector3>& path) {
+            AXIS_LOG_INFO("Path calculated with " + std::to_string(path.size()) + " waypoints.");
+        });
+    }
+}
 ```
 
 ---
 
-## See Also
-- [Physics Guide](physics.md)
-- [Graphics Guide](graphics.md)
-- [Scriptable API](../scripting/scriptable_api.md)
+## 4. API & Configuration Reference
+
+### `NavAgentComponent` & Optimization Parameters Reference
+
+| Parameter Key | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `speed` | `float` | `3.5` | Max movement speed along path in m/s |
+| `acceleration` | `float` | `8.0` | Steering acceleration speed |
+| `stoppingDistance` | `float` | `0.5` | Arrival threshold distance |
+| `radius` | `float` | `0.4` | Agent physical clearance radius |
+| `height` | `float` | `1.8` | Agent clearance height |
+| `targetPosition` | `Vector3` | `0.0 0.0 0.0` | Current target destination |
+| `OPT_NAVIGATION_ASYNC_PATHFINDING` | `bool` | `1` | Asynchronous NavMesh path calculation toggle |

@@ -1,71 +1,66 @@
-# Engine Managers & Services
+# Managers & Services Guide
 
-> [Tiếng Việt](../../vi/core/managers.md)
-
-Managers are centralized services instantiated by the `Application`. They handle lifecycle, resource state, and OS-level interactions.
+> [Tiếng Việt](../../vi/core/managers.md) | [Architecture Overview](architecture.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## 1. ResourceManager
-**Include:** `<resource/logic/resource_manager.h>`
-**Access from `State`/`Scriptable`:** `Get<ResourceManager>()`
+## 1. Introduction
 
-Handles loading, caching, and retrieval of all engine assets.
-
-### Features
-- **Deduplication**: Automatically caches textures, shaders, and models by name or path.
-- **Asynchronous Loading**: Supports non-blocking asset loading via the Job System.
-- **Hot Reloading**: Automatically recompiles shaders and refreshes textures when source files change.
-- **Strict Asset Loading**: `STRICT_ASSET_LOADING` disables debug fallback substitutions so failed shader, texture, and model loads surface as load failures.
-
-### Common Methods
-- `GetModel(name)`, `GetTexture(name)`, `GetShader(name)`
-- `LoadModel(name, path)`, `LoadTexture(name, path)`
+AxisEngine manages core runtime subsystems using global singleton managers and decoupled services accessible through `ServiceLocator`. These managers control asset caching, event pub-sub dispatching, hardware input polling, scene loading, and multithreaded job execution.
 
 ---
 
-## 2. SceneManager
-Use the `EngineAccessor` scene methods (`LoadScene`, `QueueLoadScene`, `ChangeScene`, `UnloadScene`, `PopScene`) rather than depending on the concrete manager.
+## 2. How to Use
 
-Manages the active entity registries and scene transitions.
-
-### Common Methods
-- `LoadScene(path)`: Adds entities from an `.axs` file to the current world.
-- `ChangeScene(path)`: Clears all active entities and loads a fresh scene.
-- `ClearAllScenes()`: Resets the entire world state.
+1. **Accessing Singletons**: Use static `Get()` accessors (e.g., `ResourceManager::Get()`, `InputManager::Get()`).
+2. **Querying Services**: Use `ServiceLocator::Get<IServiceType>()` for decoupled interfaces (`IAudioService`, `IPhysicsWorld`).
+3. **Event Dispatching**: Subscribe handlers via `EventManager::Get().Subscribe<T>()` and publish via `Publish()`.
+4. **Asynchronous Jobs**: Dispatch multithreaded tasks using `JobSystem::Get().DispatchParallel()`.
 
 ---
 
-## 3. InputManager & Handlers
+## 3. Examples
 
-Use `GetAction`, `GetActionDown`, and `GetActionUp` for gameplay. Advanced raw-device code can explicitly resolve `IOHandler`.
+### 1. `ResourceManager` & `InputManager` Example
+```cpp
+#include <axis_sdk.h>
 
-Distributes OS-level keyboard and mouse events.
+void UpdateGameLogic(float dt) {
+    auto& input = InputManager::Get();
+    auto& resources = ResourceManager::Get();
 
-### Keyboard & Mouse
-- **Keyboard**: `Resolve<IOHandler>()->GetKeyboard()` for raw state polling.
-- **Mouse**: `Resolve<IOHandler>()->GetMouse()` for raw pointer state.
-- **Cursor Modes**: Supports `Normal`, `Hidden`, `Locked`, and `LockedHidden`.
+    if (input.IsKeyPressed(KeyCode::L)) {
+        auto tex = resources.LoadTexture("textures/hero.png");
+        AXIS_LOG_INFO("Texture loaded!");
+    }
+}
+```
 
-### Input Actions
-Recommended for gameplay: Use `GetAction("Jump")` to poll mapped keys defined in configuration.
+### 2. `EventManager` Pub-Sub Example
+```cpp
+#include <axis_sdk.h>
+
+struct GameOverEvent { int score; };
+
+void SetupEvents() {
+    EventManager::Get().Subscribe<GameOverEvent>([](const GameOverEvent& e) {
+        AXIS_LOG_INFO("Game Over! Score: " + std::to_string(e.score));
+    });
+
+    EventManager::Get().Publish(GameOverEvent{ 1250 });
+}
+```
 
 ---
 
-## 4. AudioService
-**Include:** `<audio/logic/audio_service.h>`
-**Access from `State`/`Scriptable`:** `Resolve<AudioService>()`
+## 4. API & Configuration Reference
 
-Wraps whichever `IAudioEngine` backend was selected or injected. Playback is independent from `IAudioCaptureService` microphone input.
+### Core Managers & Services API Reference
 
-### Methods
-- `Play2D(source, loop)`: Global background music or UI sounds.
-- `Play3D(source, pos, loop)`: Positional audio for entities.
-- `UpdateListener(pos, dir, up)`: Syncs the audio "ears" to the active camera.
-
----
-
-## See Also
-- [Architecture Overview](architecture.md)
-- [Scene Format (.axs)](../guides/scene_format.md)
-- [Project Structure](../guides/project_structure.md)
+| Manager Name | Access Pattern | Key Methods / APIs | Primary Responsibilities |
+| :--- | :--- | :--- | :--- |
+| `ResourceManager` | `ResourceManager::Get()` | `LoadTexture()`, `LoadModel()`, `UnloadUnusedResources()` | Asset caching & deduplication |
+| `EventManager` | `EventManager::Get()` | `Subscribe<T>()`, `Publish<T>()` | Decoupled pub-sub event dispatching |
+| `InputManager` | `InputManager::Get()` | `IsKeyDown()`, `IsKeyPressed()`, `GetMouseDelta()` | Keyboard, mouse & gamepad polling |
+| `SceneManager` | `SceneManager::Get()` | `LoadScene()`, `LoadBinaryScene()`, `GetActiveScene()` | `.axs` & `.axsb` scene loading |
+| `JobSystem` | `JobSystem::Get()` | `DispatchParallel()`, `WaitAll()` | Multithreaded worker thread pool |

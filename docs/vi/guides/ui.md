@@ -1,54 +1,61 @@
-# Hướng dẫn giao diện người dùng
+# Hướng dẫn Hệ thống Giao diện Người dùng (UI System)
 
-> [English](../../eng/guides/ui.md)
+> [English](../../eng/guides/ui.md) | [Tra cứu Component Reference](components_reference.md) | [Tra cứu Cấu hình Configuration](configuration.md) | [Mục lục Tài liệu](../INDEX.md)
 
-AxisEngine có overlay UI 2D responsive cho menu, HUD và phần tử tương tác.
+---
 
-## 1. Component
+## 1. Giới thiệu
 
-### UITransformComponent
+AxisEngine sở hữu một **Hệ thống UI dạng Canvas** tăng tốc phần cứng cho phép tạo giao diện 2D HUD, menu tương tác, thanh máu và văn bản lớp phủ. Bố cục dựa trên phép toán điểm neo `RectTransform` hỗ trợ co giãn độc lập với độ phân giải.
 
-`anchorMin`/`anchorMax` là tọa độ chuẩn hóa trong parent; `offsetMin`/
-`offsetMax` là pixel offset; `pivot` là tâm scale/rotate; `ZOrder` quyết định lớp vẽ.
+---
 
-### UIRendererComponent
+## 2. Cách dùng
 
-Vẽ quad màu/texture, hỗ trợ tint và custom UI shader.
+1. **Tạo Entity UI**: Tạo entity Canvas gốc và các entity phần tử UI con.
+2. **Cấu hình Bố cục**: Thêm `RectTransformComponent` để thiết lập điểm neo (`anchorMin`, `anchorMax`), `sizeDelta` và `pivot`.
+3. **Thêm Component Trực quan**: Gắn `UIImageComponent` cho texture/panel và `UITextComponent` cho nhãn văn bản.
+4. **Xử lý Sự kiện Click**: Gắn `UIButtonComponent` và thiết lập callback `onClick`.
 
-### UITextComponent
+---
 
-Text động với font preload, alignment `Left`/`Center`/`Right`; bật `wordWrap`
-và đặt `maxWidth` để giới hạn dòng.
+## 3. Ví dụ
 
-### UIFlexLayoutComponent
+### Ví dụ Tạo Button UI Tương tác
+```cpp
+#include <axis_sdk.h>
 
-Sắp child theo `Row` hoặc `Column`, có spacing và padding bốn cạnh.
+void CreateUIButton(Scene& scene) {
+    auto canvas = scene.CreateEntity("Canvas");
+    auto button = scene.CreateEntity("Play Button");
 
-## 2. Tương tác và animation
+    auto& rect = button.AddComponent<RectTransformComponent>();
+    rect.anchorMin = Vector2(0.5f, 0.5f);
+    rect.anchorMax = Vector2(0.5f, 0.5f);
+    rect.sizeDelta = Vector2(200.0f, 50.0f);
 
-`UIInteractiveComponent` có state `hovered`, `pressed`, `clicked`, `holdTime`
-và callback runtime `onClick`, `onHoverEnter`, `onReleased`. Callback không
-được serialize vào `.axs`.
+    auto& image = button.AddComponent<UIImageComponent>();
+    image.color = Vector4(0.1f, 0.5f, 0.9f, 1.0f);
 
-`UIAnimationComponent` blend normal/hover color và dùng `visualScale`; không
-sửa trực tiếp size do layout sở hữu.
+    auto& text = button.AddComponent<UITextComponent>();
+    text.text = "CHOI NGAY";
 
-## 3. Layout responsive
+    auto& btn = button.AddComponent<UIButtonComponent>();
+    btn.onClick = []() {
+        AXIS_LOG_INFO("Button Choi Ngay da duoc click!");
+    };
+}
+```
 
-- `UsePercentage`: kích thước theo viewport.
-- Anchor giữ phần tử ở cạnh/tâm khi đổi aspect ratio.
-- `UI_REFERENCE_WIDTH`, `UI_REFERENCE_HEIGHT` hoặc `UI_REFERENCE_SIZE` đặt
-  reference canvas dùng chung cho render và hit test.
+---
 
-## 4. System
+## 4. Tra cứu Param, Setting & API Reference
 
-1. `UIInteractSystem` xử lý pointer/click và callback.
-2. `UIRenderSystem` vẽ late pass trên scene 3D.
+### Bảng Tra cứu UI Components
 
-Input do script xử lý vẫn dùng cùng reference canvas.
-
-## Xem thêm
-
-- [Graphics](graphics.md)
-- [Scriptable API](../scripting/scriptable_api.md)
-- [Scene format](scene_format.md)
+| Tên Component | Thuộc tính Chính | Mục đích |
+| :--- | :--- | :--- |
+| `RectTransformComponent` | `anchorMin`, `anchorMax`, `anchoredPosition`, `sizeDelta`, `pivot` | Phạm vi màn hình 2D và phép toán bố cục anchor |
+| `UIImageComponent` | `texturePath`, `color` | Dựng hình sprite texture hoặc panel màu đơn sắc |
+| `UITextComponent` | `text`, `fontSize`, `color` | Dựng hình chuỗi văn bản phông chữ TrueType |
+| `UIButtonComponent` | `onClick` (`std::function<void()>`) | Xử lý callback tương tác rê chuột và click chuột |

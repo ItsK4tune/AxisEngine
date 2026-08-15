@@ -1,206 +1,137 @@
-# Tham chiếu Scriptable API
+# Hướng dẫn Lập trình Scriptable API & Vòng đời Hành vi Entity
 
-> [English](../../eng/scripting/scriptable_api.md)
+> [English](../../eng/scripting/scriptable_api.md) | [Quản lý State API](../state/state_api.md) | [Tra cứu Component Reference](../guides/components_reference.md) | [Mục lục Tài liệu](../INDEX.md)
 
-`Scriptable` là base class cho gameplay script C++. Script được gắn vào entity
-bằng `ScriptComponent` và đăng ký tường minh theo application.
+---
 
-## Lifecycle
+## 1. Giới thiệu
 
-```text
-Init(entity, scene, app)
-  → OnCreate()
-  → OnEnable()
-  → OnUpdate(dt), input callback, physics callback
-  → OnDisable()
-  → OnDestroy()
-```
+AxisEngine hỗ trợ lập trình hành vi entity bằng C++ bằng cách kế thừa lớp `Scriptable`. Được gắn vào entity qua `ScriptComponent`, các instance `Scriptable` nhận các callback vòng đời, hook va chạm vật lý, sự kiện input và bộ đếm thời gian thực thi hoãn lại (`Invoke`).
 
-- `Init` do engine gọi để gắn context.
-- `OnCreate`: khởi tạo/cached handle.
-- `OnUpdate`: logic mỗi frame, `dt` chịu time scale.
-- `OnDestroy`: unsubscribe event, dừng resource thuộc script.
-- `SetEnabled` kích hoạt `OnEnable`/`OnDisable`.
+### Các Giai đoạn trong Vòng đời `Scriptable`
+1. **Ràng buộc (`Initialize`)**: Engine liên kết handle `entt::entity` và con trỏ `Scene*` đang hoạt động với instance script.
+2. **Khởi tạo (`OnCreate`)**: Thực thi 1 lần khi entity và script vào scene đang hoạt động. Thích hợp cho việc truy vấn component và thiết lập trạng thái ban đầu.
+3. **Kích hoạt & Tắt (`OnEnable` / `OnDisable`)**: Thực thi bất cứ khi nào `SetEnabled(true)` hoặc `SetEnabled(false)` được gọi. Điều khiển việc thực thi cập nhật.
+4. **Thực thi Khung hình (`OnUpdate`, `OnFixedUpdate`)**:
+   - `OnUpdate(float dt)`: Thực thi trong các frame tick logic biến thiên cho di chuyển, bộ đếm thời gian và xử lý input.
+   - `OnFixedUpdate(float fixedDt)`: Thực thi trong các bước thời gian vật lý cố định cho tác dụng lực và cập nhật kinematic.
+5. **Tương tác Va chạm Vật lý (`OnCollision*`, `OnTrigger*`)**:
+   - Va chạm body rắn: `OnCollisionEnter(other)`, `OnCollisionStay(other)`, `OnCollisionExit(other)`.
+   - Vùng kích hoạt Trigger: `OnTriggerEnter(other)`, `OnTriggerStay(other)`, `OnTriggerExit(other)`.
+6. **Sự kiện Input (`OnKey*`, `OnMouse*`)**:
+   - Bàn phím: `OnKeyPress(key)`, `OnKeyRelease(key)`.
+   - Chuột: `OnMouseButtonPress(btn)`, `OnMouseButtonRelease(btn)`, `OnMouseEnter()`, `OnMouseExit()`, `OnMouseOver()`, `OnMouseClicked(btn)`.
+7. **Hủy bỏ (`OnDestroy`)**: Thực thi khi component script hoặc entity bị xóa bỏ.
 
-Không cache reference component qua thao tác có thể làm registry thay đổi; cache
-entity ID hoặc truy xuất lại khi cần.
+---
 
-## Tạo và đăng ký script
+## 2. Cách dùng
 
+1. **Kế thừa `Scriptable`**: Tạo lớp kế thừa `Scriptable` và ghi đè các callback vòng đời cần thiết (`OnCreate()`, `OnUpdate(float dt)`, `OnCollisionEnter(other)`, `OnDestroy()`).
+2. **Đăng ký Script Factory**: Gọi `app.RegisterScript<MyScript>("MyScript")` bên trong `Application::RegisterUserScripts()`.
+3. **Gắn vào Entity**: Gọi `entity.AddScript<MyScript>("MyScript")` trong mã C++ hoặc chỉ định `Script:` trong file scene `.axs`.
+4. **Lên lịch Thực thi Hoãn lại**: Gọi `Invoke([this]() { DoSomething(); }, delaySeconds)` để lên lịch thực thi callback bất đồng bộ.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Script Player Controller với Đầy đủ Callback Vòng đời
 ```cpp
-#include <script/scriptable.h>
+#include <axis_sdk.h>
 
-class PlayerController final : public Scriptable {
+class PlayerScript final : public Scriptable {
+private:
+    float m_moveSpeed = 6.0f;
+    int m_health = 100;
+
 public:
     void OnCreate() override {
-        m_HasBody = HasComponent<RigidBodyComponent>();
+        AXIS_LOG_INFO("PlayerScript duoc khoi tao tren entity ID: " + std::to_string(static_cast<uint32_t>(m_Entity)));
+
+        // Lên lịch hồi máu hoãn lại sau 5 giây
+        Invoke([this]() {
+            m_health = 100;
+            AXIS_LOG_INFO("Player da duoc hoan blood!");
+        }, 5.0f);
+    }
+
+    void OnEnable() override {
+        AXIS_LOG_INFO("PlayerScript duoc kich hoat");
     }
 
     void OnUpdate(float dt) override {
-        if (GetActionDown("Jump"))
-            Jump();
+        auto& input = InputManager::Get();
+        auto& transform = GetComponent<TransformComponent>();
+
+        if (input.IsKeyDown(KeyCode::W)) {
+            transform.Translate(Vector3(0.0f, 0.0f, m_moveSpeed * dt));
+        }
     }
 
-    void OnDestroy() override {}
+    void OnFixedUpdate(float fixedDt) override {
+        // Cập nhật bước vật lý
+    }
 
-private:
-    bool m_HasBody = false;
-};
-```
+    void OnTriggerEnter(entt::entity other) override {
+        if (CompareTag(other, "Pickup")) {
+            AXIS_LOG_INFO("Da thu thap vat pham!");
+            Destroy(other);
+        }
+    }
 
-```cpp
-class GameApplication final : public Application {
-public:
-    void RegisterUserScripts() override {
-        RegisterScript<PlayerController>("PlayerController");
+    void OnDisable() override {
+        AXIS_LOG_INFO("PlayerScript bi tat");
+    }
+
+    void OnDestroy() override {
+        AXIS_LOG_INFO("PlayerScript bi huy");
     }
 };
+
+void RegisterAppScripts(Application& app) {
+    app.RegisterScript<PlayerScript>("PlayerScript");
+}
 ```
 
-```yaml
-axis_scene:
-  Entities:
-    Player:
-      Component: Script
-        Class: PlayerController
-```
+---
 
-Manual binding chỉ dùng khi thật sự cần:
+## 4. Tra cứu Param, Setting & API Reference
 
-```cpp
-auto& component = registry.emplace<ScriptComponent>(entity);
-component.Bind<PlayerController>();
-component.instance = component.InstantiateScript();
-component.instance->Init(entity, scenePtr, appPtr);
-component.instance->OnCreate();
-```
+### Bảng Tra cứu Các Callback Vòng đời `Scriptable`
 
-## Component
+| Tên Phương thức | Thời điểm Gọi / Điều kiện Kích hoạt | Mô tả |
+| :--- | :--- | :--- |
+| `Initialize(entity, scene)` | Ràng buộc Hệ thống | Liên kết handle entity EnTT và con trỏ scene |
+| `OnCreate()` | Khởi tạo Entity | Thực thi 1 lần khi script entity vào scene đang hoạt động |
+| `OnEnable()` | Kích hoạt | Thực thi khi script được bật (`SetEnabled(true)`) |
+| `OnDisable()` | Tắt Kích hoạt | Thực thi khi script bị tắt (`SetEnabled(false)`) |
+| `OnUpdate(float dt)` | Mỗi Khung hình | Thực thi trong vòng lặp cập nhật logic biến thiên |
+| `OnFixedUpdate(float fixedDt)` | Bước Vật lý Cố định | Thực thi trong bước vật lý cố định Bullet 3D |
+| `OnCollisionEnter(other)` | Va chạm Body Rắn | Kích hoạt khi bắt đầu xảy ra va chạm vật lý |
+| `OnCollisionStay(other)` | Va chạm Body Rắn | Kích hoạt liên tục trong khi va chạm còn duy trì |
+| `OnCollisionExit(other)` | Va chạm Body Rắn | Kích hoạt khi va chạm vật lý kết thúc |
+| `OnTriggerEnter(other)` | Vùng Kích hoạt Trigger | Kích hoạt khi entity đi vào vùng trigger |
+| `OnTriggerStay(other)` | Vùng Kích hoạt Trigger | Kích hoạt khi entity ở bên trong vùng trigger |
+| `OnTriggerExit(other)` | Vùng Kích hoạt Trigger | Kích hoạt khi entity đi ra khỏi vùng trigger |
+| `OnKeyPress(key)` | Input Bàn phím | Kích hoạt khi một phím bàn phím được nhấn xuống |
+| `OnKeyRelease(key)` | Input Bàn phím | Kích hoạt khi một phím bàn phím được thả ra |
+| `OnMouseEnter()` | Rê Chuột | Kích hoạt khi con trỏ chuột đi vào phạm vi UI/entity |
+| `OnMouseExit()` | Rê Chuột | Kích hoạt khi con trỏ chuột rời khỏi phạm vi UI/entity |
+| `OnMouseClicked(btn)` | Click Chuột | Kích hoạt khi click chuột vào phạm vi UI/entity |
+| `OnDestroy()` | Hủy bỏ | Thực thi khi script hoặc entity bị gỡ bỏ |
 
-```cpp
-template<class T> T& GetComponent();
-template<class T> bool HasComponent();
-template<class T> T* GetScript(entt::entity target);
-```
+### Bảng Tra cứu Các Hàm Hỗ trợ trong `Scriptable`
 
-`GetComponent<T>()` yêu cầu component tồn tại. Kiểm tra `HasComponent<T>()` nếu
-schema không đảm bảo. `GetScript<T>()` trả `nullptr` khi entity/script không phù hợp.
-
-## Input
-
-Gameplay nên dùng action:
-
-```cpp
-if (GetAction("MoveForward")) { /* held */ }
-if (GetActionDown("Jump"))    { /* pressed */ }
-if (GetActionUp("Fire"))      { /* released */ }
-float steering = GetAxis("Steer");
-```
-
-Raw input nâng cao:
-
-- Keyboard: `GetKey`, `GetKeyDown`, `GetKeyUp`.
-- Mouse: button held/down/up, position và delta.
-- Callback script nhận key/mouse event khi entity active và script enabled.
-- Editor-consumed key không đi vào gameplay action.
-
-## Physics callback
-
-```cpp
-void OnCollisionEnter(entt::entity other) override;
-void OnCollisionStay(entt::entity other) override;
-void OnCollisionExit(entt::entity other) override;
-void OnTriggerEnter(entt::entity other) override;
-void OnTriggerStay(entt::entity other) override;
-void OnTriggerExit(entt::entity other) override;
-```
-
-Callback chạy trong flow physics/script; không hủy hàng loạt entity khi đang
-iterate nếu API có queue/deferred operation phù hợp.
-
-## Truy cập engine
-
-`Scriptable` kế thừa `EngineAccessor`:
-
-```cpp
-auto& resources = Get<ResourceManager>();
-auto* audio = Resolve<AudioService>();
-auto& physics = GetSystem<PhysicsSystem>();
-
-LoadScene("assets/scenes/overlay.axs");
-QueueLoadScene("assets/scenes/next.axs");
-QueuePopScene();
-```
-
-Ưu tiên interface công khai thay concrete manager. Dùng `Resolve<T>()` khi
-service là optional; `Get<T>()`/`GetSystem<T>()` khi contract yêu cầu tồn tại.
-
-## EntityBuilder
-
-`EntityBuilder` tạo entity và publish transform ban đầu ngay lập tức, nên code
-chạy trước update tiếp theo của `TransformSystem` vẫn thấy world state đúng.
-
-```cpp
-Entity player = EntityBuilder(scene, resources, "Gameplay")
-    .WithName("Player")
-    .WithTag("player")
-    .WithTransform({0.0f, 1.0f, 0.0f})
-    .WithPBRRenderable("playerModel", "pbrShader", {0.0f, 1.0f, 0.0f})
-    .WithRigidShape(ShapeType::Capsule, {1.0f}, 0.5f, 1.8f)
-    .WithRigidBody(70.0f)
-    .WithScript("PlayerController")
-    .Build();
-```
-
-Builder có nhóm method cho resource, identity, transform, render/material,
-terrain, physics, navigation, UI, hierarchy, audio, script, animation,
-fragment, network, light, camera, particle, video, post-process, probe,
-reflection và decal. Ưu tiên `With*` chuyên biệt để companion component và
-initial state được tạo nhất quán.
-
-## Pattern thường dùng
-
-### Player controller
-
-- Đọc action trong `OnUpdate`.
-- Áp velocity/force qua physics component.
-- Camera hoặc animation nhận state đã chuẩn hóa, không tự poll phím lần hai.
-
-### Enemy AI
-
-- Bind `PathFollowerComponent`.
-- Đặt target, để `NavigationSystem` xử lý path và steering.
-- Rate-limit perception/path request thay vì tính mỗi frame cho mọi enemy.
-
-### Object tương tác
-
-- Dùng trigger callback, tag/layer và action interact.
-- Giữ one-shot state để callback stay không phát hành động lặp.
-
-### UI button
-
-- Runtime callback nằm trong `UIInteractiveComponent`, không serialize.
-- Unbind callback khi script bị hủy nếu callback không thuộc component lifetime.
-
-## Quy tắc thực hành
-
-Nên:
-
-- Đăng ký script tường minh.
-- Dùng action binding, `dt`, queue scene operation và RAII subscription.
-- Kiểm tra component/service optional.
-- Giữ logic authoritative ở server khi dùng network.
-
-Không nên:
-
-- Gọi lifecycle thủ công ngoài manual-instantiation flow.
-- Giữ raw pointer tới resource/provider đã có thể bị thay.
-- Sửa scene registry trong callback đang iterate nếu không deferred.
-- Tin network message hoặc asset/path từ nguồn không tin cậy.
-
-## Xem thêm
-
-- [State API](../state/state_api.md)
-- [Component](../guides/components_reference.md)
-- [Physics](../guides/physics.md)
-- [Thiết bị](../guides/device_management.md)
+| Tên Phương thức | Kiểu Trả về | Mô tả |
+| :--- | :--- | :--- |
+| `GetComponent<T>()` | `T&` | Lấy tham chiếu tới component `T` trên entity hiện tại |
+| `HasComponent<T>()` | `bool` | Kiểm tra xem entity hiện tại có component `T` hay không |
+| `GetScript<T>(targetEntity)` | `T*` | Lấy con trỏ tới script `T` trên entity mục tiêu |
+| `SetEnabled(enabled)` | `void` | Bật hoặc tắt thực thi tick script (`OnEnable`/`OnDisable`) |
+| `SetRunWhenPaused(run)` | `void` | Cấu hình cho phép script tiếp tục tick khi game bị tạm dừng |
+| `Invoke(callback, delaySeconds)` | `void` | Lên lịch thực thi hoãn lại một lambda callback |
+| `Spawn(name, pos, rot, scale)` | `entt::entity` | Sinh ra một entity mới vào scene đang hoạt động |
+| `Destroy(targetEntity)` | `void` | Gỡ bỏ entity mục tiêu khỏi scene đang hoạt động |
+| `CompareTag(entity, tag)` | `bool` | Kiểm tra xem entity mục tiêu có khớp với chuỗi tag hay không |
+| `CompareName(entity, name)` | `bool` | Kiểm tra xem entity mục tiêu có khớp với chuỗi tên hay không |

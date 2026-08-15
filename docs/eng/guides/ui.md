@@ -1,71 +1,61 @@
-# User Interface (UI) Guide
+# User Interface (UI) System Guide
 
-> [Tiếng Việt](../../vi/guides/ui.md)
-
-AXIS Engine provides a responsive 2D overlay system for menus, HUDs, and interactive elements.
+> [Tiếng Việt](../../vi/guides/ui.md) | [Components Reference](components_reference.md) | [Configuration Reference](configuration.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## 1. UI Components
+## 1. Introduction
 
-### UITransformComponent
-Defines the bounding box and layout of a UI element using a resolution-independent anchoring system.
-- **Anchors (`anchorMin`, `anchorMax`)**: Normalized points (0.0 to 1.0) in the parent's space that define the element's origin and stretching behavior.
-- **Offsets (`offsetMin`, `offsetMax`)**: Pixel offsets from the calculated anchor points.
-- **Pivot**: The point (0.0 to 1.0) within the element about which it rotates and scales.
-- **ZOrder**: Determines the rendering stack; higher values appear on top.
-
-### UIRendererComponent
-Draws a colored quad or textured image.
-- Supports tinting and custom UI shaders.
-
-### UITextComponent
-Renders dynamic text using pre-loaded fonts.
-- **Alignment**: `Left`, `Center`, `Right`.
-- **Word Wrap**: Enable `wordWrap` and set `maxWidth` to constrain text within a specific pixel width.
-
-### UIFlexLayoutComponent
-Provides automated horizontal or vertical arrangement of child elements.
-- **Direction**: `Row` or `Column`.
-- **Spacing**: Pixel gap between elements.
-- **Padding**: Internal spacing (`Left`, `Top`, `Right`, `Bottom`).
+AxisEngine features a hardware-accelerated **Canvas-based UI System** for creating 2D HUDs, interactive menus, health bars, and text overlays. Layouts rely on `RectTransform` anchor mathematics to support resolution-independent scaling.
 
 ---
 
-## 2. Interaction & Animation
+## 2. How to Use
 
-### UIInteractiveComponent
-Enables mouse interaction for buttons and sliders.
-- **States**: `hovered`, `pressed`, `clicked`, and `holdTime`.
-- **Callbacks**: Runtime C++ callbacks such as `onClick`, `onHoverEnter`, and `onReleased`. These callbacks are not serialized into `.axs` files.
-
-### UIAnimationComponent
-Provides lightweight visual feedback.
-- Automatically interpolates between `normalColor` and `hoverColor` when the entity is hovered.
-- Can scale elements smoothly during interaction through `visualScale` without mutating layout-owned `UITransformComponent::size`.
+1. **Creating UI Entities**: Create a root Canvas entity and child UI element entities.
+2. **Configuring Layout**: Add `RectTransformComponent` to set anchors (`anchorMin`, `anchorMax`), `sizeDelta`, and `pivot`.
+3. **Adding Visual Components**: Attach `UIImageComponent` for textures/panels and `UITextComponent` for string labels.
+4. **Handling Clicks**: Attach `UIButtonComponent` and set the `onClick` std::function callback.
 
 ---
 
-## 3. Responsive Layout
-The UI system is designed to handle dynamic window resizing:
+## 3. Examples
 
-- **Percentage Scaling**: Enable `UsePercentage` to keep elements size-relative to the screen (e.g., a map that always takes up 20% of the viewport).
-- **Anchoring**: Ensures UI elements stay "stuck" to screen corners or centers regardless of aspect ratio changes.
-- **Reference Canvas**: `UI_REFERENCE_WIDTH`, `UI_REFERENCE_HEIGHT`, or `UI_REFERENCE_SIZE` config controls the canvas scale used by UI rendering and input hit testing.
+### Creating an Interactive UI Button Example
+```cpp
+#include <axis_sdk.h>
+
+void CreateUIButton(Scene& scene) {
+    auto canvas = scene.CreateEntity("Canvas");
+    auto button = scene.CreateEntity("Play Button");
+
+    auto& rect = button.AddComponent<RectTransformComponent>();
+    rect.anchorMin = Vector2(0.5f, 0.5f);
+    rect.anchorMax = Vector2(0.5f, 0.5f);
+    rect.sizeDelta = Vector2(200.0f, 50.0f);
+
+    auto& image = button.AddComponent<UIImageComponent>();
+    image.color = Vector4(0.1f, 0.5f, 0.9f, 1.0f);
+
+    auto& text = button.AddComponent<UITextComponent>();
+    text.text = "PLAY NOW";
+
+    auto& btn = button.AddComponent<UIButtonComponent>();
+    btn.onClick = []() {
+        AXIS_LOG_INFO("Play Button Clicked!");
+    };
+}
+```
 
 ---
 
-## 4. UI Systems
-Two systems manage the UI every frame:
+## 4. API & Configuration Reference
 
-1.  **UIInteractSystem**: Processes mouse positions and clicks, updating `UIInteractiveComponent` state and triggering runtime callbacks.
-2.  **UIRenderSystem**: Renders all UI elements as a late pass on top of the 3D scene, ensuring the UI is never occluded by game objects.
+### UI Components Reference Table
 
-Script-driven input still flows through `ScriptableSystem` and `InputScriptable`; it uses the same reference canvas config for hit testing.
-
----
-
-## See Also
-- [Graphics Guide](graphics.md)
-- [Scriptable API](../scripting/scriptable_api.md)
-- [Scene Format (.axs)](scene_format.md)
+| Component Name | Key Properties | Purpose |
+| :--- | :--- | :--- |
+| `RectTransformComponent` | `anchorMin`, `anchorMax`, `anchoredPosition`, `sizeDelta`, `pivot` | 2D screen-space bounds and anchor layout math |
+| `UIImageComponent` | `texturePath`, `color` | Renders textured sprites or solid colored panels |
+| `UITextComponent` | `text`, `fontSize`, `color` | Renders TrueType font text strings |
+| `UIButtonComponent` | `onClick` (`std::function<void()>`) | Handles mouse hover and click interaction callbacks |

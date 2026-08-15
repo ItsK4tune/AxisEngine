@@ -1,26 +1,48 @@
-# Quy định về comment
+# Hướng dẫn Quy chuẩn Comment & Ghi chú Mã nguồn
 
-> [English](../../eng/guides/comment_policy.md)
+> [English](../../eng/guides/comment_policy.md) | [Bề mặt API Công khai](../core/api_surface.md) | [Mục lục Tài liệu](../INDEX.md)
 
-Comment trong AxisEngine chỉ nên giữ thông tin không thể biểu đạt rõ bằng tên,
-type, test hoặc control flow.
+---
 
-Giữ comment giải thích:
+## 1. Giới thiệu
 
-- lý do thiết kế và phương án đã loại bỏ;
-- invariant, ownership, lifetime và thread-safety;
-- security hoặc trust boundary;
-- binary format, protocol, workaround nền tảng và thuật toán khó thấy;
-- public API contract, license và attribution của bên thứ ba.
+AxisEngine duy trì các ghi chú comment mã nguồn C++ sạch sẻ, nhất quán trên toàn bộ các header công khai và mã nguồn triển khai nội bộ bằng cách sử dụng các tag Doxygen.
 
-Không thêm:
+---
 
-- câu tường thuật lặp lại lệnh ngay bên dưới;
-- nội dung hội thoại hoặc lịch sử agent đã sửa code như thế nào;
-- code bị comment-out hoặc changelog trong implementation;
-- banner, số thứ tự phase không đại diện cho boundary kiến trúc thật;
-- `TODO`, `FIXME`, `HACK` không có owner hoặc issue được theo dõi.
+## 2. Cách dùng
 
-Mọi cleanup phải được review thủ công. Có thể dùng tìm kiếm để lập danh sách
-ứng viên, nhưng không được tự động xóa comment vì công cụ không phân biệt được
-invariant quan trọng với lời tường thuật dư thừa.
+1. **Ghi chú Tóm tắt Header**: Sử dụng `/// @brief` phía trên định nghĩa class, struct hoặc hàm.
+2. **Ghi chú Tham số**: Ghi nhận tham số với `/// @param tên Mô tả`.
+3. **Ghi chú Giá trị Trả về**: Ghi nhận giá trị trả về bằng `/// @return Mô tả`.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Comment Doxygen
+```cpp
+#include <axis_sdk.h>
+
+/// @brief Đại diện cho script hành vi người chơi trong game.
+class PlayerScript final : public Scriptable {
+public:
+    /// @brief Tick cập nhật logic script mỗi khung hình.
+    /// @param dt Thời gian delta khung hình tính bằng giây.
+    void OnUpdate(float dt) override {
+        // Thực thi
+    }
+};
+```
+
+---
+
+## 4. Tra cứu Param, Setting & API Reference
+
+### Bảng Tra cứu Các Tag Doxygen
+
+| Tên Tag | Mục đích | Ví dụ |
+| :--- | :--- | :--- |
+| `/// @brief` | Tóm tắt ngắn gọn về biểu tượng | `/// @brief Computes spatial culling.` |
+| `/// @param` | Tài liệu hóa tham số truyền vào | `/// @param dt Frame delta time in seconds.` |
+| `/// @return` | Mô tả giá trị trả về | `/// @return True if initialized successfully.` |

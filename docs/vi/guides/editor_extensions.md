@@ -1,74 +1,59 @@
-# Mở rộng AxisEngine Editor
+# Hướng dẫn Mở rộng Editor (Editor Extensions)
 
-> [English](../../eng/guides/editor_extensions.md)
+> [English](../../eng/guides/editor_extensions.md) | [Sổ tay Editor](editor.md) | [Mục lục Tài liệu](../INDEX.md)
 
-Extension đăng ký module/panel qua `IEditorExtensionRegistry`, không cần sửa
-`EditorSystem`. Ví dụ chạy được nằm tại
-`sample/src/editor/sample_editor_extension.*`.
+---
 
-## Đăng ký
+## 1. Giới thiệu
 
+AxisEngine cho phép các nhà phát triển viết các cửa sổ editor ImGui tùy chỉnh, wizard panels và inspector extensions. Các mở rộng tùy chỉnh kế thừa từ `IEditorPanel` và đăng ký với `EditorSystem` để vẽ trong phase render của editor.
+
+---
+
+## 2. Cách dùng
+
+1. **Kế thừa `IEditorPanel`**: Kế thừa từ `IEditorPanel` và thực thi `void OnImGuiRender() override`.
+2. **Thêm Widget ImGui**: Viết mã ImGui bên trong `OnImGuiRender()` (`ImGui::Begin`, `ImGui::Button`, v.v.).
+3. **Đăng ký Panel**: Gọi `editorSystem.RegisterPanel<MyPanel>("Tiieu De Cua So")`.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Bảng điều khiển Editor ImGui Tùy chỉnh
 ```cpp
-constexpr char kOwner[] = "my_company.my_game.level_tools";
-auto state = std::make_shared<MyExtensionState>();
+#include <axis_sdk.h>
+#include <axis_editor.h>
+#include <imgui.h>
 
-const bool moduleOk = registry.RegisterModule(
-    kOwner, "level.validation",
-    [state] { return std::make_unique<LevelValidationModule>(state); });
+class LevelGeneratorPanel final : public IEditorPanel {
+private:
+    int m_gridSize = 10;
 
-const bool panelOk = registry.RegisterPanel(
-    kOwner, "level.panel",
-    [state] { return std::make_unique<LevelToolsPanel>(state); });
+public:
+    void OnImGuiRender() override {
+        ImGui::Begin("Trinh Tao Level");
+        ImGui::SliderInt("Kich Thuoc Luoi", &m_gridSize, 5, 50);
 
-if (!moduleOk || !panelOk)
-    registry.UnregisterOwner(kOwner);
-```
-
-Owner và internal name phải ổn định, duy nhất. Title lấy từ
-`IEditorPanel::GetTitle`; không dùng index trong vector làm identity.
-
-Khi editor đã initialize, registration tạo và initialize instance ngay.
-`UnregisterOwner` gọi `Shutdown` trước khi hủy. Phải unregister trước khi unload
-DLL/code chứa factory hoặc virtual method.
-
-## Mutation an toàn
-
-Mở một transaction cho toàn bộ thao tác nhiều entity, gọi dirty hook sau khi sửa
-component trực tiếp. Với slider/drag liên tục, bắt đầu transaction lúc activate,
-không tạo mỗi frame. Không giữ `Scene&` hoặc raw module/panel pointer qua
-lifecycle boundary.
-
-```cpp
-auto* selection = ServiceLocator::Instance().Resolve<EditorSelection>();
-if (selection && !selection->Empty())
-{
-    EditorSystem::BeginTransaction(scene, "Move selected entities");
-    for (entt::entity entity : selection->GetAll())
-    {
-        if (auto* position = scene.TryGetComponent<PositionComponent>(entity))
-        {
-            position->value.x += 1.0f;
-            scene.MarkTransformDirty(entity);
+        if (ImGui::Button("Tao Cac O Tile")) {
+            AXIS_LOG_INFO("Dang tao cac o tile cho luoi level...");
         }
+        ImGui::End();
     }
+};
+
+void RegisterExtension(EditorSystem& editor) {
+    editor.RegisterPanel<LevelGeneratorPanel>("Trinh Tao Level");
 }
 ```
 
-## Build
+---
 
-```cmake
-target_link_libraries(MyGame PRIVATE Axis::Engine)
-target_link_libraries(MyGameEditor PRIVATE Axis::Editor)
-```
+## 4. Tra cứu Param, Setting & API Reference
 
-`Axis::Editor` truyền `ENABLE_EDITOR`. Source dùng chung nên guard bằng
-`#ifdef ENABLE_EDITOR`.
+### Bảng Tra cứu API Mở rộng Editor
 
-## Checklist
-
-- Owner ID ổn định; rollback nếu đăng ký dở.
-- Initialize/shutdown đối xứng; unregister trước code unload.
-- Có transaction và dirty notification khi mutate scene.
-- Tôn trọng multi-selection và input ownership.
-- Helper entity phải transient.
-- Test cả editor-enabled và runtime-only.
+| Giao diện / Lớp | Phương thức Chính | Mục đích |
+| :--- | :--- | :--- |
+| `IEditorPanel` | `virtual void OnImGuiRender() = 0` | Giao diện cơ sở cho cửa sổ editor tùy chỉnh |
+| `EditorSystem` | `RegisterPanel<T>(title)` | Đăng ký instance panel vào main editor dockspace |

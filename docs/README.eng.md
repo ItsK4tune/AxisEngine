@@ -1,159 +1,105 @@
 <p align="center">
-  <img src="include/engine/asset/project/logo.png" alt="AxisEngine logo" width="220">
+  <img src="../include/engine/asset/project/logo.png" alt="AxisEngine logo" width="220">
 </p>
 
-# AxisEngine
+# AxisEngine - English Overview
 
-AxisEngine is a C++20, ECS-based game and multimedia engine. The current release
-ships an OpenGL renderer and Bullet physics, with Null audio by default and
-optional FMOD or irrKlang playback backends. It also includes scene
-serialization, scripting, navigation, networking, video playback, an optional
-ImGui editor, a scene compiler, and a sample application containing 33
-scenarios.
+> [Tiếng Việt](README.vn.md) | [Documentation Index](eng/INDEX.md) | [User Manual](eng/MANUAL.md)
 
-This repository is an engine/framework, not a ready-made game. The executable
-produced by the sample build is `axis_samples`; applications using the engine
-provide their own `Application` subclass and initial `State`.
+---
 
-[Bilingual landing page](README.md) | [Vietnamese README](README.vn.md) |
-[English documentation](docs/eng/INDEX.md) | [English manual](docs/eng/MANUAL.md) |
-[Vietnamese documentation](docs/vi/INDEX.md)
+## 1. Introduction
 
-## Current support
+AxisEngine is a C++20 game engine built around the EnTT Entity-Component-System framework. It provides an OpenGL 4.6 renderer, Bullet 3D physics, flexible audio backends, scene compilation, and ImGui editor tools.
 
-| Area | Shipped implementation | Notes |
-| --- | --- | --- |
-| Language | C++20 | CMake 3.20 or newer |
-| Graphics | OpenGL | The renderer requires OpenGL 4.6; it is not usable on macOS |
-| Physics | Bullet | Selected at configure time |
-| Audio playback | Null, FMOD, irrKlang | Null is the dependency-free default; FMOD/irrKlang require their SDKs |
-| Microphone capture | WASAPI on Windows | Other platforms expose an explicit unsupported service |
-| Platforms | Windows, Linux; limited macOS build support | macOS cannot run the shipped OpenGL 4.6 renderer |
-| Editor | ImGui, optional | Enable with `ENABLE_EDITOR=ON` |
-| Scene formats | `.axs`, `.axsb` | `.axs` is AxisEngine's YAML-like subset; `.axsb` is compiled binary |
+Applications provide their own `Application` subclass and initial `State`. The project builds the `Axis::Engine` static library, the `Axis::Editor` library, and the `axis_samples` scenario runner.
 
-Vulkan, DirectX, PhysX, and OpenAL values remain in some enums for source and
-serialization compatibility, but this release does not provide those backends.
+---
 
-## Build
+## 2. Support Matrix
 
-The default configure builds the static engine library only:
+| Area | Shipped Implementation | Config / Flags | Notes |
+| :--- | :--- | :--- | :--- |
+| Language | C++20 | `CMAKE_CXX_STANDARD=20` | Requires CMake 3.20+ |
+| Graphics | OpenGL 4.6 | `AXIS_GRAPHICS_BACKEND=OpenGL` | Forward/Deferred PBR; non-macOS |
+| Physics | Bullet Physics 3D | `AXIS_PHYSICS_BACKEND=Bullet` | Rigidbodies, colliders, constraints |
+| Audio | Null, FMOD, irrKlang | `AXIS_AUDIO_BACKEND=Null/FMOD/IrrKlang` | Null is zero-dependency default |
+| Microphone | WASAPI Capture | Automatic on Windows | Level meters & voice events |
+| Platforms | Windows, Linux | Preset configurations | Windows MSVC / Linux Ninja |
+| Editor | ImGui Extension | `ENABLE_EDITOR=ON` | Includes `Axis::Editor` target |
+| Scenes | `.axs` (YAML subset), `.axsb` | Native Parsers / `axis_compile` | Supports 5 `.axs` schema types |
 
-```powershell
-cmake --preset windows-msvc
-cmake --build --preset windows-release
-```
+---
 
-Build the editor and sample application:
+## 3. Setup & Build
 
+### Configure and Build Engine with Editor
 ```powershell
 cmake --preset windows-msvc-editor
 cmake --build build --config Release --parallel
 .\build\bin\Release\axis_samples.exe
 ```
 
-Build and run the automated tests:
-
+### Run Tests
 ```powershell
 cmake -S . -B build -DENABLE_TESTS=ON
 cmake --build build --config Release --target axis_test --parallel
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-On Linux, use `linux-ninja` or `linux-ninja-editor` and omit `-C Release`
-when using a single-configuration build directory. See the
-[build guide](docs/eng/guides/build_guide.md) for dependencies, audio backend
-selection, installation, and consumer-project setup.
+---
 
-The interactive helpers are `axis_tools.bat` and `axis_tools.sh`. They are
-convenience wrappers; the CMake commands above are the canonical workflow.
-
-## Minimal application
+## 4. Minimal Code Example
 
 ```cpp
 #include <axis_sdk.h>
 
-class GameState final : public State
-{
+class GameplayState final : public State {
 public:
-    void OnEnter() override {}
-    void OnUpdate(float) override {}
+    void OnEnter() override { AXIS_LOG_INFO("Gameplay State active"); }
+    void OnUpdate(float dt) override {}
     void OnRender() override {}
     void OnExit() override {}
 };
 
-class GameApplication final : public Application
-{
+class GameApp final : public Application {
 public:
-    void RegisterUserScripts() override
-    {
-        // RegisterScript<PlayerController>("PlayerController");
-    }
+    void RegisterUserScripts() override {}
 };
 
-int main()
-{
-    auto app = std::make_shared<GameApplication>();
-
+int main() {
+    auto app = std::make_shared<GameApp>();
     AppConfig config;
-    config.title = "My AxisEngine Game";
+    config.title = "AxisEngine Quickstart";
     config.window.width = 1280;
     config.window.height = 720;
 
-    if (!app->Initialize(config))
-        return 1;
-
-    app->PushState<GameState>();
+    if (!app->Initialize(config)) return 1;
+    app->PushState<GameplayState>();
     app->Run();
     return 0;
 }
 ```
 
-Use `axis_sdk.h` for games and tools, `axis_plugin.h` for provider/module
-contracts, and `axis_advanced.h` only when lower-level system integration is
-required. Backend headers under `strategy/` are implementation details and are
-not installed as part of the SDK.
+---
 
-## Repository map
+## 5. Repository Structure
 
 | Path | Purpose |
-| --- | --- |
-| `include/` | Public umbrellas plus engine headers |
-| `src/` | Engine and editor implementation |
-| `sample/` | Sample app, resources, scenes, scripts, and 33 scenarios |
-| `compiler/` | `axis_compile`, the `.axs` to `.axsb` compiler |
-| `tests/` | Unit, integration, API, and package-consumer tests |
-| `template/` | Custom shader templates |
-| `docs/` | Guides, references, manuals, and audit reports |
-| `cmake/` | package config, find modules, sources, triplets, and overlays |
+| :--- | :--- |
+| `include/` | Public SDK headers (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`) |
+| `src/` | Engine implementation and `Axis::Editor` sources |
+| `sample/` | 33 demo scenarios, test scenes, textures, and assets |
+| `compiler/` | `axis_compile` binary scene compiler utility |
+| `tests/` | Unit, integration, and API test cases |
+| `docs/` | Guides, API references, manuals, and index |
+| `cmake/` | Package config, toolchain overlays, and dependencies |
 
-## Documentation
+---
 
-Start with the [manual](docs/eng/MANUAL.md). Detailed references are organized
-in the [documentation index](docs/eng/INDEX.md), including:
+## 6. Documentation Map
 
-- [Getting started](docs/eng/core/getting_started.md)
-- [Architecture and API boundaries](docs/eng/core/architecture.md)
-- [Scene format](docs/eng/guides/scene_format.md)
-- [Components](docs/eng/guides/components_reference.md)
-- [Configuration](docs/eng/guides/configuration.md)
-- [Scripting](docs/eng/scripting/scriptable_api.md)
-- [Editor](docs/eng/guides/editor.md)
-- [Latest source audit](docs/eng/audit/source_audit_2026-07-23.md)
-- [Audit remediation](docs/eng/audit/remediation_2026-07-23.md)
-
-## Security and trust boundary
-
-AxisEngine treats scenes and assets as trusted project input. Network sessions
-default to `RequireSecure` and refuse startup without a registered
-`INetworkSecurityProvider`. The explicit `TrustedNetwork` mode uses plain ENet
-without authentication or encryption and must not be exposed to the Internet.
-AxisEngine does not ship a cryptographic provider; production applications must
-supply a reviewed implementation. See the
-[remediation report](docs/eng/audit/remediation_2026-07-23.md).
-
-## License
-
-No license file is currently included. The repository must not be described or
-redistributed as MIT-licensed until an explicit license is added. Optional FMOD
-and irrKlang SDKs also have their own licensing terms.
+- Core Engine: [Getting Started](eng/core/getting_started.md) | [Architecture](eng/core/architecture.md) | [API Surface](eng/core/api_surface.md) | [Managers](eng/core/managers.md)
+- Configuration & Format: [Build Guide](eng/guides/build_guide.md) | [Configuration](eng/guides/configuration.md) | [Scene Format](eng/guides/scene_format.md) | [Components Reference](eng/guides/components_reference.md)
+- Subsystems: [Graphics](eng/guides/graphics.md) | [Physics](eng/guides/physics.md) | [Audio](eng/guides/audio.md) | [Audio Capture](eng/guides/audio_capture.md) | [UI System](eng/guides/ui.md) | [Navigation](eng/guides/navigation.md)
+- Tools & Scripting: [Editor Guide](eng/guides/editor.md) | [Editor Extensions](eng/guides/editor_extensions.md) | [Scripting API](eng/scripting/scriptable_api.md) | [State API](eng/state/state_api.md) | [Debug System](eng/guides/debug_system.md)

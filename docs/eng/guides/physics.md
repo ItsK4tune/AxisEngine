@@ -1,80 +1,70 @@
-# Physics Guide
+# Physics Simulation System Guide (Bullet 3D)
 
-> [Tiếng Việt](../../vi/guides/physics.md)
-
-AXIS Engine integrates **Bullet Physics** as the physics provider in the current build.
+> [Tiếng Việt](../../vi/guides/physics.md) | [Components Reference](components_reference.md) | [Configuration Reference](configuration.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## 1. Physics Components
+## 1. Introduction
 
-### RigidBody
-The core component for physical interaction.
-- **Types**: `BOX`, `SPHERE`, `CAPSULE`, `COMPOUND`.
-- **Body Types**:
-  - `STATIC`: Fixed in place (Mass = 0).
-  - `DYNAMIC`: Fully simulated by forces.
-  - `KINEMATIC`: Moved manually via code/animations; pushes dynamic objects.
-- **Settings**: `Mass`, `Friction`, `Restitution`, `LinearFactor` (Axis locking).
-
-### CharacterController
-A specialized capsule-based body for players.
-- Handles stepping over obstacles (`StepHeight`).
-- Slopes management (`MaxSlope`).
-- Managed via `Move(direction)` and `Jump()` methods.
+AxisEngine integrates **Bullet Physics 3D** as its primary physical simulation provider. The physics subsystem manages 3D rigid body dynamics, collision detection, raycasting queries, constraints, collision layer filtering, and character controllers.
 
 ---
 
-## 2. Physics World Configuration
-Global simulation quality is configured in the `.axs` file via `PHYSICS_MODE`.
+## 2. How to Use
 
-| Mode | Rate | Iterations | Use Case |
-| :--- | :---: | :---: | :--- |
-| **FAST** | 30Hz | 2 | Mobile/Low-end, simple physics. |
-| **BALANCED** | 60Hz | 10 | Standard gameplay (Default). |
-| **ACCURATE** | 120Hz | 40 | High-precision / Complex stacks. |
-
-```yaml
-Config:
-  PHYSICS_MODE: BALANCED
-```
+1. **Creating RigidBodies**: Add `RigidBodyComponent` to an entity, set mass (`0.0` for static, `>0` for dynamic), shape (`BOX`, `SPHERE`, `CAPSULE`, `MESH`), and extents.
+2. **Performing Raycasts**: Query `ServiceLocator::Get<IPhysicsWorld>()->Raycast(origin, direction, distance, hitResult)`.
+3. **Applying Impulses & Forces**: Call `rigidbody.body->ApplyCentralImpulse(forceVector)` on active dynamic bodies.
 
 ---
 
-## 3. Advanced Features
+## 3. Examples
 
-### Collision Matrix
-Tag-based filtering to ignore specific interactions.
+### 1. Creating Dynamic RigidBody Example
 ```cpp
-// Scripting Example
-IgnoreTagCollision("Player", "Bullet");
-IgnoreNameCollision("EntityA", "EntityB");
+#include <axis_sdk.h>
+
+void SpawnPhysicsBall(Scene& scene, const Vector3& pos) {
+    auto ball = scene.CreateEntity("Physics Ball");
+
+    auto& transform = ball.AddComponent<TransformComponent>();
+    transform.SetPosition(pos);
+
+    auto& rb = ball.AddComponent<RigidBodyComponent>();
+    rb.mass = 2.0f;
+    rb.shape = CollisionShapeType::SPHERE;
+    rb.radius = 0.5f;
+    rb.restitution = 0.8f; // Bouncy
+}
 ```
 
-### Raycasting
-Allows querying the world for physical hits.
-- `Raycast(start, end)`: Returns `RayHit` data.
-- `RaycastFromScreen(pos, dist)`: Used for mouse picking.
+### 2. Physics Raycast Example
+```cpp
+#include <axis_sdk.h>
 
-### Collision Callbacks
-Hook into physics events in any `Scriptable` component:
-- `OnCollisionEnter(other)`
-- `OnCollisionStay(other)`
-- `OnCollisionExit(other)`
+void FireRaycast(const Vector3& from, const Vector3& dir) {
+    auto physics = ServiceLocator::Get<IPhysicsWorld>();
+    RaycastHit hit;
 
----
-
-## 4. Systems & Lifecycle
-The `PhysicsSystem` orchestrates the simulation during the **Fixed Timestep** loop:
-
-1.  **Sync In**: Mirror ECS transforms to Bullet bodies (Kinematic/Static).
-2.  **Simulate**: Bullet steps the world.
-3.  **Sync Out**: Mirror Bullet transforms back to ECS `TransformComponent`.
-4.  **Events**: Detect manifolds and dispatch callbacks to scripts.
+    if (physics->Raycast(from, dir, 100.0f, hit)) {
+        AXIS_LOG_INFO("Hit distance: " + std::to_string(hit.distance));
+    }
+}
+```
 
 ---
 
-## See Also
-- [Graphics Guide](graphics.md)
-- [Scene Format (.axs)](scene_format.md)
-- [Scriptable API](../scripting/scriptable_api.md)
+## 4. API & Configuration Reference
+
+### Physics Settings & Parameters Reference
+
+| Setting / Property | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `PHYSICS_ENGINE` | `Enum` | `BULLET` | Physics strategy provider |
+| `GRAVITY` | `Vector3` | `0.0 -9.81 0.0` | World gravity vector |
+| `PHYSICS_MODE` | `Enum` | `BALANCED` | Simulation frequency (`FAST` 30Hz, `BALANCED` 60Hz, `ACCURATE` 120Hz) |
+| `CCD_ENABLED` | `bool` | `false` | Enables Continuous Collision Detection for fast objects |
+| `RigidBodyComponent::mass` | `float` | `1.0` | Mass in kg (`0.0` creates static body) |
+| `RigidBodyComponent::shape` | `Enum` | `BOX` | Shape primitive (`BOX`, `SPHERE`, `CAPSULE`, `MESH`) |
+| `RigidBodyComponent::friction` | `float` | `0.5` | Surface friction coefficient |
+| `RigidBodyComponent::restitution` | `float` | `0.0` | Bounciness elasticity coefficient |

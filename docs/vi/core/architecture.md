@@ -1,71 +1,58 @@
-# Kiến trúc module lai
+# Hướng dẫn Tổng quan Kiến trúc (Architecture Overview)
 
-> [English](../../eng/core/architecture.md)
+> [English](../../eng/core/architecture.md) | [Bề mặt API Công khai](api_surface.md) | [Mục lục Tài liệu](../INDEX.md)
 
-## 1. Triết lý thiết kế
+---
 
-AxisEngine kết hợp ECS cho dữ liệu gameplay, interface/provider cho backend và
-service context cho lifecycle ứng dụng. Mục tiêu là giữ gameplay độc lập với
-OpenGL, Bullet, audio backend và editor cụ thể.
+## 1. Giới thiệu
 
-## 2. Các lớp cấu trúc
+AxisEngine được thiết kế dựa trên **Kiến trúc Mô-đun Lai ECS (Hybrid Modular ECS Architecture)**. Kết hợp bộ lưu trữ entity sparse-set của EnTT với các provider trừu tượng (`IGraphicsContext`, `IPhysicsWorld`, `IAudioService`), AxisEngine mang lại hiệu năng bộ nhớ đệm CPU cao đồng thời hỗ trợ linh hoạt thay đổi các backend.
 
-1. **Public contracts** trong `axis_sdk.h` và `axis_plugin.h`.
-2. **Logic** gồm system, manager, serializer và registry.
-3. **Strategy/backend** triển khai graphics, physics, audio và platform.
-4. **Application host** tạo provider, system catalog, state machine và vòng lặp.
-5. **Editor/sample** là consumer của engine, không phải lõi bắt buộc.
+---
 
-Interface được đăng ký theo type trong application service context. Module có
-thể thay system hoặc provider qua registry/factory trước khi application tạo
-system mặc định.
+## 2. Cách dùng
 
-## 3. Mô hình thực thi và bộ nhớ
+Vòng lặp engine lặp qua 4 phase thực thi trong mỗi frame tick:
 
-- Main thread điều phối state, event, ECS update và render.
-- Job System xử lý công việc song song; task trước initialize chạy inline để
-  không tạo future bị bỏ quên.
-- Snapshot cấu hình và service registry dùng copy-on-write khi cần đọc đồng thời.
-- GPU/audio/physics object tuân theo RAII và shutdown theo thứ tự ngược initialize.
+1. **Phase 1 (Input & Poll)**: Xử lý thông điệp cửa sổ GLFW và cập nhật trạng thái phím/chuột/gamepad.
+2. **Phase 2 (Logic & Script)**: Thực thi `State::OnUpdate()`, `Scriptable::OnUpdate()`, job ticks và xả hàng đợi sự kiện.
+3. **Phase 3 (Physics)**: Tiến hành mô phỏng vật lý Bullet 3D (60Hz tick) và đồng bộ transform entity.
+4. **Phase 4 (Render & Present)**: Culling không gian, shadow pass, G-Buffer, lighting, UI, ImGui Editor GUI và tráo đổi buffer.
 
-## 4. Entity–Component–System
+---
 
-### Entity
+## 3. Ví dụ
 
-Entity là ID nhẹ của EnTT, không tự chứa dữ liệu. Dùng
-[`EntityBuilder`](../scripting/scriptable_api.md#entitybuilder) khi cần tạo theo
-fluent API.
+### Truy vấn Entity & Component trong ECS
+```cpp
+#include <axis_sdk.h>
 
-### Component
+void SystemProcessTransforms(Scene& scene, float deltaTime) {
+    auto& registry = scene.GetRegistry();
+    auto view = registry.view<TransformComponent, RigidBodyComponent>();
 
-Component chỉ chứa dữ liệu authoring/runtime. Dữ liệu transient như GPU handle,
-world matrix suy ra, contact state và playback state không được serialize.
+    for (auto entity : view) {
+        auto& transform = view.get<TransformComponent>(entity);
+        auto& rigidbody = view.get<RigidBodyComponent>(entity);
 
-### System
+        if (rigidbody.body) {
+            transform.SetPosition(rigidbody.body->GetPosition());
+        }
+    }
+}
+```
 
-System xử lý view component theo category và lifecycle. `SystemManager` tạo
-catalog, áp capability/config và shutdown system đã initialize theo thứ tự ngược.
+---
 
-## 5. Logic chính
+## 4. Tra cứu Param, Setting & API Reference
 
-- **Rendering:** scene → culling → render queue → shadow/geometry/lighting →
-  transparent/UI/post-process.
-- **Physics:** component shape/body được binding sang Bullet sau scene load;
-  transform sync theo fixed update.
-- **Asset:** `ResourceManager` điều phối cache, loader, async publication và hot reload.
-- **Scene:** YAML `.axs` hoặc binary `.axsb` → component loader → validation →
-  post-load fixup.
-- **Network:** ENet transport, protocol envelope và security provider do ứng dụng cấp.
+### Bảng Tra cứu Thành phần Kiến trúc Cốt lõi
 
-## 6. Nguyên tắc bộ nhớ
-
-- Ưu tiên value type và smart pointer; raw pointer chỉ là reference không sở hữu.
-- Resource dùng identity ổn định để async load không thay object mà consumer giữ.
-- Không giữ reference component qua thao tác có thể làm registry reallocate.
-- Module phải unregister callback/registry entry trước khi unload code.
-
-## Xem thêm
-
-- [Scriptable API](../scripting/scriptable_api.md)
-- [Scene format](../guides/scene_format.md)
-- [Cấu trúc project](../guides/project_structure.md)
+| Subsystem / Lớp | Mẫu / Lớp Cơ sở | Trách nhiệm & Vai trò Chính |
+| :--- | :--- | :--- |
+| `Application` | Singleton Host | Quản lý tiến trình toàn cục, cửa sổ và các provider |
+| `ServiceLocator` | Service Registry | Điểm truy cập phân tách toàn cục cho `IAudioService`, `IPhysicsWorld` |
+| `StateMachine` | Stack Manager | Quản lý bộ nhớ state dạng stack (`PushState`, `PopState`, `ChangeState`) |
+| `Scene` | EnTT Registry Wrapper | Tạo entity, lưu trữ component, hierarchy và serialization |
+| `JobSystem` | Thread Pool | Bộ phân phối công việc đa luồng không khóa cho các tác vụ song song |
+| `EventManager` | Pub-Sub Dispatcher | Phát sự kiện hàng đợi hoãn lại và đăng ký hàm lắng nghe |

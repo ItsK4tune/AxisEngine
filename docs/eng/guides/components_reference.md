@@ -1,248 +1,141 @@
-# Components Reference
+# Serializable ECS Components & EntityBuilder Reference Guide
 
-> [Tiếng Việt](../../vi/guides/components_reference.md)
-
-This guide provides an exhaustive technical reference for all entity components supported by the AXIS Engine's YAML serialization system (.axs).
-
-Runtime-only state is intentionally not serialized. This includes derived camera/world matrices, GPU/FBO/query handles, streaming/loading state, UI hover/press state, current navigation paths and request generations, playback state, and physics contact/controller state. Authoring fields and stable resource/entity references are serialized; runtime systems reconstruct transient fields after load.
+> [Tiếng Việt](../../vi/guides/components_reference.md) | [Scene Format](scene_format.md) | [Scriptable API](../scripting/scriptable_api.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## 🏗️ Core Components
+## 1. Introduction
 
-### Transform
-Implicitly handled by `SceneSerializer`. Position, Rotation, and Scale are the core spatial properties.
-```yaml
-Component: Transform
-  Position: 0.0 5.0 -10.0   # X Y Z
-  Rotation: 0.0 90.0 0.0    # Pitch Yaw Roll (Degrees)
-  Scale: 1.0 1.0 1.0        # X Y Z
-```
+AxisEngine uses EnTT for its Entity-Component-System (ECS) runtime. In scene files (`.axs` / `.axsb`) and code construction, entities can be populated with serializable components registered in the engine's `ComponentLoader` and `SceneSerializer`.
 
-### Info
-Implicitly handled.
-```yaml
-Tag: "player"               # Entity string tag
-Layer: 1                    # Rendering/Physics layer bitmask
-Parent: "MainNode"          # Parent entity name
-```
+To attach and configure these serializable components programmatically in C++, AxisEngine provides the `EntityBuilder` fluent API helper.
 
 ---
 
-## 🎨 Rendering Components
+## 2. How to Use
 
-### Renderer
-Standard mesh rendering.
+1. **Adding Components in `.axs` Scene Files**: Specify the component serializer key under an entity (for example, `Transform:`, `Renderer:`, `RigidBody:`).
+2. **Adding Components via `EntityBuilder`**: Instantiate `EntityBuilder(scene, resources, "Name")`, call builder setup methods (`WithPosition()`, `WithPBRMesh()`, `WithRigidBody()`), and call `Build()`.
+3. **Adding Components via C++ API**: Use `entity.AddComponent<T>()` or query active components using `entity.HasComponent<T>()`.
+
+---
+
+## 3. Examples
+
+### 1. `.axs` Scene Component Definition Example
 ```yaml
-Component: Renderer
-  Model: "cube_mesh"        # Registered model name or path
-  Shader: "pbr_shader"      # Registered shader name
-  Order: 0                  # Bucket render order
-  Color: 1 1 1 1            # RGBA Multiplier
-  CastShadow: 1             # 1 (On) or 0 (Off)
+axis_scene:
+    Version: 1.0
+
+Entities:
+    - Name: "Physics Box"
+      Transform:
+          Position: 0.0 2.0 0.0
+          Rotation: 0.0 45.0 0.0
+      Renderer:
+          Model: "models/cube.obj"
+          Shader: "shaders/pbr.glsl"
+          CastShadow: 1
+      RigidBody:
+          Mass: 2.5
+          Shape: BOX
 ```
 
-### Material
-Advanced material overrides. Supports PBR and PHONG models.
-```yaml
-Component: Material
-  Type: "PBR"               # PBR or PHONG
-  Albedo: "tex/albedo.png"  # Texture path
-  Normal: "tex/norm.png"    
-  Roughness: 0.5            # Float (0.0 - 1.0)
-  Metallic: 0.0             
-  AO: 1.0                   
-  Emission: 0 0 0           # RGB multiplier
-  AlphaCutoff: 0.5          # For masked transparency
-  BlendSrc: "SrcAlpha"      # Zero, One, SrcAlpha, OneMinusSrcAlpha
-  BlendDst: "OneMinusSrcAlpha"
-```
+### 2. Fluent `EntityBuilder` C++ Creation Example
+```cpp
+#include <axis_sdk.h>
 
-### Decal
-Projected textures for surface details.
-```yaml
-Component: Decal
-  Albedo: "decals/burn.png"
-  Opacity: 1.0
-  Roughness: 1.0
-  Metallic: 0.0
-  Reflectivity: 0.0
-  TintColor: 1 1 1 1
-  Lifetime: 10.0            # Seconds (-1 for infinite)
-  RenderOrder: 1
-  LightingMode: 2           # 0=unlit, 1=lit, 2=lit and receives shadows
-  TargetTags: "Ground Wall" # Optimization: Only project on these tags
-  Shader: "custom_decal"    # Optional custom shader using the deferred decal contract
-```
+void SpawnBoxEntity(Scene& scene, ResourceManager& resources, const Vector3& pos) {
+    EntityBuilder builder(scene, resources, "Physics Box");
 
-### SkyboxRenderer
-```yaml
-Component: SkyboxRenderer
-  Skybox: "sunset_sky"      # Registered skybox name
-  Shader: "skybox_shader"
+    builder.WithPosition(pos)
+           .WithRotationEuler(Vector3(0.0f, 45.0f, 0.0f))
+           .WithPBRRenderable("models/cube.obj", "shaders/pbr.glsl", pos)
+           .WithRigidBody(2.5f /* mass */, false /* isStatic */, false /* isTrigger */)
+           .WithTag("Interactive");
+
+    Entity box = builder.Build();
+    AXIS_LOG_INFO("Entity created via EntityBuilder successfully");
+}
 ```
 
 ---
 
-## 🎥 Camera & Lighting
+## 4. API & Configuration Reference
 
-### Camera
-```yaml
-Component: Camera
-  Primary: true             # Auto-activates on scene load
-  FOV: 60.0                 # Vertical field of view
-  Near: 0.1                 
-  Far: 1000.0
-  AspectRatio: 1.777        # Width/Height (0 for auto)
-  Yaw: -90.0
-  Pitch: 0.0
-```
+### Complete Matrix of Addable / Serializable Components
 
-### LightDir (Directional)
-```yaml
-Component: LightDir
-  Active: 1
-  Color: 1 1 0.9            # RGB
-  Intensity: 1.5
-  CastShadow: 1
-  Ambient: 0.2
-  Diffuse: 0.8
-  Specular: 0.5
-```
+| Serializer Key | C++ Component Struct | Primary `.axs` Parameters | Category | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| `Transform` | `TransformComponent` | `Position`, `Rotation`, `Scale` | Spatial | Local 3D transform position, rotation, and scale |
+| `Renderer` | `MeshRendererComponent` | `Model`, `Shader`, `Color`, `CastShadow`, `ReceiveShadow`, `Order` | Graphics | 3D mesh model geometry renderer |
+| `Material` | `MaterialComponent` | `Metallic`, `Roughness`, `AO`, `Albedo`, `Normal`, `Emission` | Graphics | PBR material textures and surface parameters |
+| `Camera` | `CameraComponent` | `Primary`, `FOV`, `Near`, `Far`, `AspectRatio`, `Orthographic` | Rendering | Perspective or orthographic camera projection |
+| `DirectionalLight` | `DirectionalLightComponent` | `Active`, `Direction`, `Color`, `Intensity`, `CastShadow` | Lighting | Sun light directional illumination source |
+| `PointLight` | `PointLightComponent` | `Active`, `Color`, `Intensity`, `Radius`, `CastShadow` | Lighting | Omnidirectional point light source |
+| `SpotLight` | `SpotLightComponent` | `Active`, `Direction`, `Color`, `Intensity`, `CutOff`, `Radius` | Lighting | Focused cone spot light source |
+| `LightProbe` | `LightProbeComponent` | `Radius`, `Intensity` | Lighting | Spherical harmonics ambient light probe |
+| `ReflectionProbe` | `ReflectionProbeComponent` | `Type`, `Resolution`, `BoxProjection` | Lighting | Environment reflection cubemap probe |
+| `Reflective` | `ReflectiveComponent` | `Active`, `Reflectivity`, `FresnelPower`, `FresnelBias` | Lighting | Specular Fresnel reflection behavior |
+| `PlanarReflection` | `PlanarReflectionComponent` | `Resolution`, `Normal` | Lighting | Flat mirror planar reflection pass |
+| `SkyboxRenderer` | `SkyboxRenderComponent` | `Skybox`, `Shader`, `Primary` | Graphics | Environment skybox cubemap renderer |
+| `LOD` | `LODComponent` | `Models`, `Distances` | Graphics | Distance-based mesh LOD switcher |
+| `Occlusion` | `OcclusionComponent` | `Active` | Graphics | Occlusion culling visibility state |
+| `Streaming` | `StreamingComponent` | `ModelPath`, `LoadDistance`, `UnloadDistance` | Graphics | Distance-based asset streaming |
+| `Decal` | `DecalComponent` | `AlbedoMap`, `Opacity`, `Roughness`, `Metallic`, `TintColor` | Environment | Projected surface decal texture |
+| `Terrain` | `TerrainComponent` | `TerrainSize`, `MaxHeight`, `HeightMap`, `SplatMap` | Environment | Heightmap terrain renderer and physics collider |
+| `PostProcess` | `PostProcessComponent` | `Active`, `Effects` | Environment | Fullscreen post-processing pipeline pass list |
+| `RigidBody` | `RigidBodyComponent` | `Mass`, `IsStatic`, `IsTrigger`, `Friction`, `Restitution` | Physics | Bullet 3D rigid body dynamics |
+| `RigidShape` | `RigidShapeComponent` | `ShapeType`, `Size`, `Radius`, `Height` | Physics | Collision shape primitive definition |
+| `CharacterController` | `CharacterControllerComponent` | `StepHeight`, `MaxSlope`, `Radius`, `Height` | Physics | Kinematic walking character controller |
+| `AudioSource` | `AudioSourceComponent` | `File`, `PlayOnAwake`, `Loop`, `Is3D`, `Volume`, `Pitch` | Audio | 2D/3D audio clip sound source |
+| `VideoPlayer` | `VideoPlayerComponent` | `VideoPath`, `Loop`, `Volume`, `Speed`, `PlayOnAwake` | Media | Video decoding and texture playback |
+| `ParticleEmitter` | `ParticleEmitterComponent` | `SpawnRate`, `LifeTime`, `StartSize`, `EndSize`, `MinVelocity` | Media & VFX | Particle emitter system settings |
+| `Animation` | `AnimationComponent` | `Animation`, `Speed`, `Rate`, `BlendFactor` | Media & VFX | Skeletal animation playback state |
+| `UITransform` | `UITransformComponent` | `Position`, `Size`, `AnchorMin`, `AnchorMax`, `Pivot`, `ZOrder` | UI Layout | 2D UI screen-space transform bounds |
+| `UIRenderer` | `UIRendererComponent` | `Texture`, `Color` | UI Visual | 2D UI sprite image/panel renderer |
+| `UIText` | `UITextComponent` | `Text`, `Font`, `Scale`, `Color`, `Alignment` | UI Visual | TrueType font label text renderer |
+| `UIFlex` | `UIFlexLayoutComponent` | `Direction`, `Spacing` | UI Layout | Flexbox-style automatic 2D layout |
+| `UIInteractive` | `UIInteractiveComponent` | `Interactable` | UI Logic | Mouse interaction and click callback target |
+| `UIAnimation` | `UIAnimationComponent` | `AnimateColor`, `AnimateScale` | UI Logic | UI button animation transition effect |
+| `PathFollower` | `PathFollowerComponent` | `MoveSpeed`, `RotationSpeed` | Navigation | Spline path movement follower |
+| `NavMesh` | `NavMeshComponent` | `Dynamic`, `WalkableNormalY` | Navigation | Recast NavMesh navigation mesh settings |
+| `NavigationGrid` | `NavigationGridComponent` | `Width`, `Height`, `CellSize` | Navigation | 2D pathfinding grid map |
+| `Fragment` | `FragmentComponent` | `Path`, `Overrides` | Prefab | Reusable scene fragment prefab link |
+| `Network` | `NetworkComponent` | `NetworkID`, `OwnerID`, `IsLocal` | Networking | Network synchronization identifier |
+| `Script` | `ScriptComponent` | `Class`, `Properties` | Scripting | C++ `Scriptable` script attachment |
 
-### LightPoint
-```yaml
-Component: LightPoint
-  Radius: 15.0              # Effective range
-  Color: 1 0 0              
-  Intensity: 2.0
-  Constant: 1.0             # Falloff parameters
-  Linear: 0.09
-  Quadratic: 0.032
-```
+### `EntityBuilder` API Reference
 
----
-
-## 🏃 Animation & Physics
-
-### Animator
-```yaml
-Component: Animator
-  Animation: "run jump"     # Space-separated animation names
-  Speed: 1.0                # Global speed multiplier
-  StartTime: 0.0            # Start offset in seconds
-  Rate: 30.0                # Internal update sampling rate
-```
-
-The optional animation graph is authored from **Tools > Animation Graph**. It stores named float, bool, and trigger
-parameters, clip states, conditional transitions, blend durations, and normalized exit times in the same Animator
-component. Gameplay scripts drive the graph through `Entity::SetAnimationFloat`, `SetAnimationBool`, and
-`SetAnimationTrigger`. Direct `PlayAnimation`, `CrossFade`, and `PlayBlend` calls remain available when the graph is
-disabled.
-
-The panel can be toggled with `Ctrl+Shift+1`. Left-dragging empty canvas space or middle-dragging pans the graph, the mouse wheel zooms around the cursor,
-and the divider between canvas and inspector is draggable. Transition conditions support AND, OR, XOR, NAND, NOR,
-XNOR, and per-condition NOT.
-
-Graph data is serialized with repeated `GraphParameter`, `GraphState`, and `GraphTransitionV2` records. These records
-are editor-owned; prefer editing them through the graph panel instead of hand-authoring their compact representation.
-
-### ParticleEmitter and VFX Graph
-
-The particle emitter supports spawn rate, finite or infinite emission duration, lifetime, directional/cone/figure-eight
-emission, velocity ranges, gravity, exponential drag, color over life, size over life, textures, and custom shaders.
-Open **Tools > VFX Graph** (or press `Ctrl+Shift+2`) to connect emitter modules to an Output node. Once a graph contains
-links, only modules that can reach an enabled Output node through passing links affect the emitter. VFX links can use
-float, bool, and trigger parameters with the same grouped logical conditions as animation transitions. Left-dragging empty canvas space or middle-dragging
-pans, the mouse wheel zooms, and the canvas/inspector divider is draggable.
-
-```yaml
-Component: ParticleEmitter
-  Active: true
-  SpawnRate: 60
-  Lifetime: 1.5
-  Gravity: 0 -9.81 0
-  Drag: 0.15
-  Shape: CONE
-  GraphEnabled: false
-```
-
-The inspector exposes the common emitter settings. The VFX Graph panel owns advanced module authoring and persists
-node positions and links into `.axs` and `.axsb` scenes.
-
-### RigidBody
-Modular physics simulation.
-```yaml
-Component: RigidBody
-  Type: "BOX"               # BOX, SPHERE, CAPSULE, CYLINDER, MESH
-  Mass: 1.0                 # 0.0 for Static
-  Restitution: 0.5          # Bounciness
-  Friction: 0.5
-  AngularFactor: 1 1 1      # Axis rotation locks (e.g., 0 1 0 locks X/Z)
-  Gravity: 0 -9.81 0
-  LinearDamping: 0.1
-```
-
----
-
-## 📐 Navigation
-
-### PathFollower
-```yaml
-Component: PathFollower
-  MoveSpeed: 5.0
-  RotationSpeed: 10.0       # Slerp speed for orientation
-  ArrivalDistance: 0.5      # Target waypoint tolerance
-  RotationOffset: 0 -90 0   # Adjustment for model forward vector
-```
-
----
-
-## 📟 UI System (Responsive)
-
-### UITransform
-```yaml
-Component: UITransform
-  anchorMin: 0.0 1.0        # Normalized (0-1) screen anchor
-  anchorMax: 0.0 1.0
-  offsetMin: 20 -100        # Pixel offset from anchor
-  offsetMax: 200 -20
-  pivot: 0.5 0.5            # Rotation/Scaling center
-  zIndex: 10                # Layering depth
-```
-
-### UIText
-```yaml
-Component: UIText
-  text: "Level 1"
-  font: "Arial"
-  color: 1 1 1 1
-  alignment: "Center"       # Left, Center, Right
-  wordWrap: true
-  maxWidth: 200.0           # Wrap width in pixels
-```
-
----
-
-## 🔊 Multimedia
-
-### AudioSource
-```yaml
-Component: AudioSource
-  Path: "audio/music.mp3"
-  Volume: 80.0              # Playback percentage, 0.0 - 100.0
-  Loop: 1
-  Is3d: true                # Enables spatial attenuation
-  MinDistance: 5.0          # Full-volume radius; attenuation starts outside it
-  PlayOnAwake: 1
-```
-
-### VideoPlayer
-```yaml
-Component: VideoPlayer
-  Path: "video/intro.mp4"
-  Loop: 0
-  Speed: 1.0
-  Volume: 1.0              # Embedded audio volume, 0.0 - 1.0
-  PlayOnAwake: 1
-```
+| Category | Method | Description |
+| :--- | :--- | :--- |
+| **Resources** | `WithTextureResource(name, path, async)` | Registers texture asset with ResourceManager |
+| **Resources** | `WithModelResource(name, path, isStatic)` | Registers 3D model mesh asset |
+| **Resources** | `WithShaderResource(name, vert, frag, geom)` | Registers GLSL shader pipeline program |
+| **Resources** | `WithFontResource(name, path, fontSize)` | Registers TrueType font asset |
+| **Resources** | `WithSkyboxResource(name, faces)` | Registers cubemap 6-face texture set |
+| **Core Meta** | `WithName(name)` | Sets entity debug name string |
+| **Core Meta** | `WithTag(tag)` | Sets entity classification tag string |
+| **Core Meta** | `WithLayer(layer)` | Sets bitwise collision/render layer mask |
+| **Core Meta** | `WithActive(active)` | Sets entity active status flag |
+| **Core Meta** | `WithParent(parentEntity)` | Establishes parent-child hierarchy link |
+| **Transform** | `WithPosition(pos)` | Sets 3D position vector |
+| **Transform** | `WithRotationEuler(rotDegrees)` | Sets 3D Euler rotation angles in degrees |
+| **Transform** | `WithScale(scale)` | Sets 3D scale vector or uniform scale |
+| **Rendering** | `WithMesh(modelName, shaderName)` | Attaches mesh renderer component |
+| **Rendering** | `WithPBRMaterial(metallic, roughness, ao)` | Configures PBR surface material properties |
+| **Rendering** | `WithPBRRenderable(model, shader, pos, rot, scale, metal, rough)` | Sets transform, mesh, and PBR material in one call |
+| **Rendering** | `WithLOD(models, distances)` | Configures LOD mesh distance thresholds |
+| **Physics** | `WithRigidBody(mass, isStatic, isTrigger)` | Attaches Bullet 3D rigid body physics component |
+| **Physics** | `WithCharacterController(controller, stepHeight, maxSlope, radius, height)` | Attaches kinematic character controller |
+| **Lighting** | `WithDirectionalLight(dir, color, intensity)` | Attaches directional sun light source |
+| **Lighting** | `WithPointLight(color, intensity, radius)` | Attaches omnidirectional point light source |
+| **Lighting** | `WithSpotLight(dir, color, intensity, radius)` | Attaches focused spot light source |
+| **UI Layout** | `WithUITransform(pos, size, zIndex)` | Sets 2D UI position, dimensions, and render order |
+| **UI Layout** | `WithUIAnchored(anchor, pos, size)` | Configures UI anchor placement |
+| **UI Visual** | `WithUIText(text, fontName, scale, color)` | Attaches TrueType text rendering label |
+| **UI Visual** | `WithUITexture(textureName, color)` | Attaches UI sprite texture renderer |
+| **Scripting** | `WithScript(scriptName)` | Attaches registered script by factory name |
+| **Scripting** | `WithScriptable(className, instantiateFunc)` | Attaches script via lambda instantiation factory |
+| **Audio** | `WithAudioSource(filePath, playOnAwake, loop, is3D, volume)` | Attaches 2D/3D audio clip source component |
+| **Build** | `Build()` | Finalizes configuration and returns EnTT `Entity` handle |

@@ -1,26 +1,48 @@
-# Comment policy
+# Code Comment & Documentation Standards Guide
 
-> [Tiếng Việt](../../vi/guides/comment_policy.md)
+> [Tiếng Việt](../../vi/guides/comment_policy.md) | [Public API Surface](../core/api_surface.md) | [Documentation Index](../INDEX.md)
 
-Comments in AxisEngine must preserve information that cannot be expressed
-clearly by names, types, tests, or control flow.
+---
 
-Keep comments that explain:
+## 1. Introduction
 
-- design rationale and rejected alternatives;
-- invariants, ownership, lifetime, and thread-safety;
-- security or trust boundaries;
-- binary formats, protocols, platform workarounds, and non-obvious algorithms;
-- public API contracts, licenses, and third-party attribution.
+AxisEngine maintains clean, consistent C++ code comments across all public headers and internal source files using Doxygen formatting tags.
 
-Do not add:
+---
 
-- narration that repeats the next statement;
-- conversational text or a transcript of how an agent changed the code;
-- commented-out code or historical changelogs inside implementation files;
-- banners and numbered phases that do not define a real architectural boundary;
-- `TODO`, `FIXME`, or `HACK` without an owner or tracked issue.
+## 2. How to Use
 
-Review generated changes manually. Text searches can identify candidates, but
-must never delete comments automatically because a search cannot distinguish
-an invariant from redundant narration.
+1. **Header Briefs**: Use `/// @brief` above class, struct, or function declarations.
+2. **Parameters**: Document parameters with `/// @param name Description`.
+3. **Return Values**: Document returns using `/// @return Description`.
+
+---
+
+## 3. Examples
+
+### Doxygen Comment Example
+```cpp
+#include <axis_sdk.h>
+
+/// @brief Represents a player behavior script in the game.
+class PlayerScript final : public Scriptable {
+public:
+    /// @brief Ticks script logic frame update.
+    /// @param dt Frame delta time in seconds.
+    void OnUpdate(float dt) override {
+        // Implementation
+    }
+};
+```
+
+---
+
+## 4. API & Configuration Reference
+
+### Doxygen Formatting Tags Reference
+
+| Tag Name | Purpose | Example |
+| :--- | :--- | :--- |
+| `/// @brief` | Short summary of symbol | `/// @brief Computes spatial culling.` |
+| `/// @param` | Parameter documentation | `/// @param dt Frame delta time in seconds.` |
+| `/// @return` | Return value description | `/// @return True if initialized successfully.` |

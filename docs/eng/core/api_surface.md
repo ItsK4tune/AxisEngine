@@ -1,29 +1,62 @@
-# Public API Surface
+# Public API Surface Guide
 
-> [Tiếng Việt](../../vi/core/api_surface.md)
+> [Tiếng Việt](../../vi/core/api_surface.md) | [Architecture Overview](architecture.md) | [Documentation Index](../INDEX.md)
 
-Axis separates its installed headers by intended stability and use.
+---
 
-| Header | Intended consumer | Contract |
-|---|---|---|
-| `axis_sdk.h` | Games and tools | Stable application, state, component, and public type surface |
-| `axis_plugin.h` | Replaceable modules | Backend, lifecycle, resource-library, navigation, network, editor, serializer, and post-process interfaces |
-| `axis_advanced.h` | Engine integrations | Concrete systems/managers; supported but more likely to change |
-| `axis_all.h` | Source compatibility | Union of the three surfaces; avoid in reusable plugins |
+## 1. Introduction
 
-Headers below any `strategy/` directory and built-in editor `modules/` or `panels/` are implementation details and are excluded from the installed SDK. `ServiceLocator` is a runtime mechanism, not an application API; use `EngineAccessor` or an interface from `axis_plugin.h`.
+AxisEngine organizes its public C++ APIs into four tiered header umbrellas (`axis_sdk.h`, `axis_plugin.h`, `axis_advanced.h`, `axis_all.h`). This tiering isolates external applications from internal backend implementation details while maintaining fast build speeds and ABI stability.
 
-`StaticBatchManager` and `TextureAtlas` remain internal benchmark/asset-tool implementations and are also excluded from installed headers: neither has a renderer contract that preserves material identity and entity picking yet. Their focused unit tests remain to protect the portable batch format while they are internal.
+---
 
-## Ownership and replacement rules
+## 2. How to Use
 
-- `Application` owns backend objects returned by `AppBuilder` factories.
-- Resource-library overrides are `shared_ptr` values retained by the application's builder profile.
-- Platform-provider acquisition returns `shared_ptr`, so an in-flight caller remains valid during a provider swap.
-- Systems, scripts, component codecs, post-process effects, and editor extensions use explicit registration through `ISystemRegistry`, `IScriptRegistry`, `IComponentCodecRegistry`, `IPostProcessRegistry`, and `IEditorExtensionRegistry`. Owner-based registries must be unregistered before unloading module code.
-- Localization is consumed through `ILocalizationService`; a replacement system can register that service without exposing `LocalizationSystem` to gameplay code.
-- Only one `Application` may be initialized at a time. Its service context is visible to job workers; nested test/tool contexts remain thread-local.
+Select the appropriate header umbrella based on your application role:
 
-## Current provider matrix
+1. **Game Applications & Scripting**: `#include <axis_sdk.h>` (Stable high-level API).
+2. **Custom Providers & Extensions**: `#include <axis_plugin.h>` (Plugin contracts for audio/physics/renderer).
+3. **Low-Level Engine Integrations**: `#include <axis_advanced.h>` (Direct access to Bullet/OpenGL pointers).
+4. **Internal Engine Compilation**: `#include <axis_all.h>` (Internal precompiled header only).
 
-The shipped graphics backend is OpenGL 4.6 and the shipped physics backend is Bullet. The built-in renderer is not available on macOS because Apple's OpenGL implementation stops at 4.1; startup now fails explicitly instead of attempting to compile incompatible GLSL 4.6 shaders. Playback supports Null plus optional FMOD or irrKlang builds. Windows microphone capture uses WASAPI; other platforms use the explicit unsupported capture service until a provider is installed. Vulkan, DirectX, PhysX, and OpenAL remain enum values for serialized/source compatibility but are not offered as selectable build providers.
+---
+
+## 3. Examples
+
+### Tier 1 Example (`<axis_sdk.h>`)
+```cpp
+#include <axis_sdk.h>
+
+void CreatePlayer(Scene& scene) {
+    auto player = scene.CreateEntity("Player");
+    player.AddComponent<TransformComponent>(Vector3(0.0f, 1.0f, 0.0f));
+    player.AddComponent<MeshRendererComponent>("models/character.obj");
+}
+```
+
+### Tier 2 Example (`<axis_plugin.h>`)
+```cpp
+#include <axis_plugin.h>
+
+class CustomAudioProvider final : public IAudioService {
+public:
+    bool Initialize() override { return true; }
+    void Shutdown() override {}
+    void PlaySound(const std::string& path, float volume) override {}
+    void SetMasterVolume(float volume) override {}
+};
+AXIS_EXPORT_PLUGIN_PROVIDER(IAudioService, CustomAudioProvider)
+```
+
+---
+
+## 4. API & Configuration Reference
+
+### Header Selection & Stability Matrix
+
+| Header File | Targeted Consumer | Stability Level | Include Guidance |
+| :--- | :--- | :--- | :--- |
+| `<axis_sdk.h>` | Game Developers, Scripters | **High (Stable)** | Primary umbrella for games & user scripts |
+| `<axis_plugin.h>` | Plugin Authors, Providers | **Medium** | Use for custom audio/physics/network backends |
+| `<axis_advanced.h>` | Low-Level Integrators | **Low (Internal)** | Use when direct OpenGL/Bullet pointers are required |
+| `<axis_all.h>` | Internal Build Only | **Internal** | Do not include in external applications |

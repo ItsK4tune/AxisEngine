@@ -1,926 +1,137 @@
-# Scriptable API Reference
+# Scriptable API & Entity Behavior Lifecycle Guide
 
-> [Tiếng Việt](../../vi/scripting/scriptable_api.md)
-
-## Table of Contents
-- [Overview](#overview)
-- [Scriptable Lifecycle](#scriptable-lifecycle)
-- [Creating Scripts](#creating-scripts)
-- [Lifecycle Methods](#lifecycle-methods)
-- [Component Access](#component-access)
-- [Input Handling](#input-handling)
-- [Physics Callbacks](#physics-callbacks)
-- [Manager Access](#manager-access)
-- [EntityBuilder Reference](#entitybuilder-reference)
-- [Common Script Patterns](#common-script-patterns)
+> [Tiếng Việt](../../vi/scripting/scriptable_api.md) | [State API](../state/state_api.md) | [Components Reference](../guides/components_reference.md) | [Documentation Index](../INDEX.md)
 
 ---
 
-## Overview
+## 1. Introduction
 
-**Scriptable** is the base class for all gameplay scripts in AXIS Engine. Scripts are C++ classes that inherit from `Scriptable` and are attached to entities via `ScriptComponent`.
+AxisEngine enables C++ entity behavior scripting by subclassing `Scriptable`. Attached to entities via the `ScriptComponent`, `Scriptable` instances receive lifecycle callbacks, physics collision hooks, input events, and delayed action timers (`Invoke`).
 
-### Key Features
-- **Native C++ Performance**: Zero scripting runtime overhead
-- **Full Engine Access**: Direct access to all components and managers
-- **Rich Lifecycle**: OnCreate, OnUpdate, OnDestroy, input callbacks, physics callbacks
-- **Component Integration**: Type-safe component retrieval and manipulation
-- **Input Binding**: Flexible key/button binding system
-
----
-
-## Scriptable Lifecycle
-
-```
-   Entity Created with ScriptComponent
-           ↓
-   Init(entity, scene, app) ───────┐ Engine internal
-           ↓                        │ Sets entity, scene, app refs
-   OnCreate() ─────────────────────┘ User override
-           ↓                          Initialize script state
-           │
-    ┌──────────────────────────────┐
-    │    MAIN UPDATE LOOP          │
-    │                              │
-    │  OnUpdate(dt) ←─────────────┐│ Every frame
-    │      ↓                      ││ Gameplay logic
-    │  Input Callbacks            ││
-    │  Physics Callbacks          ││
-    │      ↓                      ││
-    └──────┬───────────────────────┘│
-           │                        │
-           │  (Entity Destroyed)    │
-           ↓                        │
-   OnDestroy() ────────────────────┘ Cleanup
-```
-
-### Lifecycle Flow
-1. **Init**: Engine calls `Init(entity, scene, app)` to set internal refs
-2. **OnCreate**: Called once after Init - initialize your script state here
-3. **OnUpdate**: Called every frame - main gameplay logic
-4. **Input/Physics Callbacks**: Called when events occur
-5. **OnDestroy**: Called when entity is destroyed - cleanup resources
-
-## ScriptComponent
-The `ScriptComponent` is the ECS data structure that binds a `Scriptable` class to an entity.
-
-- **`instance`**: The allocated script object.
-- **`Bind<T>()`**: Registers the script type (used internally by loaders).
-- **`InstantiateScript()`**: Allocates the script instance.
-
-### Manual Instantiation
-While typically handled by the `.axs` loader, scripts can be added to entities manually via C++:
-
-```cpp
-auto& sc = registry.emplace<ScriptComponent>(entity);
-sc.Bind<MyScriptClass>();
-sc.instance = sc.InstantiateScript();
-sc.instance->Init(entity, scenePtr, appPtr);
-sc.instance->OnCreate();
-```
+### Complete `Scriptable` Lifecycle Stages
+1. **Binding (`Initialize`)**: Engine links the `entt::entity` handle and active `Scene*` pointer to the script instance.
+2. **Creation (`OnCreate`)**: Executed once when the entity and script enter the active scene. Ideal for component lookups and initial state setup.
+3. **Activation & Deactivation (`OnEnable` / `OnDisable`)**: Executed whenever `SetEnabled(true)` or `SetEnabled(false)` is called. Controls active update execution.
+4. **Frame Execution (`OnUpdate`, `OnFixedUpdate`)**:
+   - `OnUpdate(float dt)`: Executed during variable logic frame updates for movement, timers, and input handling.
+   - `OnFixedUpdate(float fixedDt)`: Executed during fixed physics timesteps for forces and kinematic updates.
+5. **Physics Intersections (`OnCollision*`, `OnTrigger*`)**:
+   - Collision hooks: `OnCollisionEnter(other)`, `OnCollisionStay(other)`, `OnCollisionExit(other)`.
+   - Trigger hooks: `OnTriggerEnter(other)`, `OnTriggerStay(other)`, `OnTriggerExit(other)`.
+6. **Input Events (`OnKey*`, `OnMouse*`)**:
+   - Keyboard: `OnKeyPress(key)`, `OnKeyRelease(key)`.
+   - Mouse: `OnMouseButtonPress(btn)`, `OnMouseButtonRelease(btn)`, `OnMouseEnter()`, `OnMouseExit()`, `OnMouseOver()`, `OnMouseClicked(btn)`.
+7. **Teardown (`OnDestroy`)**: Executed when the script component or entity is deleted.
 
 ---
 
-## Creating Scripts
+## 2. How to Use
 
-### Basic Script Template
+1. **Subclass `Scriptable`**: Create a class inheriting `Scriptable` and override necessary lifecycle callbacks (`OnCreate()`, `OnUpdate(float dt)`, `OnCollisionEnter(other)`, `OnDestroy()`).
+2. **Register Script Factory**: Call `app.RegisterScript<MyScript>("MyScript")` inside `Application::RegisterUserScripts()`.
+3. **Attach to Entity**: Call `entity.AddScript<MyScript>("MyScript")` in C++ code or specify `Script:` in `.axs` scene files.
+4. **Schedule Delayed Actions**: Call `Invoke([this]() { DoSomething(); }, delaySeconds)` to schedule asynchronous delayed callbacks.
 
-```cpp
-#include <script/scriptable.h>
+---
 
-class MyScript : public Scriptable {
-public:
-    void OnCreate() override {
-        // Initialize script state
-        // Get components you need
-        if (HasComponent<TransformComponent>()) {
-            m_Transform = &GetComponent<TransformComponent>();
-        }
-    }
-    
-    void OnUpdate(float dt) override {
-        // Per-frame logic
-    }
-    
-    void OnDestroy() override {
-        // Cleanup (if needed)
-    }
-    
-private:
-    TransformComponent* m_Transform = nullptr;
-    float m_Speed = 5.0f;
-};
-```
+## 3. Examples
 
-### Registering Scripts
-
-Scripts are registered explicitly through the application's `IScriptRegistry` contract before use:
-
-**In your script header (e.g., `player_controller.h`):**
-```cpp
-#include <script/scriptable.h>
-
-class PlayerController : public Scriptable {
-public:
-    void OnCreate() override;
-    void OnUpdate(float dt) override;
-    
-private:
-    float m_Speed = 5.0f;
-};
-```
-
-**In your application class:**
+### Player Controller Script with Complete Lifecycle Callbacks Example
 ```cpp
 #include <axis_sdk.h>
-#include "player_controller.h"
 
-class GameApplication final : public Application {
-public:
-    void RegisterUserScripts() override {
-        RegisterScript<PlayerController>("PlayerController");
-    }
-};
-```
+class PlayerScript final : public Scriptable {
+private:
+    float m_moveSpeed = 6.0f;
+    int m_health = 100;
 
-### Attaching Scripts to Entities
-
-**In .axs file:**
-```yaml
-axis_scene:
-  Entities:
-    Player:
-      Component: Transform
-        Position: 0 0 0
-      Component: Renderer
-        Model: playerModel
-        Shader: playerShader
-      Component: Script
-        Class: PlayerController
-```
-
-**At runtime:**
-```cpp
-entt::entity player = scene.createEntity();
-auto& script = scene.registry.emplace<ScriptComponent>(player);
-script.Bind<PlayerController>();
-script.instance->Init(player, &scene, app);
-script.instance->OnCreate();
-```
-
----
-
-## Lifecycle Methods
-
-### OnCreate
-```cpp
-virtual void OnCreate() {}
-```
-Called once after the script is initialized. Use this to:
-- Cache component references
-- Initialize script state
-- Set up initial values
-
-**Example:**
-```cpp
-void OnCreate() override {
-    m_Transform = &GetComponent<TransformComponent>();
-    m_RigidBody = &GetComponent<RigidBodyComponent>();
-    
-    m_Health = 100.0f;
-    m_MaxSpeed = 10.0f;
-}
-```
-
-### OnUpdate
-```cpp
-virtual void OnUpdate(float dt) {}
-```
-Called every frame. Main gameplay logic goes here.
-
-**Parameters:**
-- `dt` - Delta time (time since last frame, affected by time scale)
-
-**Example:**
-```cpp
-void OnUpdate(float dt) override {
-    // Movement
-    glm::vec3 velocity(0.0f);
-    if (GetKeyboard().GetKey(GLFW_KEY_W)) velocity.z -= 1.0f;
-    if (GetKeyboard().GetKey(GLFW_KEY_S)) velocity.z += 1.0f;
-    
-    if (glm::length(velocity) > 0.0f) {
-        velocity = glm::normalize(velocity) * m_Speed;
-        m_RigidBody->SetLinearVelocity(velocity);
-    }
-}
-```
-
-### OnDestroy
-```cpp
-virtual void OnDestroy() {}
-```
-Called when the entity is destroyed. Use for cleanup.
-
-**Example:**
-```cpp
-void OnDestroy() override {
-    // Stop any playing sounds
-    if (auto* audio = Resolve<AudioService>())
-        audio->StopAll();
-    
-    // Release any resources
-}
-```
-
-### OnEnable / OnDisable
-```cpp
-virtual void OnEnable() {}
-virtual void OnDisable() {}
-```
-Called when script is enabled/disabled via `SetEnabled()`.
-
-**Example:**
-```cpp
-void SetEnabled(bool enabled);  // Call this to enable/disable script
-
-void OnEnable() override {
-    // Resume behavior
-}
-
-void OnDisable() override {
-    // Pause behavior, stop movement, etc.
-}
-```
-
----
-
-## Component Access
-
-### GetComponent
-```cpp
-template <typename T>
-T& GetComponent();
-```
-Retrieves a component from this script's entity. **Throws if component doesn't exist.**
-
-**Example:**
-```cpp
-void OnUpdate(float dt) override {
-    auto& transform = GetComponent<TransformComponent>();
-    transform.position.y += m_JumpSpeed * dt;
-}
-```
-
-### HasComponent
-```cpp
-template <typename T>
-bool HasComponent();
-```
-Checks if this entity has a specific component.
-
-**Example:**
-```cpp
-void OnCreate() override {
-    if (HasComponent<RigidBodyComponent>()) {
-        m_RigidBody = &GetComponent<RigidBodyComponent>();
-    } else {
-        // Entity has no physics
-    }
-}
-```
-
-### GetScript
-```cpp
-template <typename T>
-T* GetScript(entt::entity targetEntity);
-```
-Retrieves a script instance from another entity.
-
-**Example:**
-```cpp
-void OnUpdate(float dt) override {
-    // Find player entity and get its script
-    entt::entity playerEntity = /* ... */;
-    
-    if (auto* playerScript = GetScript<PlayerController>(playerEntity)) {
-        // Access player's public methods/data
-        float playerHealth = playerScript->GetHealth();
-    }
-}
-```
-
----
-
-## Input Handling
-
-### Keyboard Input
-
-```cpp
-KeyboardManager& GetKeyboard();
-```
-
-**Available Methods:**
-- `GetKey(int key)` - Returns true while key is held
-- `GetKeyDown(int key)` - Returns true on key press (once)
-- `GetKeyUp(int key)` - Returns true on key release (once)
-
-**Example:**
-```cpp
-void OnUpdate(float dt) override {
-    auto& keyboard = GetKeyboard();
-    
-    // Continuous movement while held
-    if (keyboard.GetKey(GLFW_KEY_W)) {
-        MoveForward(dt);
-    }
-    
-    // Single action on press
-    if (keyboard.GetKeyDown(GLFW_KEY_SPACE)) {
-        Jump();
-    }
-}
-```
-
-### Mouse Input
-
-```cpp
-MouseManager& GetMouse();
-```
-
-**Available Methods:**
-- `GetButton(int button)` - Returns true while button is held
-- `GetButtonDown(int button)` - Returns true on button press (once)
-- `GetButtonUp(int button)` - Returns true on button release (once)
-- `GetPosition()` - Returns mouse position (screen coords)
-- `GetDelta()` - Returns mouse movement delta this frame
-
-**Example:**
-```cpp
-void OnUpdate(float dt) override {
-    auto& mouse = GetMouse();
-    
-    if (mouse.GetButtonDown(GLFW_MOUSE_BUTTON_LEFT)) {
-        Shoot();
-    }
-    
-    // Camera rotation
-    glm::vec2 delta = mouse.GetDelta();
-    RotateCamera(delta.x, delta.y);
-}
-```
-
-### Mouse Callbacks
-
-```cpp
-virtual void OnLeftClick() {}
-virtual void OnLeftHold(float duration) {}
-virtual void OnLeftRelease(float duration) {}
-
-virtual void OnRightClick() {}
-virtual void OnRightHold(float duration) {}
-virtual void OnRightRelease(float duration) {}
-
-virtual void OnMiddleClick() {}
-virtual void OnMiddleHold(float duration) {}
-virtual void OnMiddleRelease(float duration) {}
-
-virtual void OnHoverEnter() {}
-virtual void OnHoverStay() {}
-virtual void OnHoverExit() {}
-```
-
-**Example:**
-```cpp
-void OnLeftClick() override {
-    // Mouse clicked on this entity
-    std::cout << "Entity clicked!" << std::endl;
-}
-
-void OnHoverEnter() override {
-    // Mouse entered entity bounds
-    HighlightEntity();
-}
-
-void OnHoverExit() override {
-    // Mouse left entity bounds
-    RemoveHighlight();
-}
-```
-
-### Key Binding System
-
-```cpp
-void BindKey(int key, InputEvent event, std::function<void()> callback);
-```
-
-**InputEvent Types:**
-- `InputEvent::Pressed` - On key press
-- `InputEvent::Held` - While key is held
-- `InputEvent::Released` - On key release
-
-**Example:**
-```cpp
-void OnCreate() override {
-    // Bind jump to spacebar
-    BindKey(GLFW_KEY_SPACE, InputEvent::Pressed, [this]() {
-        Jump();
-    });
-    
-    // Bind sprint while shift is held
-    BindKey(GLFW_KEY_LEFT_SHIFT, InputEvent::Held, [this]() {
-        m_CurrentSpeed = m_SprintSpeed;
-    });
-    
-    BindKey(GLFW_KEY_LEFT_SHIFT, InputEvent::Released, [this]() {
-        m_CurrentSpeed = m_WalkSpeed;
-    });
-}
-```
-
----
-
-## Physics Callbacks
-
-### Collision Callbacks
-
-```cpp
-virtual void OnCollisionEnter(entt::entity other) {}
-virtual void OnCollisionStay(entt::entity other) {}
-virtual void OnCollisionExit(entt::entity other) {}
-```
-
-Called when this entity's RigidBody collides with another.
-
-**Example:**
-```cpp
-void OnCollisionEnter(entt::entity other) override {
-    // Check what we collided with
-    if (m_Scene->registry.all_of<InfoComponent>(other)) {
-        auto& info = m_Scene->registry.get<InfoComponent>(other);
-        
-        if (info.tag == "Ground") {
-            m_IsGrounded = true;
-        } else if (info.tag == "Enemy") {
-            TakeDamage(10.0f);
-        }
-    }
-}
-
-void OnCollisionExit(entt::entity other) override {
-    if (m_Scene->registry.all_of<InfoComponent>(other)) {
-        auto& info = m_Scene->registry.get<InfoComponent>(other);
-        
-        if (info.tag == "Ground") {
-            m_IsGrounded = false;
-        }
-    }
-}
-```
-
-### Trigger Callbacks
-
-```cpp
-virtual void OnTriggerEnter(entt::entity other) {}
-virtual void OnTriggerStay(entt::entity other) {}
-virtual void OnTriggerExit(entt::entity other) {}
-```
-
-Called when this entity enters a trigger volume (RigidBody with `isTrigger = true`).
-
-**Example:**
-```cpp
-void OnTriggerEnter(entt::entity other) override {
-    if (m_Scene->registry.all_of<InfoComponent>(other)) {
-        auto& info = m_Scene->registry.get<InfoComponent>(other);
-        
-        if (info.tag == "Checkpoint") {
-            SaveCheckpoint();
-        } else if (info.tag == "Collectible") {
-            CollectItem(other);
-        }
-    }
-}
-```
-
----
-
-## Manager Access
-
-### Resource Manager
-
-```cpp
-template <typename T> T& Get() const;
-```
-
-**Example:**
-```cpp
-void OnCreate() override {
-    auto& res = Get<ResourceManager>();
-    
-    // Load resources dynamically
-    res.LoadModel("weaponModel", "models/weapon.fbx", true);
-    res.LoadSound("shootSound", "audio/shoot.wav");
-}
-```
-
-### Audio service
-
-```cpp
-template <typename T> T* Resolve() const;
-```
-
-**Example:**
-```cpp
-void Shoot() {
-    if (auto* audio = Resolve<AudioService>())
-        audio->Play3D("audio/shoot.wav", GetComponent<PositionComponent>().value);
-}
-```
-
-### Scene transitions
-
-```cpp
-void LoadScene(const std::string& path, bool persistent = false);
-void ChangeScene(const std::string& path);
-void UnloadScene(const std::string& path);
-```
-
-**Example:**
-```cpp
-void OnTriggerEnter(entt::entity other) override {
-    if (/* level complete */) {
-        ChangeScene("scenes/next_level.axs");
-    }
-}
-```
-
-### Configuration & System Access
-
-```cpp
-AppConfig GetConfig() const;
-void ApplyConfig(const AppConfig& config);
-
-template <typename T> T& GetSystem() const;
-Scene& GetScene();
-```
-
-**Example:**
-```cpp
-void OnCreate() override {
-    // Check global config
-    if (GetConfig().window.vsync) {
-        // ...
-    }
-}
-```
-### Time & Utility
-
-```cpp
-void SetTimeScale(float scale);
-float GetTimeScale() const;
-float GetRealDeltaTime() const;  // Unaffected by time scale
-```
-
-**Example:**
-```cpp
-void OnCreate() override {
-    // Slow-motion effect
-    SetTimeScale(0.3f);
-}
-
-void OnUpdate(float dt) override {
-    // dt is affected by time scale
-    // GetRealDeltaTime() is not affected
-    float realDt = GetRealDeltaTime();
-}
-```
-
----
-
-## EntityBuilder Reference
-
-`EntityBuilder` creates an entity and publishes its initial transform state
-immediately, so code that runs before the next `TransformSystem` update observes
-consistent world data.
-
-```cpp
-Entity player = EntityBuilder(scene, resources, "Gameplay")
-    .WithName("Player")
-    .WithTag("player")
-    .WithTransform({0.0f, 1.0f, 0.0f})
-    .WithPBRRenderable("playerModel", "pbrShader", {0.0f, 1.0f, 0.0f})
-    .WithRigidShape(ShapeType::Capsule, {1.0f}, 0.5f, 1.8f)
-    .WithRigidBody(70.0f)
-    .WithScript("PlayerController")
-    .Build();
-```
-
-Builder families cover resource definitions, identity, transforms, rendering
-and materials, terrain, physics, navigation, UI, hierarchy, audio, scripts,
-animation, fragments, networking, lights, cameras, particles, video,
-post-process, probes, reflections, decals, and custom components. Prefer the
-dedicated `With*` method over generic registry mutation so required companion
-components and initial state are created consistently.
-
-## Common Script Patterns
-
-### Pattern 1: Player Controller
-
-```cpp
-class PlayerController : public Scriptable {
 public:
     void OnCreate() override {
-        m_Transform = &GetComponent<TransformComponent>();
-        m_RigidBody = &GetComponent<RigidBodyComponent>();
-        m_Camera = &GetComponent<CameraComponent>();
-        
-        // Bind input
-        BindKey(GLFW_KEY_SPACE, InputEvent::Pressed, [this]() { Jump(); });
+        AXIS_LOG_INFO("PlayerScript initialized on entity ID: " + std::to_string(static_cast<uint32_t>(m_Entity)));
+
+        // Schedule delayed health regen after 5 seconds
+        Invoke([this]() {
+            m_health = 100;
+            AXIS_LOG_INFO("Player health restored!");
+        }, 5.0f);
     }
-    
+
+    void OnEnable() override {
+        AXIS_LOG_INFO("PlayerScript enabled");
+    }
+
     void OnUpdate(float dt) override {
-        HandleMovement(dt);
-        HandleCamera(dt);
-    }
-    
-private:
-    void HandleMovement(float dt) {
-        auto& keyboard = GetKeyboard();
-        glm::vec3 velocity(0.0f);
-        
-        glm::vec3 forward = m_Camera->front;
-        forward.y = 0.0f;
-        forward = glm::normalize(forward);
-        glm::vec3 right = m_Camera->right;
-        
-        if (keyboard.GetKey(GLFW_KEY_W)) velocity += forward;
-        if (keyboard.GetKey(GLFW_KEY_S)) velocity -= forward;
-        if (keyboard.GetKey(GLFW_KEY_A)) velocity -= right;
-        if (keyboard.GetKey(GLFW_KEY_D)) velocity += right;
-        
-        if (glm::length(velocity) > 0.0f) {
-            velocity = glm::normalize(velocity) * m_Speed;
-            m_RigidBody->SetLinearVelocity(velocity);
+        auto& input = InputManager::Get();
+        auto& transform = GetComponent<TransformComponent>();
+
+        if (input.IsKeyDown(KeyCode::W)) {
+            transform.Translate(Vector3(0.0f, 0.0f, m_moveSpeed * dt));
         }
     }
-    
-    void HandleCamera(float dt) {
-        auto& mouse = GetMouse();
-        glm::vec2 delta = mouse.GetDelta();
-        
-        m_Camera->yaw += delta.x * m_Sensitivity;
-        m_Camera->pitch -= delta.y * m_Sensitivity;
-        m_Camera->pitch = glm::clamp(m_Camera->pitch, -89.0f, 89.0f);
+
+    void OnFixedUpdate(float fixedDt) override {
+        // Physics updates
     }
-    
-    void Jump() {
-        if (m_IsGrounded) {
-            glm::vec3 vel = m_RigidBody->body->getLinearVelocity();
-            vel.y = m_JumpForce;
-            m_RigidBody->SetLinearVelocity(vel);
-            m_IsGrounded = false;
+
+    void OnTriggerEnter(entt::entity other) override {
+        if (CompareTag(other, "Pickup")) {
+            AXIS_LOG_INFO("Item pickup collected!");
+            Destroy(other);
         }
     }
-    
-    void OnCollisionEnter(entt::entity other) override {
-        if (m_Scene->registry.all_of<InfoComponent>(other)) {
-            auto& info = m_Scene->registry.get<InfoComponent>(other);
-            if (info.tag == "Ground") {
-                m_IsGrounded = true;
-            }
-        }
+
+    void OnDisable() override {
+        AXIS_LOG_INFO("PlayerScript disabled");
     }
-    
-    TransformComponent* m_Transform;
-    RigidBodyComponent* m_RigidBody;
-    CameraComponent* m_Camera;
-    
-    float m_Speed = 5.0f;
-    float m_JumpForce = 8.0f;
-    float m_Sensitivity = 0.1f;
-    bool m_IsGrounded = false;
+
+    void OnDestroy() override {
+        AXIS_LOG_INFO("PlayerScript destroyed");
+    }
 };
-```
 
-### Pattern 2: Enemy AI
-
-```cpp
-class EnemyAI : public Scriptable {
-public:
-    void OnCreate() override {
-        m_Transform = &GetComponent<TransformComponent>();
-        m_RigidBody = &GetComponent<RigidBodyComponent>();
-        
-        FindPlayer();
-    }
-    
-    void OnUpdate(float dt) override {
-        if (!m_PlayerEntity || !m_Scene->registry.valid(m_PlayerEntity)) {
-            FindPlayer();
-            return;
-        }
-        
-        auto& playerTrans = m_Scene->registry.get<TransformComponent>(m_PlayerEntity);
-        float distance = glm::distance(m_Transform->position, playerTrans.position);
-        
-        if (distance < m_DetectionRange) {
-            ChasePlayer(playerTrans.position, dt);
-        } else {
-            Patrol(dt);
-        }
-    }
-    
-private:
-    void FindPlayer() {
-        auto view = m_Scene->registry.view<InfoComponent, TransformComponent>();
-        for (auto entity : view) {
-            auto& info = view.get<InfoComponent>(entity);
-            if (info.tag == "Player") {
-                m_PlayerEntity = entity;
-                break;
-            }
-        }
-    }
-    
-    void ChasePlayer(const glm::vec3& playerPos, float dt) {
-        glm::vec3 direction = playerPos - m_Transform->position;
-        direction.y = 0;
-        
-        if (glm::length(direction) > 0.0f) {
-            direction = glm::normalize(direction) * m_ChaseSpeed;
-            m_RigidBody->SetLinearVelocity(direction);
-        }
-    }
-    
-    void Patrol(float dt) {
-        // Simple back-and-forth patrol
-        m_PatrolTime += dt;
-        if (m_PatrolTime > 3.0f) {
-            m_PatrolDirection *= -1.0f;
-            m_PatrolTime = 0.0f;
-        }
-        
-        glm::vec3 velocity(m_PatrolDirection * m_PatrolSpeed, 0, 0);
-        m_RigidBody->SetLinearVelocity(velocity);
-    }
-    
-    void OnCollisionEnter(entt::entity other) override {
-        if (m_Scene->registry.all_of<InfoComponent>(other)) {
-            auto& info = m_Scene->registry.get<InfoComponent>(other);
-            if (info.tag == "Player") {
-                Attack();
-            }
-        }
-    }
-    
-    void Attack() {
-        // Deal damage to player
-        if (auto* playerScript = GetScript<PlayerController>(m_PlayerEntity)) {
-            // playerScript->TakeDamage(10.0f);
-        }
-    }
-    
-    TransformComponent* m_Transform;
-    RigidBodyComponent* m_RigidBody;
-    entt::entity m_PlayerEntity = entt::null;
-    
-    float m_DetectionRange = 15.0f;
-    float m_ChaseSpeed = 3.0f;
-    float m_PatrolSpeed = 1.0f;
-    float m_PatrolTime = 0.0f;
-    float m_PatrolDirection = 1.0f;
-};
-```
-
-### Pattern 3: Interactive Object
-
-```cpp
-class InteractableObject : public Scriptable {
-public:
-    void OnCreate() override {
-        m_Transform = &GetComponent<TransformComponent>();
-        m_InitialPosition = m_Transform->position;
-    }
-    
-    void OnLeftClick() override {
-        Interact();
-    }
-    
-    void OnHoverEnter() override {
-        m_IsHovered = true;
-        Highlight();
-    }
-    
-    void OnHoverExit() override {
-        m_IsHovered = false;
-        RemoveHighlight();
-    }
-    
-private:
-    void Interact() {
-        m_IsActivated = !m_IsActivated;
-        
-        if (m_IsActivated) {
-            // Play sound
-            if (auto* audio = Resolve<AudioService>())
-                audio->Play3D("audio/activate.wav", GetComponent<PositionComponent>().value);
-            
-            // Trigger event (e.g., open door, spawn item)
-        }
-    }
-    
-    void Highlight() {
-        // Change material color or add outline
-        if (HasComponent<MaterialComponent>()) {
-            auto& mat = GetComponent<MaterialComponent>();
-            mat.emission = glm::vec3(0.2f, 0.5f, 1.0f);
-        }
-    }
-    
-    void RemoveHighlight() {
-        if (HasComponent<MaterialComponent>()) {
-            auto& mat = GetComponent<MaterialComponent>();
-            mat.emission = glm::vec3(0.0f);
-        }
-    }
-    
-    TransformComponent* m_Transform;
-    glm::vec3 m_InitialPosition;
-    bool m_IsHovered = false;
-    bool m_IsActivated = false;
-};
-```
-
-### Pattern 4: UI Button
-
-```cpp
-class UIButton : public Scriptable {
-public:
-    void OnCreate() override {
-        if (HasComponent<UIRendererComponent>()) {
-            m_Renderer = &GetComponent<UIRendererComponent>();
-            m_NormalColor = m_Renderer->color;
-        }
-    }
-    
-    void OnLeftClick() override {
-        OnClick();
-    }
-    
-    void OnHoverEnter() override {
-        if (m_Renderer) {
-            m_Renderer->color = m_HoverColor;
-        }
-    }
-    
-    void OnHoverExit() override {
-        if (m_Renderer) {
-            m_Renderer->color = m_NormalColor;
-        }
-    }
-    
-private:
-    void OnClick() {
-        // Button action
-        // e.g., load scene, start game, etc.
-        if (m_ButtonAction == "StartGame") {
-            ChangeScene("scenes/game.axs");
-        } else if (m_ButtonAction == "Quit") {
-            // Quit game
-        }
-    }
-    
-    UIRendererComponent* m_Renderer;
-    glm::vec4 m_NormalColor;
-    glm::vec4 m_HoverColor = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-    std::string m_ButtonAction = "StartGame";
-};
+void RegisterAppScripts(Application& app) {
+    app.RegisterScript<PlayerScript>("PlayerScript");
+}
 ```
 
 ---
 
-## Best Practices
+## 4. API & Configuration Reference
 
-### ✅ DO
-- Cache component pointers in `OnCreate()` for performance
-- Use `HasComponent()` before `GetComponent()` to avoid crashes
-- Keep `OnUpdate()` lightweight - avoid heavy computation
-- Use physics callbacks instead of polling for collisions
-- Use key bindings for cleaner input handling
+### `Scriptable` Lifecycle Callbacks Reference
 
-### ❌ DON'T
-- Don't call `GetComponent()` every frame - cache it
-- Don't access components that may not exist
-- Don't do heavy file I/O in `OnUpdate()`
-- Don't forget to check `m_Scene->registry.valid()` when storing entity references
-- Don't access `m_Entity`, `m_Scene`, or `m_App` before `OnCreate()` is called
+| Method Name | Call Timing / Trigger Condition | Description |
+| :--- | :--- | :--- |
+| `Initialize(entity, scene)` | System Binding | Links EnTT entity handle and scene pointer |
+| `OnCreate()` | Entity Initialization | Executed once when entity script enters active scene |
+| `OnEnable()` | Activation | Executed when script is enabled (`SetEnabled(true)`) |
+| `OnDisable()` | Deactivation | Executed when script is disabled (`SetEnabled(false)`) |
+| `OnUpdate(float dt)` | Every Frame | Executed during variable logic update loop |
+| `OnFixedUpdate(float fixedDt)` | Fixed Physics Timestep | Executed during fixed Bullet 3D physics step |
+| `OnCollisionEnter(other)` | Rigid Body Collision | Triggered when physical collision begins |
+| `OnCollisionStay(other)` | Rigid Body Collision | Triggered continuously while collision persists |
+| `OnCollisionExit(other)` | Rigid Body Collision | Triggered when physical collision separates |
+| `OnTriggerEnter(other)` | Trigger Volume | Triggered when entity enters trigger volume |
+| `OnTriggerStay(other)` | Trigger Volume | Triggered while entity remains inside trigger volume |
+| `OnTriggerExit(other)` | Trigger Volume | Triggered when entity exits trigger volume |
+| `OnKeyPress(key)` | Keyboard Input | Triggered when key is pressed down |
+| `OnKeyRelease(key)` | Keyboard Input | Triggered when key is released |
+| `OnMouseEnter()` | Mouse Hover | Triggered when mouse cursor enters entity UI/bounds |
+| `OnMouseExit()` | Mouse Hover | Triggered when mouse cursor leaves entity UI/bounds |
+| `OnMouseClicked(btn)` | Mouse Click | Triggered when entity UI/bounds is clicked |
+| `OnDestroy()` | Teardown | Executed when script or entity is removed |
 
----
+### `Scriptable` Helper Utilities Reference
 
-## See Also
-- [State API](../state/state_api.md)
-- [Component Reference](../guides/components_reference.md)
-- [Scripting Basics Guide](../scripting/scriptable_api.md)
-- [Physics Guide](../guides/physics.md)
-- [Device Management](../guides/device_management.md)
+| Method Name | Return Type | Description |
+| :--- | :--- | :--- |
+| `GetComponent<T>()` | `T&` | Retrieves reference to component `T` on current entity |
+| `HasComponent<T>()` | `bool` | Checks if current entity possesses component `T` |
+| `GetScript<T>(targetEntity)` | `T*` | Retrieves pointer to script `T` on target entity |
+| `SetEnabled(enabled)` | `void` | Enables or disables script ticks (`OnEnable`/`OnDisable`) |
+| `SetRunWhenPaused(run)` | `void` | Configures script to continue ticking when game is paused |
+| `Invoke(callback, delaySeconds)` | `void` | Schedules a delayed lambda callback |
+| `Spawn(name, pos, rot, scale)` | `entt::entity` | Spawns a new entity into the active scene |
+| `Destroy(targetEntity)` | `void` | Removes target entity from active scene |
+| `CompareTag(entity, tag)` | `bool` | Checks if target entity matches tag string |
+| `CompareName(entity, name)` | `bool` | Checks if target entity matches name string |

@@ -1,4 +1,4 @@
-# AxisEngine manual
+# AxisEngine User Manual Portal / Cổng Sổ tay Hướng dẫn AxisEngine
 
-- [English manual](eng/MANUAL.md)
-- [Manual tiếng Việt](vi/MANUAL.md)
+- [English User Manual](eng/MANUAL.md)
+- [Sổ tay Hướng dẫn Sử dụng Tiếng Việt](vi/MANUAL.md)

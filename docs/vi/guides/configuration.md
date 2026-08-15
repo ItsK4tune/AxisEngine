@@ -1,124 +1,100 @@
-# Cấu hình application và build
+# Hướng dẫn Tra cứu Cấu hình Configuration
 
-> [English](../../eng/guides/configuration.md)
+> [English](../../eng/guides/configuration.md) | [Hướng dẫn Định dạng Scene](scene_format.md) | [Mục lục Tài liệu](../INDEX.md)
 
-## 1. Cấu hình application
+---
 
-Setting nằm trong file `.axs` độc lập có root `axis_config`. Scene dùng
-`axis_scene`; không dùng `Config` trong scene như cơ chế override mới.
+## 1. Giới thiệu
 
+AxisEngine sở hữu một hệ thống cấu hình tập trung định hướng dữ liệu. Giá trị mặc định của ứng dụng, các flag dựng hình đồ họa, độ chính xác vật lý, backend âm thanh và các thông số tối ưu hóa được định nghĩa trong `axis_config.axs` hoặc thay đổi động trong quá trình chạy.
+
+---
+
+## 2. Cách dùng
+
+1. **Cấu hình Tĩnh (`.axs`)**: Định nghĩa khối `axis_config` trong file cấu hình dự án `.axs`.
+2. **API Cấu hình Runtime**: Truy cập `Application::Get().GetConfig()` để thay đổi tham số bằng mã C++.
+3. **Thông báo Hệ thống**: Phát sự kiện `ConfigChangedEvent` qua `EventManager` để áp dụng trực tiếp các thay đổi đồ họa, vật lý hoặc tối ưu hóa.
+
+---
+
+## 3. Ví dụ
+
+### 1. Ví dụ File Cấu hình `.axs`
 ```yaml
 axis_config:
-  WINDOW_WIDTH: 1920
-  WINDOW_HEIGHT: 1080
-  WINDOW_MODE: BORDERLESS_FULLSCREEN
-  MONITOR: 0
-  REFRESH_RATE: 60
-  VSYNC: 1
-  FPS: 120
-  GRAPHICS_API: OPENGL
-  PHYSICS_ENGINE: BULLET
-  AUDIO_ENGINE: NULL
-  SHADOWS: 1
-  ANTIALIASING: TAA
-  MSAA: 4
-  FRUSTUM: 1
-  SPATIAL_CULLING: AUTO
-  PHYSICS_MODE: BALANCED
-  STRICT_ASSET_LOADING: 0
-  UI_REFERENCE_SIZE: 1920 1080
+    LOG_LEVEL: VERBOSE
+    JOB_THREADS: -1
+    TIME_SCALE: 1.0
+    STRICT_ASSET_LOADING: 0
+
+    WINDOW_WIDTH: 1920
+    WINDOW_HEIGHT: 1080
+    WINDOW_MODE: BORDERLESS_FULLSCREEN
+    VSYNC: 1
+    FPS: 120
+
+    GRAPHICS_API: OPENGL
+    ANTIALIASING: TAA
+    HDR_ENABLED: 1
+    TONEMAPPING: ACES
+    BLOOM_ENABLED: 1
+
+    SHADOWS: 1
+    SHADOW_RESOLUTION: 2048
+    SHADOW_SOFTNESS: 1
+
+    PHYSICS_ENGINE: BULLET
+    GRAVITY: 0.0 -9.81 0.0
+    PHYSICS_MODE: BALANCED
+
+    AUDIO_ENGINE: NULL
+    VOLUME: 100
 ```
 
-Config được parse, validate/sanitize rồi publish thành snapshot bất biến.
+### 2. Ví dụ Điều chỉnh Cấu hình Động Runtime
+```cpp
+#include <axis_sdk.h>
 
-### Engine và system
+void ApplyRuntimeGraphicsQuality(bool highQuality) {
+    auto& config = Application::Get().GetConfig();
+    config.graphics.shadowResolution = highQuality ? 4096 : 1024;
+    config.graphics.antiAliasing = highQuality ? AntialiasingMode::TAA : AntialiasingMode::FXAA;
 
-- `LOG_LEVEL`: `NONE`, `MINIMAL`, `VERBOSE`, `DEBUG`.
-- `JOB_THREADS`: `-1` tự nhận số core.
-- `TIME_SCALE`: hệ số simulation.
-- `ASYNC_RESOURCES`: bật load nền.
-- `STRICT_ASSET_LOADING`: không dùng fallback shader/texture/model.
-
-### Display, graphics và hậu kỳ
-
-- `WINDOW_MODE`: `WINDOWED`, `FULLSCREEN`, `BORDERLESS`,
-  `BORDERLESS_FULLSCREEN`.
-- `RENDER_SCALE`, `VSYNC`, `FPS`.
-- `ANTIALIASING`: `NONE`, `FXAA`, `TAA`; `MSAA`: `2`, `4`, `8`, `16`.
-- `ANISOTROPY`, `HDR_ENABLED`, `TONEMAPPING`, `BLOOM_ENABLED`,
-  `BLOOM_INTENSITY`, `BLOOM_THRESHOLD`, `BLOOM_RADIUS`.
-- `GAMMA`, `EXPOSURE`, `SKYBOX_INTENSITY`, `AMBIENT_INTENSITY`.
-- `UI_REFERENCE_WIDTH`, `UI_REFERENCE_HEIGHT`, `UI_REFERENCE_SIZE`.
-- `FRUSTUM`; `SPATIAL_CULLING`: `AUTO`, `LINEAR`, `OCTREE`.
-
-`AUTO` đo linear/octree định kỳ và dùng hysteresis cùng scene churn để tránh
-đổi backend liên tục.
-
-### Shadow
-
-- `SHADOW_RESOLUTION`, `SHADOW_SOFTNESS`, `SHADOW_BIAS`.
-- `SHADOW_SIZE`, `SHADOW_FRUSTUM`, `SHADOW_DISTANCE`.
-
-### Physics
-
-- `GRAVITY`.
-- `PHYSICS_MODE`: `FAST`, `BALANCED`, `ACCURATE`.
-- `CCD_ENABLED`, `SOLVER_ITERATIONS`, `MAX_SUBSTEPS`.
-
-### Audio và input
-
-- `VOLUME`.
-- `AUDIO_CAPTURE_ENABLED`, `AUDIO_CAPTURE_DEVICE`.
-- `AUDIO_CAPTURE_INPUT_VOLUME`, `AUDIO_CAPTURE_NOISE_GATE`,
-  `AUDIO_CAPTURE_GAIN`.
-- `AUDIO_CAPTURE_ATTACK_SECONDS`, `AUDIO_CAPTURE_RELEASE_SECONDS`,
-  `AUDIO_CAPTURE_PEAK_DECAY_SECONDS`, `AUDIO_CAPTURE_CALIBRATION_SECONDS`.
-- `AUDIO_CAPTURE_PULSE_THRESHOLD`, `AUDIO_CAPTURE_PULSE_COOLDOWN`,
-  `AUDIO_CAPTURE_PULSE_DURATION`.
-- `MOUSE_SENSITIVITY`, `MOUSE_INVERT_Y`, `GAMEPAD_DEAD_ZONE`.
-
-### Backend
-
-| Key | Provider tích hợp |
-|---|---|
-| `GRAPHICS_API` | `OPENGL` |
-| `PHYSICS_ENGINE` | `BULLET` |
-| `AUDIO_ENGINE` | `NULL`, `IRRKLANG`, `FMOD` |
-
-Giá trị cũ `VULKAN`, `DIRECTX`, `PHYSX`, `OPENAL` vẫn parse để tương thích,
-nhưng built-in validation sẽ thay provider không có. Custom factory trong
-`AppBuilder` giữ nguyên enum được yêu cầu.
-
-## 2. Runtime optimization
-
-Editor áp các option sau live qua `ConfigChangedEvent::Optimization`:
-
-- Resource: `OPT_RESOURCE_HOT_RELOAD`, upload budget, model/texture per frame,
-  CPU mesh discard, compressed texture.
-- Streaming: throttling và check interval.
-- Reflection/shadow/animation: capture/build/evaluation budget và threshold.
-- Navigation: spatial hash, async request, rebuild/tile budget.
-- Network: batching, event/time/byte budget, replication rate, interest radius.
-- Particle: spawn budget và batching.
-- Render/physics/UI/video: state cache, persistent buffer, tiled light,
-  entity-ID GBuffer, mesh-shape cache, layout cache, async decode/AV sync.
-
-CPU mesh discard giữ position/index cho physics/navigation/editor nhưng bỏ
-normal/UV; static batching phải chạy trước upload khi bật option này.
-Correctness invariant như immutable snapshot và generation-safe entity không
-thể tắt.
-
-## 3. CMake
-
-- Debug: symbol, không optimize, MSVC `MDd`.
-- Release: optimize, MSVC `MD`.
-- Dependency không vendored; dùng vcpkg/package manager/vendor SDK.
-
-```powershell
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
-cmake --build build --config Release --parallel
+    EventManager::Get().Publish(ConfigChangedEvent::Graphics{});
+}
 ```
 
-FMOD/irrKlang cần SDK riêng và `FMOD_ROOT_DIR`/`IRRKLANG_ROOT_DIR`. Khi thêm
-dependency, ưu tiên package manifest và imported CMake target; không commit
-binary/header third-party vào source tree.
+---
+
+## 4. Tra cứu Param, Setting & API Reference
+
+### Bảng Tra cứu Cấu hình Engine & Toàn cục
+
+| Khóa Cấu hình | Giá trị Hợp lệ / Khoảng | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `LOG_LEVEL` | `NONE`, `MINIMAL`, `VERBOSE`, `DEBUG` | `VERBOSE` | Ngưỡng chi tiết ghi log ra console |
+| `JOB_THREADS` | `-1` (Tự động), `1` đến `64` | `-1` | Số lượng luồng worker đa luồng |
+| `TIME_SCALE` | `0.0` đến `10.0` | `1.0` | Hệ số nhân thời gian mô phỏng toàn cục |
+| `STRICT_ASSET_LOADING` | `0` hoặc `1` | `0` | Tắt texture bàn cờ mặc định khi thiếu asset |
+
+### Bảng Tra cứu Cấu hình Đồ họa & Hiển thị
+
+| Khóa Cấu hình | Giá trị Hợp lệ / Khoảng | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `WINDOW_MODE` | `WINDOWED`, `FULLSCREEN`, `BORDERLESS_FULLSCREEN` | `BORDERLESS_FULLSCREEN` | Chế độ hiển thị cửa sổ |
+| `VSYNC` | `0` hoặc `1` | `1` | Bật/tắt đồng bộ hóa dọc VSync |
+| `FPS` | `0` (Không giới hạn), `30`, `60`, `120`, `144` | `120` | Giới hạn khung hình mục tiêu |
+| `ANTIALIASING` | `NONE`, `FXAA`, `TAA` | `TAA` | Thuật toán khử răng cưa |
+| `TONEMAPPING` | `NONE`, `REINHARD`, `ACES` | `ACES` | Đường cong tonemapping HDR |
+| `BLOOM_ENABLED` | `0` hoặc `1` | `1` | Bật/tắt hiệu ứng Bloom |
+| `SPATIAL_CULLING` | `AUTO`, `LINEAR`, `OCTREE` | `AUTO` | Chiến lược culling không gian dựng hình |
+
+### Bảng Tra cứu Đổ bóng & Vật lý
+
+| Khóa Cấu hình | Giá trị Hợp lệ / Khoảng | Mặc định | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `SHADOWS` | `0` hoặc `1` | `1` | Công tắc chính bật/tắt đổ bóng |
+| `SHADOW_RESOLUTION` | `512`, `1024`, `2048`, `4096` | `2048` | Độ phân giải bản đồ độ sâu |
+| `GRAVITY` | Vector 3D `X Y Z` | `0 -9.81 0` | Vector trọng lực thế giới |
+| `PHYSICS_MODE` | `FAST` (30Hz), `BALANCED` (60Hz), `ACCURATE` (120Hz) | `BALANCED` | Cấu hình sẵn tần số mô phỏng |

@@ -1,155 +1,123 @@
-# Tham chiếu State API
+# Hướng dẫn Quản lý State Machine API & Vòng đời State
 
-> [English](../../eng/state/state_api.md)
+> [English](../../eng/state/state_api.md) | [Lập trình Scriptable API](../scripting/scriptable_api.md) | [Bắt đầu Nhanh](../core/getting_started.md) | [Mục lục Tài liệu](../INDEX.md)
 
-`State` biểu diễn mode/screen như Menu, Gameplay, Pause hoặc Settings. State
-quản lý scene và policy system; logic từng entity nên nằm trong `Scriptable`.
+---
 
-## Lifecycle
+## 1. Giới thiệu
 
-| Method | Thời điểm | Mục đích |
-|---|---|---|
-| `OnEnter()` | Khi state active | Load scene/resource, bật system, đặt cursor |
-| `OnFixedUpdate(float)` | Fixed timestep | Logic cần nhịp cố định |
-| `OnUpdate(float)` | Mỗi frame | Điều phối state/input |
-| `OnRender()` | Sau update | Render tùy chỉnh hiếm dùng |
-| `OnExit()` | Khi rời state | Queue cleanup, lưu state |
+AxisEngine quản lý luồng ứng dụng cấp cao (Boot, Main Menu, Gameplay, Pause Menu, Game Over) bằng cách sử dụng **State Machine dạng Stack** (`StateMachine`). Mỗi state ứng dụng được viết bằng cách kế thừa lớp `State` và triển khai các phương thức callback vòng đời của nó.
 
-Nếu `OnEnter` fail, state machine khôi phục state trước đó.
+### Các Giai đoạn trong Vòng đời State
+1. **Khởi tạo & Đẩy State (`OnEnter`)**: Thực thi khi instance state được đẩy vào stack. Cấp phát tài nguyên riêng cho state và nạp scene.
+2. **Thực thi (`OnUpdate`, `OnFixedUpdate`, `OnRender`)**:
+   - `OnUpdate(float dt)`: Được gọi mỗi frame tick biến thiên để xử lý logic game, bộ đếm thời gian và nhận input.
+   - `OnFixedUpdate(float fixedDt)`: Được gọi trong các bước vật lý cố định cho các truy vấn vật lý chính xác.
+   - `OnRender()`: Được gọi trong phase dựng hình đồ họa.
+   - `OnRenderDebug()`: Được gọi trong phase dựng hình lớp phủ debug.
+3. **Tạm dừng (`OnPause`)**: Thực thi khi một state mới được đẩy đè lên trên state hiện tại (ví dụ: đẩy Menu Pause dạng modal lên trên Gameplay). State bị tạm dừng vẫn được giữ lại trong bộ nhớ.
+4. **Tiếp tục (`OnResume`)**: Thực thi khi state modal đè phía trên bị gỡ bỏ, khôi phục state bên dưới trở lại làm state hoạt động chính trên cùng.
+5. **Hủy bỏ & Thoát (`OnExit`)**: Thực thi khi state bị gỡ khỏi stack hoặc bị giải phóng qua `ChangeState()`. Giải phóng tài nguyên state và hủy scene.
 
-## Tạo state
+---
 
+## 2. Cách dùng
+
+1. **Kế thừa `State`**: Kế thừa từ `State` và ghi đè `OnEnter()`, `OnUpdate(float dt)`, `OnFixedUpdate(float fixedDt)`, `OnRender()`, `OnPause()`, `OnResume()`, và `OnExit()`.
+2. **Đẩy State Modal Lớp phủ**: Gọi `Application::Get().PushState<PauseState>()` để đẩy menu tạm dừng đè lên gameplay. State hiện tại nhận `OnPause()`, và `PauseState` nhận `OnEnter()`.
+3. **Gỡ State Lớp phủ**: Gọi `Application::Get().PopState()` để quay lại state bên dưới. `PauseState` nhận `OnExit()`, và state bên dưới nhận `OnResume()`.
+4. **Chuyển đổi Chế độ Chính**: Gọi `Application::Get().ChangeState<GameplayState>()` để xóa sạch toàn bộ state trong stack và chuyển sang `GameplayState`.
+
+---
+
+## 3. Ví dụ
+
+### Ví dụ Chuyển đổi Stack State Machine Hoàn chỉnh
 ```cpp
-class GameplayState final : public State {
+#include <axis_sdk.h>
+
+class PauseState final : public State {
 public:
+    std::string GetName() const override { return "PauseState"; }
+
     void OnEnter() override {
-        LoadScene("assets/scenes/gameplay.axs");
-        EnablePhysics(true);
-        EnableRender(true);
-        EnableAudio(true);
-        EnableLogic(true);
-        SetCursorMode(CursorMode::LockedHidden);
+        AXIS_LOG_INFO("PauseState::OnEnter - Menu pause modal da mo");
     }
 
     void OnUpdate(float dt) override {
-        if (GetActionDown("Pause")) {
-            // Application/state graph thực hiện PushState<PauseState>().
+        if (InputManager::Get().IsKeyPressed(KeyCode::Escape)) {
+            // Gỡ menu pause modal và tiếp tục GameplayState bên dưới
+            Application::Get().PopState();
         }
     }
 
+    void OnRender() override {}
+
     void OnExit() override {
-        QueuePopScene();
+        AXIS_LOG_INFO("PauseState::OnExit - Menu pause modal da dong");
+    }
+};
+
+class GameplayState final : public State {
+public:
+    std::string GetName() const override { return "GameplayState"; }
+
+    void OnEnter() override {
+        AXIS_LOG_INFO("GameplayState::OnEnter - Dang nap scene man choi");
+        SceneManager::Get().LoadScene("scenes/level1.axs");
+    }
+
+    void OnUpdate(float dt) override {
+        if (InputManager::Get().IsKeyPressed(KeyCode::Escape)) {
+            // Đẩy PauseState lên trên mà không hủy GameplayState
+            Application::Get().PushState<PauseState>();
+        }
+    }
+
+    void OnFixedUpdate(float fixedDt) override {
+        // Cập nhật bước vật lý cố định
+    }
+
+    void OnRender() override {}
+
+    void OnPause() override {
+        AXIS_LOG_INFO("GameplayState::OnPause - Bi tam dung boi menu pause modal");
+    }
+
+    void OnResume() override {
+        AXIS_LOG_INFO("GameplayState::OnResume - Tiếp tục gameplay sau khi dong menu pause");
+    }
+
+    void OnExit() override {
+        AXIS_LOG_INFO("GameplayState::OnExit - Huy scene man choi");
     }
 };
 ```
 
-Application khởi động state:
+---
 
-```cpp
-app.PushState<MenuState>();
-app.Run();
-```
+## 4. Tra cứu Param, Setting & API Reference
 
-Đăng ký metadata để State Machine panel hiển thị graph:
+### Bảng Tra cứu Các Callback Vòng đời State
 
-```cpp
-void RegisterUserStates() override {
-    RegisterState<MenuState>("Menu");
-    RegisterState<GameplayState>("Gameplay");
-    RegisterState<PauseState>("Pause");
+| Tên Phương thức | Thời điểm Gọi | Mục đích |
+| :--- | :--- | :--- |
+| `OnEnter()` | Kích hoạt State | Được gọi 1 lần khi state được đẩy vào stack hoạt động |
+| `OnUpdate(float dt)` | Vòng lặp Khung hình Biến thiên | Được gọi mỗi frame tick cho state trên cùng |
+| `OnFixedUpdate(float fixedDt)` | Bước Vật lý Cố định | Được gọi mỗi fixed timestep vật lý |
+| `OnRender()` | Phase Dựng hình Khung hình | Được gọi trong phase dựng hình đồ họa |
+| `OnRenderDebug()` | Phase Dựng hình Debug | Được gọi trong phase dựng hình lớp phủ debug |
+| `OnPause()` | Tạm dừng Modal | Được gọi khi có một state mới được đẩy đè lên trên |
+| `OnResume()` | Khôi phục Modal | Được gọi khi state đè phía trên bị gỡ và state này trở lại đỉnh stack |
+| `OnExit()` | Hủy bỏ State | Được gọi khi state bị gỡ khỏi stack hoặc thay thế |
 
-    RegisterStateTransition<MenuState, GameplayState>(
-        "Start Game", StateTransitionKind::Change);
-    RegisterStateTransition<GameplayState, PauseState>(
-        "Pause", StateTransitionKind::Push);
-}
-```
+### Bảng Tra cứu Thao tác Stack StateMachine
 
-Runtime `PushState`, `PopState`, `ChangeState` cũng được quan sát tự động.
-
-## Scene API
-
-```cpp
-LoadScene(path);          // thêm .axs/.axsb
-UnloadScene(path);
-ChangeScene(path);        // dọn và nạp scene mới
-QueueLoadScene(path);     // cuối frame
-QueuePopScene();
-IsSceneLoaded(path);
-```
-
-Ưu tiên queue operation khi đang update để tránh invalid registry iterator.
-Scene operation queue chạy FIFO.
-
-## Điều khiển system
-
-```cpp
-EnablePhysics(bool);
-EnableRender(bool);
-EnableAudio(bool);
-EnableScript(bool);
-EnableAnimation(bool);
-EnableVideo(bool);
-EnableUIInteract(bool);
-EnableUIRender(bool);
-EnableParticle(bool);
-EnableSkybox(bool);
-EnableLogic(bool);
-```
-
-`EnableLogic` điều khiển nhóm gameplay system. Pause overlay thường tắt physics
-và logic nhưng giữ render/UI; menu có thể tắt physics và giữ audio/UI.
-
-## Input và service
-
-```cpp
-bool GetAction(name);
-bool GetActionDown(name);
-bool GetActionUp(name);
-float GetAxis(name);
-
-auto& resources = Get<ResourceManager>();
-auto* audio = Resolve<AudioService>();
-auto& system = GetSystem<PhysicsSystem>();
-```
-
-Action binding độc lập thiết bị và nên được dùng thay key code.
-
-## Pattern
-
-### Menu
-
-Load UI scene, bật UI/audio, tắt physics; cursor `Normal`.
-
-### Gameplay
-
-Load world, bật system cần thiết, cursor `LockedHidden`; pause bằng push overlay.
-
-### Pause overlay
-
-Giữ scene gameplay, tắt physics/logic, vẫn render world và UI; pop để resume và
-khôi phục chính xác policy/cursor trước đó.
-
-### Loading
-
-Hiển thị UI, queue async resource/scene operation, chỉ change state khi future
-và publication hoàn tất.
-
-### Cutscene
-
-Giữ render/audio/animation/video, tắt physics hoặc gameplay script chọn lọc.
-
-## Quy tắc thực hành
-
-- State điều phối mode; Scriptable điều khiển entity.
-- Ghép enable/disable đối xứng giữa `OnEnter` và `OnExit`.
-- Dùng queue cho scene transition trong update.
-- Không giữ component reference qua change/unload scene.
-- Kiểm tra kết quả load và cung cấp trạng thái lỗi cho user.
-
-## Xem thêm
-
-- [Core systems](../systems/core_systems.md)
-- [Scriptable API](../scripting/scriptable_api.md)
-- [Scene format](../guides/scene_format.md)
-- [Thiết bị](../guides/device_management.md)
+| Tên Phương thức | Hành vi Stack Mục tiêu | Trình tự Callback Vòng đời Được Kích hoạt |
+| :--- | :--- | :--- |
+| `PushState<T>()` | Đẩy state mới `T` lên đỉnh stack | State hiện tại nhận `OnPause()`; state mới nhận `OnEnter()` |
+| `PopState()` | Gỡ bỏ state trên cùng khỏi stack | State trên cùng nhận `OnExit()`; state bên dưới nhận `OnResume()` |
+| `ChangeState<T>()` | Thay thế toàn bộ stack bằng state `T` | Tất cả state hoạt động nhận `OnExit()`; state mới nhận `OnEnter()` |
+| `Clear()` | Hủy toàn bộ state trên stack | Gọi `OnExit()` trên tất cả state và giải phóng bộ nhớ |
+| `GetCurrentState()` | Truy vấn state đang hoạt động | Trả về con trỏ con `State*` tới state trên cùng |
+| `GetStates()` | Truy vấn toàn bộ danh sách state | Trả về `std::vector<State*>` sắp xếp từ dưới lên đỉnh |

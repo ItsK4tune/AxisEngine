@@ -1,8 +1,8 @@
-# AxisEngine documentation / Tài liệu AxisEngine
+# AxisEngine Documentation Portal / Cổng Tài liệu AxisEngine
 
-- [English documentation](eng/INDEX.md)
-- [Tài liệu tiếng Việt](vi/INDEX.md)
+- [English Documentation Index](eng/INDEX.md)
+- [Mục lục Tài liệu Tiếng Việt](vi/INDEX.md)
 
-Both language trees use the same structure and filenames.
+Both language documentation trees share the exact same structural organization, file naming, and code snippet representations.
 
-Hai cây ngôn ngữ dùng cùng cấu trúc thư mục và tên file.
+Cả hai cây tài liệu ngôn ngữ đều sử dụng cùng cấu trúc thư mục, tên file và ví dụ mã nguồn tương đương 1:1.

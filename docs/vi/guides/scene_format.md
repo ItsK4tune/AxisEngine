@@ -1,112 +1,102 @@
-# Tham chiếu định dạng scene `.axs`
+# Hướng dẫn Serialization Scene (`.axs` & `.axsb`)
 
-> [English](../../eng/guides/scene_format.md)
+> [English](../../eng/guides/scene_format.md) | [Tra cứu Component Reference](components_reference.md) | [Tra cứu Cấu hình Configuration](configuration.md) | [Mục lục Tài liệu](../INDEX.md)
 
-`.axs` là định dạng phân cấp dựa trên indentation, dùng để mô tả resource,
-entity và component. `SceneSerializer` parse trực tiếp; tab indentation bị từ
-chối, hãy dùng space.
+---
 
-## 1. Resources
+## 1. Giới thiệu
 
+AxisEngine hỗ trợ hai định dạng file serialization chính: dạng văn bản dễ đọc `.axs` (tập con của YAML) và dạng nhị phân biên dịch sẵn `.axsb`. File `.axs` cho phép các nhà phát triển tạo scene, gán nút input, bảng dữ liệu, chuỗi đa ngôn ngữ và cấu hình engine bằng văn bản thuần, trong khi file `.axsb` tối ưu hóa tốc độ nạp màn chơi cho bản phát hành.
+
+---
+
+## 2. Cách dùng
+
+1. **Soạn thảo File `.axs`**: Tạo file văn bản sử dụng khoảng trắng để thụt đầu dòng (nghiêm cấm dùng phím tab) và chỉ định 1 trong 5 khóa root schema (`axis_scene`, `axis_input`, `axis_data`, `axis_localization`, hoặc `axis_config`).
+2. **Biên dịch sang `.axsb`**: Chạy `axis_compile input.axs output.axsb` qua dòng lệnh CLI.
+3. **Nạp trong C++**: Gọi `SceneManager::Get().LoadScene("scene.axs")` hoặc `LoadBinaryScene("scene.axsb")`.
+
+---
+
+## 3. Ví dụ
+
+### 1. Ví dụ Schema `axis_scene`
 ```yaml
 axis_scene:
-  Resources:
-    Shader:
-      Name: modelShader
-      Vertex: assets/shaders/model.vs
-      Fragment: assets/shaders/model.fs
-    Model:
-      Name: unityChan
-      Path: assets/models/unitychan.fbx
-      Static: true
+    Version: 1.0
+
+Resources:
+    Textures:
+        - Name: "crate_diffuse"
+          Path: "textures/crate_d.png"
+
+Entities:
+    - Name: "Sun Light"
+      Transform:
+          Position: 0.0 10.0 0.0
+          Rotation: 45.0 -30.0 0.0
+      DirectionalLight:
+          Color: 1.0 0.95 0.8
+          Intensity: 2.5
+
+    - Name: "Box Entity"
+      Transform:
+          Position: 0.0 1.0 0.0
+      MeshRenderer:
+          Model: "models/cube.obj"
+          AlbedoTexture: "crate_diffuse"
 ```
 
-## 2. Configuration
-
-Config runtime nên đặt dưới `axis_config`; legacy scene vẫn có thể chứa config
-và `ConfigLoader` sẽ sanitize trước khi publish.
-
+### 2. Ví dụ Schema `axis_input`
 ```yaml
-axis_config:
-  WINDOW_WIDTH: 1920
-  WINDOW_HEIGHT: 1080
-  WINDOW_MODE: BORDERLESS_FULLSCREEN
-  VSYNC: 1
-  ANTIALIASING: TAA
-  MSAA: 4
-  HDR_ENABLED: 1
-  BLOOM_ENABLED: 1
-  TONEMAPPING: ACES
-  SHADOW_RESOLUTION: 2048
-  JOB_THREADS: -1
-  LOG_LEVEL: VERBOSE
-  PHYSICS_MODE: BALANCED
+axis_input:
+    Bindings:
+        MoveForward:
+            Key: W
+            GamepadAxis: LeftY
+        Jump:
+            Key: Space
+            GamepadButton: South
 ```
 
-## 3. Entities
-
-Entity bắt đầu bằng name dưới `Entities`. `Tag`, `Layer`, `Parent`, `Active`,
-`Transient`, `RenderOrder` và scene membership là metadata.
-
+### 3. Ví dụ Schema `axis_data`
 ```yaml
-axis_scene:
-  Entities:
-    Player:
-      Tag: Player
-      Layer: 1
+axis_data:
+    PlayerStats:
+        BaseHealth: 100
+        BaseSpeed: 5.5
+        MaxInventorySlots: 20
 ```
 
-## 4. Components
-
+### 4. Ví dụ Schema `axis_localization`
 ```yaml
-axis_scene:
-  Entities:
-    MyCube:
-      Tag: default
-      Component: Transform
-        Position: 0.0 0.0 0.0
-        Rotation: 0.0 0.0 0.0
-        Scale: 1.0 1.0 1.0
-      Component: Renderer
-        Model: cubeModel
-        Shader: defaultShader
-      Component: Script
-        Class: PlayerController
-      Component: RigidBody
-        Type: CAPSULE
-        Radius: 1.0
-        Height: 1.8
-        Mass: 70.0
-        BodyType: DYNAMIC
-        Offset: 0.0 0.9 0.0
-        AngularFactor: 0 1 0
-        Restitution: 0.2
+axis_localization:
+    Language: "vi_VN"
+    Strings:
+        UI_PLAY: "CHƠI NGAY"
+        UI_QUIT: "THOÁT GAME"
 ```
 
-Xem [tham chiếu component](components_reference.md) để biết field chính xác.
+---
 
-## 5. Quy tắc authoring
+## 4. Tra cứu Param, Setting & API Reference
 
-1. Entity name nên duy nhất trong scene context.
-2. Dùng space, không dùng tab.
-3. Key phân biệt hoa/thường; key không biết sẽ phát warning.
-4. Giữ runtime config tách khỏi scene khi có thể.
-5. Dùng `Layer` bitmask cho camera/physics filtering.
-6. Dùng path tương đối project; chỉ dùng `asset://` cho asset tích hợp.
-7. Scene/asset hiện được coi là trusted project input.
+### Bảng Tra cứu Chi tiết 5 Loại Schema File `.axs`
 
-## 6. Nhóm component
+| Khóa Root Schema | Mục đích Chính | Các Mục Con Chính | Subsystem Nạp / Phân tích |
+| :--- | :--- | :--- | :--- |
+| `axis_scene` | Phân cấp scene, entity, tài nguyên và ánh sáng môi trường | `Resources`, `Environment`, `Entities` | `SceneManager`, `YAMLParser` |
+| `axis_input` | Gán phím hành động, ánh xạ phím, trục chuột và gamepad | `Bindings`, `Actions`, `Axes` | `InputSerializer`, `InputManager` |
+| `axis_data` | Bảng dữ liệu key-value, chỉ số vũ khí, tham số cân bằng | Các node dữ liệu tùy chỉnh | `DataLoader`, `YAMLParser` |
+| `axis_localization` | Từ điển dịch thuật đa ngôn ngữ và chuỗi văn bản UI | `Language`, `Strings` | `LocalizationService` |
+| `axis_config` | Thiết lập toàn cục engine, cửa sổ, đồ họa và vật lý | Tham số Graphics, Physics, Audio | `ConfigManager`, `Application` |
 
-- Transform/cơ bản: xem [kiến trúc](../core/architecture.md).
-- Renderer, material, light, shadow: [graphics](graphics.md).
-- Rigid body/controller: [physics](physics.md).
-- NavMesh/path follower: [navigation](navigation.md).
-- UI transform/renderer/text: [UI](ui.md).
-- Script: [Scriptable API](../scripting/scriptable_api.md).
-- Preload resource và tag: [asset](assets.md).
+### Bảng Tra cứu Cú pháp Định dạng Scene & Trình biên dịch
 
-## Binary `.axsb`
-
-`axis_compile` tạo `.axsb`. Loader kiểm tra magic/version và giới hạn file,
-payload, string, entity trước cấp phát; legacy load rollback entity nếu file
-hỏng. Không coi `.axsb` từ nguồn ngoài là dữ liệu an toàn.
+| Quy tắc / Thuộc tính | Ràng buộc | Mô tả |
+| :--- | :--- | :--- |
+| Thụt đầu dòng | Chỉ dùng Khoảng trắng | Nghiêm cấm dùng phím Tab và sẽ gây ra lỗi cú pháp dòng/cột |
+| Định dạng Key-Value | `key: value` | Cặp khóa-giá trị trên một dòng |
+| Cú pháp Không hỗ trợ | Anchor (`&`), Alias (`*`), Flow (`[...]`), Chuỗi nhiều dòng (`\|`) | Các tính năng YAML tổng quát bị bỏ qua để tăng tốc độ parse |
+| CLI `axis_compile` | `axis_compile <in.axs> <out.axsb>` | File thực thi biên dịch scene nhị phân |
+| Rollback Nhị phân | Tự động | Việc nạp file nhị phân lỗi sẽ tự động rollback an toàn |
